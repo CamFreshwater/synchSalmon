@@ -2,7 +2,8 @@
 # prepCovariates.R
 # Date revised: April 20, 2018
 # Inputs: environmental and catch data 
-# Outputs: single clean csv to be passed to synch models
+# Outputs: single clean csv to be passed to synch models; prime metrics represent
+# months in "priming" period of oceanic productivity
 #*************************************************************************************
 
 
@@ -64,6 +65,7 @@ catch <- subset(catchTrim, fishery == "Commercial") %>%
 catch <- reshape2::dcast(catch, year ~ species)
 names(catch)[2:3] <- c("pinkCatch", "soxCatch")
 
-covarDat <- Reduce(function(x, y) merge(x, y, by = c("year")), list(pc2, pc2Prime, sst, sstPrime, pdo, npgo, npgoPrime, catch))
+
+covarDat <- Reduce(function(x, y) merge(x, y, by = c("year")), list(pc2, pc2Prime, sst, sstPrime, pdo, npgo, npgoPrime, meanAlpi, catch))
 
 write.csv(covarDat, here("/data/env/cleanCovar.csv"), row.names = FALSE)

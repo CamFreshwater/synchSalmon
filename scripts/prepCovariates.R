@@ -85,4 +85,7 @@ envCovar <-  covarDat %>%
 
 recDat <- merge(recDat, catchCovar[], by = "yr")
 recDat <- merge(recDat, envCovar, by = "entryYr")
+recDat <- with(recDat, recDat[order(stk, yr),])
+
+write.csv(recDat, here("/data/fullData.csv"), row.names = FALSE)
 

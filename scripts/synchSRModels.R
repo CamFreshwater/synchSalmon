@@ -71,3 +71,50 @@ for (i in seq_along(stkIDs)) {
 
 recDat$mixedModResid <- mixedResid
 recDat$modResid <- residVec
+
+
+#_________________________________________________________________________
+### Compare synchrony in productivity through time w/ residuals
+require(synchrony); require(zoo)
+
+
+ts <- recDat %>% group_by(stk) %>% summarise(tsLength=length(!is.na(ets)), firstYr=min(yr))
+selStks <- ts[which(ts$tsLength == "61"), ]$stk
+recDatTrim <- recDat[recDat$stk %in% selStks, ]
+
+wideProd <- spread(recDatTrim[, c("yr", "stk", "prod")], stk, prod)
+wideResid <- spread(recDatTrim[, c("yr", "stk", "modResid")], stk, modResid)
+prodMat <- as.matrix(wideProd[, -1])
+residMat <- as.matrix(wideResid[, -1])
+yrs <- unique(wideProd$yr)
+
+prodWtdCV <- rollapplyr(prodMat, width = 10, function(x) wtdCV(x), fill = NA,
+						by.column = FALSE)
+prodSynch <- rollapplyr(prodMat, width = 10, function(x) community.sync(x)$obs, 
+						fill = NA, by.column = FALSE)
+prodAgCV <- rollapplyr(prodMat, width = 10, function(x) cvAgg(x), fill = NA, 
+						by.column = FALSE)
+prodCorr <- rollapplyr(prodMat, width = 10, function(x) meancorr(x)$obs, fill = NA, 
+						by.column = FALSE)
+par(mfrow=c(2,2), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
+plot(prodWtdCV ~ yrs)
+plot(prodSynch ~ yrs)
+plot(prodAgCV ~ yrs)
+plot(prodCorr ~ yrs)
+mtext(side=3, "Fraser Sockeye Metapopulation Dynamics", outer=TRUE)
+
+
+residWtdCV <- rollapplyr(residMat, width = 10, function(x) wtdCV(x), fill = NA,
+						by.column = FALSE)
+residSynch <- rollapplyr(residMat, width = 10, function(x) community.sync(x)$obs, 
+						fill = NA, by.column = FALSE)
+residAgCV <- rollapplyr(residMat, width = 10, function(x) cvAgg(x), fill = NA, 
+						by.column = FALSE)
+residCorr <- rollapplyr(residMat, width = 10, function(x) meancorr(x)$obs, fill = NA, 
+						by.column = FALSE)
+par(mfrow=c(2,2), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
+plot(residWtdCV ~ yrs)
+plot(residSynch ~ yrs)
+plot(residAgCV ~ yrs)
+plot(residCorr ~ yrs)
+mtext(side=3, "Fraser Sockeye Metapopulation Dynamics", outer=TRUE)

@@ -20,3 +20,6 @@ wtdCV <- function(recMat){
 cvAgg <- function(recMat){ 
   sqrt(community.sync(recMat)$obs) * wtdCV(recMat)
 }
+
+
+# mean(recMat[1:10,1]) / aggAbund * (sqrt(var(recMat[1:10,1]))) / mean(recMat[1:10,1])

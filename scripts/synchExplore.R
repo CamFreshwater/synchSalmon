@@ -55,68 +55,61 @@ recDatTrim <- subset(recDatTrim, !is.na(prod) & !is.na(eff3) & !yr == "2012")
 
 wideRec <- spread(recDatTrim[,c("stk", "yr", "ets")], stk, ets)
 recMat <- as.matrix(wideRec[,-1])
+wideProd <- spread(recDatTrim[,c("stk", "yr", "prod")], stk, prod)
+prodMat <- as.matrix(wideProd[,-1])
 
 
 #_________________________________________________________________________
 ## Frequentist framework
-rollWtdCV <- rollapplyr(recMat, width=10, function(x) wtdCV(x), fill=NA, by.column=FALSE)
-rollSynch <- rollapplyr(recMat, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
-rollAgCV <- rollapplyr(recMat, width=10, function(x) cvAgg(x), fill=NA, by.column=FALSE)
-rollCorr <- rollapplyr(recMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
-yrs <- unique(wideRec$yr)
-
-## Raw trends
-pdf(here("outputs/expFigs/spwnrVar.pdf"), height = 5, width = 6)
-par(mfrow=c(2,2), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
-plot(rollWtdCV ~ yrs, type = "l")
-plot(rollSynch ~ yrs, type = "l")
-plot(rollAgCV ~ yrs, type = "l")
-plot(rollCorr ~ yrs, type = "l")
-mtext(side=3, "Variability in Spawner Abundance", outer=TRUE)
-dev.off()
-
-cor(y = rollAgCV[10:61], x = rollWtdCV[10:61])
-cor(y = rollAgCV[10:61], x = rollSynch[10:61])
-
-#_________________________________________________________________________
-## Fit Ricker and Larkin models to each and examine trends in residuals (accounts for 
-## density dependence and changes in exploitation rates through time)
-# stkIndex <- unique(recDatTrim$stk)
-# residVec <- NULL
-# for(j in seq_along(stkIndex)) {
-#   d <- subset(recDatTrim, stk == stkIndex[j])
-#   mod <- unique(d$model)
-#   if (mod == "ricker") {
-#     srMod <- lm(prod ~ eff, data = d)
-#   }
-#   if (mod == "larkin") {
-#     srMod <- lm(prod ~ eff + eff1 + eff2 + eff3, data = d)
-#   }
-#   residVec <- c(residVec, resid(srMod))
-# }
-# recDatTrim$modResid <- residVec
-
-# NOTE: results in nonsensical variance estimates because residuals are centered on 0, focus
-# on log(R/S) instead
-
-wideProd <- spread(recDatTrim[,c("stk", "yr", "prod")], stk, prod)
-prodMat <- as.matrix(wideProd[,-1])
-
+rollWtdCVS <- rollapplyr(recMat, width=10, function(x) wtdCV(x), fill=NA, by.column=FALSE)
+rollSynchS <- rollapplyr(recMat, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
+rollAgCVS <- rollapplyr(recMat, width=10, function(x) cvAgg(x), fill=NA, by.column=FALSE)
+# rollCorrS <- rollapplyr(recMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
 rollWtdCV <- rollapplyr(prodMat, width=10, function(x) wtdCV(x), fill=NA, by.column=FALSE)
 rollSynch <- rollapplyr(prodMat, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
 rollAgCV <- rollapplyr(prodMat, width=10, function(x) cvAgg(x), fill=NA, by.column=FALSE)
-rollCorr <- rollapplyr(prodMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
-yrs <- unique(wideResid$yr)
+# rollCorr <- rollapplyr(prodMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
+yrs <- unique(wideRec$yr)
 
-## Raw trends
-pdf(here("outputs/expFigs/prodVar.pdf"), height = 5, width = 6)
-par(mfrow=c(2,2), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
+
+## Fit Ricker and Larkin models to each and examine trends in residuals (accounts for 
+## density dependence and changes in exploitation rates through time)
+stkIndex <- unique(recDatTrim$stk)
+residVec <- NULL
+for(j in seq_along(stkIndex)) {
+  d <- subset(recDatTrim, stk == stkIndex[j])
+  mod <- unique(d$model)
+  if (mod == "ricker") {
+    srMod <- lm(prod ~ eff, data = d)
+  }
+  if (mod == "larkin") {
+    srMod <- lm(prod ~ eff + eff1 + eff2 + eff3, data = d)
+  }
+  residVec <- c(residVec, resid(srMod))
+}
+recDatTrim$modResid <- exp(residVec)
+
+wideResid <- spread(recDatTrim[,c("stk", "yr", "modResid")], stk, modResid)
+residMat <- as.matrix(wideResid[,-1])
+
+rollWtdCVR <- rollapplyr(residMat, width=10, function(x) wtdCV(x), fill=NA, by.column=FALSE)
+rollSynchR <- rollapplyr(residMat, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
+rollAgCVR <- rollapplyr(residMat, width=10, function(x) cvAgg(x), fill=NA, by.column=FALSE)
+
+
+## Plot trends
+pdf(here("outputs/expFigs/varTrends.pdf"), height = 4, width = 6)
+par(mfrow=c(1,3), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
+plot(rollWtdCVS ~ yrs, type = "l")
+plot(rollSynchS ~ yrs, type = "l")
+plot(rollAgCVS ~ yrs, type = "l")
+mtext(side=3, "Variability in Spawner Abundance", outer=TRUE)
 plot(rollWtdCV ~ yrs, type = "l")
 plot(rollSynch ~ yrs, type = "l")
 plot(rollAgCV ~ yrs, type = "l")
-plot(rollCorr ~ yrs, type = "l")
 mtext(side=3, "Variability in log(R/S)", outer=TRUE)
+plot(rollWtdCVR ~ yrs, type = "l")
+plot(rollSynchR ~ yrs, type = "l")
+plot(rollAgCVR ~ yrs, type = "l")
+mtext(side=3, "Variability in Model Residuals", outer=TRUE)
 dev.off()
-
-cor(y = rollAgCV[10:61], x = rollWtdCV[10:61])
-cor(y = rollAgCV[10:61], x = rollSynch[10:61])

@@ -45,7 +45,7 @@ for(j in seq_along(stkIndex)) {
   recDat[recDat$stk == stkIndex[j], c("eff1", "eff2", "eff3")] <- d[, c("eff1", "eff2", "eff3")]
 }
 # Trim and convert to matrix
-ts <- recDatTrim %>% 
+ts <- recDat %>% 
   group_by(stk) %>% 
   summarise(tsLength = length(!is.na(prod)), firstYr = min(yr), lastYr = max(yr))
 selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19)
@@ -87,6 +87,7 @@ for(j in seq_along(stkIndex)) {
   }
   residVec <- c(residVec, resid(srMod))
 }
+recDatTrim$logResid <- residVec
 recDatTrim$modResid <- exp(residVec)
 
 wideResid <- spread(recDatTrim[,c("stk", "yr", "modResid")], stk, modResid)

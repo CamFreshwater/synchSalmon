@@ -9,8 +9,8 @@
 #			in residuals
 #*************************************************************************************
 
-setwd("C:/github/synchSalmon/")
-# setwd("/Users/cam/github/synchSalmon") #Cam's Mac wd
+# setwd("C:/github/synchSalmon/")
+setwd("/Users/cam/github/synchSalmon") #Cam's Mac wd
 
 require(here); require(synchrony); require(zoo); require(ggplot2); require(dplyr); require(tidyr)
 
@@ -51,6 +51,7 @@ ts <- recDat %>%
 selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19)
 recDatTrim <- recDat[recDat$stk %in% selectedStks,]
 recDatTrim <- subset(recDatTrim, !is.na(prod) & !is.na(eff3) & !yr == "2012")
+recDatTrim2 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
 
 
 wideRec <- spread(recDatTrim[,c("stk", "yr", "ets")], stk, ets)
@@ -76,6 +77,7 @@ yrs <- unique(wideRec$yr)
 ## density dependence and changes in exploitation rates through time)
 stkIndex <- unique(recDatTrim$stk)
 residVec <- NULL
+# par(mfrow = c(3, 3))
 for(j in seq_along(stkIndex)) {
   d <- subset(recDatTrim, stk == stkIndex[j])
   mod <- unique(d$model)
@@ -86,6 +88,7 @@ for(j in seq_along(stkIndex)) {
     srMod <- lm(prod ~ eff + eff1 + eff2 + eff3, data = d)
   }
   residVec <- c(residVec, resid(srMod))
+  # acf(resid(srMod), main = stkIndex[j])
 }
 recDatTrim$logResid <- residVec
 recDatTrim$modResid <- exp(residVec)

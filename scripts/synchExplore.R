@@ -9,8 +9,8 @@
 #			in residuals
 #*************************************************************************************
 
-# setwd("C:/github/synchSalmon/")
-setwd("/Users/cam/github/synchSalmon") #Cam's Mac wd
+setwd("C:/github/synchSalmon/")
+# setwd("/Users/cam/github/synchSalmon") #Cam's Mac wd
 
 require(here); require(synchrony); require(zoo); require(ggplot2); require(dplyr); require(tidyr)
 
@@ -45,14 +45,15 @@ for(j in seq_along(stkIndex)) {
   recDat[recDat$stk == stkIndex[j], c("eff1", "eff2", "eff3")] <- d[, c("eff1", "eff2", "eff3")]
 }
 # Trim and convert to matrix
-ts <- recDat %>% 
+ts <- recDatTrim2 %>% 
   group_by(stk) %>% 
   summarise(tsLength = length(!is.na(prod)), firstYr = min(yr), lastYr = max(yr))
-selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19)
+# selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
+selectedStks <- seq(from = 1, to = 19, by =1 )[-c(11, 15, 17)] #stocks w/ time series from 1973
 recDatTrim <- recDat[recDat$stk %in% selectedStks,]
+recDatTrim <- recDatTrim[recDatTrim$yr > 1972, ]
 recDatTrim <- subset(recDatTrim, !is.na(prod) & !is.na(eff3) & !yr == "2012")
 recDatTrim2 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
-
 
 wideRec <- spread(recDatTrim[,c("stk", "yr", "ets")], stk, ets)
 recMat <- as.matrix(wideRec[,-1])
@@ -102,18 +103,18 @@ rollAgCVR <- rollapplyr(residMat, width=10, function(x) cvAgg(x), fill=NA, by.co
 
 
 ## Plot trends
-pdf(here("outputs/expFigs/varTrends.pdf"), height = 4, width = 6)
+pdf(here("outputs/expFigs/varTrendsMostCUs.pdf"), height = 3, width = 7)
 par(mfrow=c(1,3), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
-plot(rollWtdCVS ~ yrs, type = "l")
-plot(rollSynchS ~ yrs, type = "l")
-plot(rollAgCVS ~ yrs, type = "l")
+plot(rollWtdCVS ~ yrs, type = "l", ylab = "Weighted Mean Component CV")
+plot(rollSynchS ~ yrs, type = "l", ylab = "Synchrony Index")
+plot(rollAgCVS ~ yrs, type = "l", ylab = "Aggregate CV")
 mtext(side=3, "Variability in Spawner Abundance", outer=TRUE)
-plot(rollWtdCV ~ yrs, type = "l")
-plot(rollSynch ~ yrs, type = "l")
-plot(rollAgCV ~ yrs, type = "l")
+plot(rollWtdCV ~ yrs, type = "l", ylab = "Weighted Mean Component CV")
+plot(rollSynch ~ yrs, type = "l", ylab = "Synchrony Index")
+plot(rollAgCV ~ yrs, type = "l", ylab = "Aggregate CV")
 mtext(side=3, "Variability in log(R/S)", outer=TRUE)
-plot(rollWtdCVR ~ yrs, type = "l")
-plot(rollSynchR ~ yrs, type = "l")
-plot(rollAgCVR ~ yrs, type = "l")
+plot(rollWtdCVR ~ yrs, type = "l", ylab = "Weighted Mean Component CV")
+plot(rollSynchR ~ yrs, type = "l", ylab = "Synchrony Index")
+plot(rollAgCVR ~ yrs, type = "l", ylab = "Aggregate CV")
 mtext(side=3, "Variability in Model Residuals", outer=TRUE)
 dev.off()

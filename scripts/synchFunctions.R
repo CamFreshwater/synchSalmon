@@ -22,4 +22,31 @@ cvAgg <- function(recMat){
 }
 
 
-# mean(recMat[1:10,1]) / aggAbund * (sqrt(var(recMat[1:10,1]))) / mean(recMat[1:10,1])
+#_________________________________________________________________________
+# These functions calculate CVcurrent (eq. 1) or CVnull (eq. 2) used to calculate
+# diversity deficit (DD; eq. 3) as in Yamane et al. 2018 J App Ecol
+calcCV <- function(recMat, current = TRUE) {
+  sumVar <- sum(apply(recMat, 2, var))
+  sumCov <- calcCov(recMat)
+  sumMean <- sum(apply(recMat, 2, mean))
+  if (current == TRUE) {
+    cv <- sqrt(sumVar + sumCov) / sumMean
+  } 
+  if (current == FALSE) {
+    cv <- sqrt(sumVar) / sumMean
+  }
+  return(cv)
+}
+
+calcCov <- function(recMat) {
+  n <- ncol(recMat)
+  covMat <- matrix(nrow = n, ncol = n)
+  for (i in 1:(n - 1)) {
+    for (h in (i + 1):n) {
+      covMat[i, h] <- cov(recMat[ , i], recMat[ , h])
+    }
+  }
+  sumCov <- sum(covMat, na.rm = TRUE)
+  return(sumCov)
+}
+

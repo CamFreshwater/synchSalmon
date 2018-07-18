@@ -30,7 +30,7 @@ for (i in 1:nrow(recDat)) { #add top-fitting SR model
     recDat$model[i] <- "ricker"
   } 
 }
-# Add lagged eff abundances for larkin models
+# Add lagged EFF abundances for larkin models
 recDat$eff1 <- NA
 recDat$eff2 <- NA
 recDat$eff3 <- NA
@@ -45,7 +45,7 @@ for(j in seq_along(stkIndex)) {
   recDat[recDat$stk == stkIndex[j], c("eff1", "eff2", "eff3")] <- d[, c("eff1", "eff2", "eff3")]
 }
 # Trim and convert to matrix
-ts <- recDatTrim2 %>% 
+ts <- recDat %>% 
   group_by(stk) %>% 
   summarise(tsLength = length(!is.na(prod)), firstYr = min(yr), lastYr = max(yr))
 # selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
@@ -118,3 +118,21 @@ plot(rollSynchR ~ yrs, type = "l", ylab = "Synchrony Index")
 plot(rollAgCVR ~ yrs, type = "l", ylab = "Aggregate CV")
 mtext(side=3, "Variability in Model Residuals", outer=TRUE)
 dev.off()
+
+
+## Look at metrics from Yamane et al. 2018
+rollCurrentCV <- rollapplyr(recMat, width = 10, function(x) calcCV(x, current = TRUE), fill = NA, by.column = FALSE)
+rollNullCV <- rollapplyr(recMat, width = 10, function(x) calcCV(x, current = FALSE), fill = NA, by.column = FALSE)
+rollDivDefS <- rollCurrentCV - rollNullCV
+
+plot(rollDivDefS ~ yrs, type = "l", ylab = "Diversity Deficit (null)")  
+plot(rollDivDefS ~ rollSynchS)
+
+rollCurrentCV <- rollapplyr(prodMat, width = 10, function(x) calcCV(x, current = TRUE), fill = NA, by.column = FALSE)
+rollNullCV <- rollapplyr(prodMat, width = 10, function(x) calcCV(x, current = FALSE), fill = NA, by.column = FALSE)
+rollDivDefProd <- rollCurrentCV - rollNullCV
+
+plot(rollDivDefProd ~ yrs, type = "l", ylab = "Diversity Deficit (null)")  
+plot(rollDivDefProd ~ rollSynch)
+abline(a = 0, b = 1)
+cor(rollDivDefProd[10:39], rollSynch[10:39])

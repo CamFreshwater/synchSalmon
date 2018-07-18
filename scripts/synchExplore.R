@@ -66,11 +66,11 @@ prodMat <- as.matrix(wideProd[,-1])
 rollWtdCVS <- rollapplyr(recMat, width=10, function(x) wtdCV(x), fill=NA, by.column=FALSE)
 rollSynchS <- rollapplyr(recMat, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
 rollAgCVS <- rollapplyr(recMat, width=10, function(x) cvAgg(x), fill=NA, by.column=FALSE)
-# rollCorrS <- rollapplyr(recMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
+rollCorrS <- rollapplyr(recMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
 rollWtdCV <- rollapplyr(prodMat, width=10, function(x) wtdCV(x), fill=NA, by.column=FALSE)
 rollSynch <- rollapplyr(prodMat, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
 rollAgCV <- rollapplyr(prodMat, width=10, function(x) cvAgg(x), fill=NA, by.column=FALSE)
-# rollCorr <- rollapplyr(prodMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
+rollCorr <- rollapplyr(prodMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
 yrs <- unique(wideRec$yr)
 
 
@@ -136,3 +136,4 @@ plot(rollDivDefProd ~ yrs, type = "l", ylab = "Diversity Deficit (null)")
 plot(rollDivDefProd ~ rollSynch)
 abline(a = 0, b = 1)
 cor(rollDivDefProd[10:39], rollSynch[10:39])
+

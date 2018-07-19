@@ -48,10 +48,10 @@ for(j in seq_along(stkIndex)) {
 ts <- recDat %>% 
   group_by(stk) %>% 
   summarise(tsLength = length(!is.na(prod)), firstYr = min(yr), lastYr = max(yr))
-# selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
-selectedStks <- seq(from = 1, to = 19, by =1 )[-c(11, 15, 17)] #stocks w/ time series from 1973
+selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
+# selectedStks <- seq(from = 1, to = 19, by =1 )[-c(11, 15, 17)] #stocks w/ time series from 1973
 recDatTrim <- recDat[recDat$stk %in% selectedStks,]
-recDatTrim <- recDatTrim[recDatTrim$yr > 1972, ]
+# recDatTrim <- recDatTrim[recDatTrim$yr > 1972, ]
 recDatTrim <- subset(recDatTrim, !is.na(prod) & !is.na(eff3) & !yr == "2012")
 recDatTrim2 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
 
@@ -67,10 +67,12 @@ rollWtdCVS <- rollapplyr(recMat, width=10, function(x) wtdCV(x), fill=NA, by.col
 rollSynchS <- rollapplyr(recMat, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
 rollAgCVS <- rollapplyr(recMat, width=10, function(x) cvAgg(x), fill=NA, by.column=FALSE)
 rollCorrS <- rollapplyr(recMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
-rollWtdCV <- rollapplyr(prodMat, width=10, function(x) wtdCV(x), fill=NA, by.column=FALSE)
+rollWtdCV <- rollapplyr(prodMat, width=10, function(x) wtdCV(x, recMat = recMat), fill=NA, by.column=FALSE)
 rollSynch <- rollapplyr(prodMat, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
-rollAgCV <- rollapplyr(prodMat, width=10, function(x) cvAgg(x), fill=NA, by.column=FALSE)
+rollAgCV <- rollapplyr(prodMat, width=10, function(x) cvAgg(x, recMat = recMat), fill=NA, by.column=FALSE)
 rollCorr <- rollapplyr(prodMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
+rollS <- rollapplyr(recMat, width=10, function(x) wtdMean(x), fill=NA, by.column=FALSE)
+rollProd <- rollapplyr(prodMat, width=10, function(x) wtdMean(x, recMat = recMat), fill=NA, by.column=FALSE)
 yrs <- unique(wideRec$yr)
 
 
@@ -94,28 +96,31 @@ for(j in seq_along(stkIndex)) {
 recDatTrim$logResid <- residVec
 recDatTrim$modResid <- exp(residVec)
 
-wideResid <- spread(recDatTrim[,c("stk", "yr", "modResid")], stk, modResid)
-residMat <- as.matrix(wideResid[,-1])
+wideResid <- spread(recDatTrim[ , c("stk", "yr", "modResid")], stk, modResid)
+residMat <- as.matrix(wideResid[ , -1])
 
-rollWtdCVR <- rollapplyr(residMat, width=10, function(x) wtdCV(x), fill=NA, by.column=FALSE)
-rollSynchR <- rollapplyr(residMat, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
-rollAgCVR <- rollapplyr(residMat, width=10, function(x) cvAgg(x), fill=NA, by.column=FALSE)
-
+rollWtdCVR <- rollapplyr(residMat, width=10, function(x) wtdCV(x, recMat = recMat), fill = NA, by.column = FALSE)
+rollSynchR <- rollapplyr(residMat, width=10, function(x) community.sync(x)$obs, fill = NA, by.column = FALSE)
+rollAgCVR <- rollapplyr(residMat, width=10, function(x) cvAgg(x, recMat = recMat), fill = NA, by.column = FALSE)
+rollResid <- rollapplyr(residMat, width=10, function(x) wtdMean(x, recMat = recMat), fill=NA, by.column=FALSE)
 
 ## Plot trends
-pdf(here("outputs/expFigs/varTrendsMostCUs.pdf"), height = 3, width = 7)
-par(mfrow=c(1,3), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
+pdf(here("outputs/expFigs/varTrends.pdf"), height = 6, width = 6)
+par(mfrow=c(2, 2), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
 plot(rollWtdCVS ~ yrs, type = "l", ylab = "Weighted Mean Component CV")
 plot(rollSynchS ~ yrs, type = "l", ylab = "Synchrony Index")
 plot(rollAgCVS ~ yrs, type = "l", ylab = "Aggregate CV")
-mtext(side=3, "Variability in Spawner Abundance", outer=TRUE)
+plot(rollS2 ~ yrs, type = "l", ylab = "Mean")
+mtext(side=3, "Variability in Recruit Abundance", outer=TRUE)
 plot(rollWtdCV ~ yrs, type = "l", ylab = "Weighted Mean Component CV")
 plot(rollSynch ~ yrs, type = "l", ylab = "Synchrony Index")
 plot(rollAgCV ~ yrs, type = "l", ylab = "Aggregate CV")
+plot(rollProd ~ yrs, type = "l", ylab = "Mean")
 mtext(side=3, "Variability in log(R/S)", outer=TRUE)
 plot(rollWtdCVR ~ yrs, type = "l", ylab = "Weighted Mean Component CV")
 plot(rollSynchR ~ yrs, type = "l", ylab = "Synchrony Index")
 plot(rollAgCVR ~ yrs, type = "l", ylab = "Aggregate CV")
+plot(rollResid ~ yrs, type = "l", ylab = "Mean")
 mtext(side=3, "Variability in Model Residuals", outer=TRUE)
 dev.off()
 

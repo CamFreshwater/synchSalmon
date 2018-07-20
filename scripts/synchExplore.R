@@ -56,6 +56,7 @@ recDatTrim <- subset(recDatTrim, !is.na(prod) & !is.na(eff3) & !yr == "2012")
 recDatTrim2 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
 
 wideRec <- spread(recDatTrim[,c("stk", "yr", "ets")], stk, ets)
+yrs <- unique(wideRec$yr)
 recMat <- as.matrix(wideRec[,-1])
 wideProd <- spread(recDatTrim[,c("stk", "yr", "prod")], stk, prod)
 prodMat <- as.matrix(wideProd[,-1])
@@ -73,7 +74,6 @@ rollAgCV <- rollapplyr(prodMat, width=10, function(x) cvAgg(x, recMat = recMat),
 rollCorr <- rollapplyr(prodMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
 rollS <- rollapplyr(recMat, width=10, function(x) wtdMean(x), fill=NA, by.column=FALSE)
 rollProd <- rollapplyr(prodMat, width=10, function(x) wtdMean(x, recMat = recMat), fill=NA, by.column=FALSE)
-yrs <- unique(wideRec$yr)
 
 
 ## Fit Ricker and Larkin models to each and examine trends in residuals (accounts for 
@@ -98,11 +98,14 @@ recDatTrim$modResid <- exp(residVec)
 
 wideResid <- spread(recDatTrim[ , c("stk", "yr", "modResid")], stk, modResid)
 residMat <- as.matrix(wideResid[ , -1])
+wideLogResid <- spread(recDatTrim[ , c("stk", "yr", "logResid")], stk, logResid)
+logResidMat <- as.matrix(wideLogResid[ , -1])
+
 
 rollWtdCVR <- rollapplyr(residMat, width=10, function(x) wtdCV(x, recMat = recMat), fill = NA, by.column = FALSE)
 rollSynchR <- rollapplyr(residMat, width=10, function(x) community.sync(x)$obs, fill = NA, by.column = FALSE)
 rollAgCVR <- rollapplyr(residMat, width=10, function(x) cvAgg(x, recMat = recMat), fill = NA, by.column = FALSE)
-rollResid <- rollapplyr(residMat, width=10, function(x) wtdMean(x, recMat = recMat), fill=NA, by.column=FALSE)
+rollLogResid <- rollapplyr(logResidMat, width=10, function(x) wtdMean(x, recMat = recMat), fill=NA, by.column=FALSE)
 
 ## Plot trends
 pdf(here("outputs/expFigs/varTrends.pdf"), height = 6, width = 6)
@@ -120,11 +123,12 @@ mtext(side=3, "Variability in log(R/S)", outer=TRUE)
 plot(rollWtdCVR ~ yrs, type = "l", ylab = "Weighted Mean Component CV")
 plot(rollSynchR ~ yrs, type = "l", ylab = "Synchrony Index")
 plot(rollAgCVR ~ yrs, type = "l", ylab = "Aggregate CV")
-plot(rollResid ~ yrs, type = "l", ylab = "Mean")
+plot(rollLogResid ~ yrs, type = "l", ylab = "Mean")
 mtext(side=3, "Variability in Model Residuals", outer=TRUE)
 dev.off()
 
 
+#_________________________________________________________________________
 ## Look at metrics from Yamane et al. 2018
 rollCurrentCV <- rollapplyr(recMat, width = 10, function(x) calcCV(x, current = TRUE), fill = NA, by.column = FALSE)
 rollNullCV <- rollapplyr(recMat, width = 10, function(x) calcCV(x, current = FALSE), fill = NA, by.column = FALSE)
@@ -142,3 +146,19 @@ plot(rollDivDefProd ~ rollSynch)
 abline(a = 0, b = 1)
 cor(rollDivDefProd[10:39], rollSynch[10:39])
 
+
+#_________________________________________________________________________
+## Look at CU-specific time series of residuals and productivity
+pdf(here("outputs/expFigs/prodByCU.pdf"), height = 6, width = 6)
+par(mfrow=c(4, 3), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
+for(i in seq_along(stkIndex)) {
+  d <- prodMat[ , i]
+  plot(d ~ yrs, type = "l", ylab = "log R/S")
+}
+par(mfrow=c(4, 3), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
+for(i in seq_along(stkIndex)) {
+  d <- logResidMat[ , i]
+  plot(d ~ yrs, type = "l", ylab = "Residuals")
+  abline(h = 0)
+}
+dev.off()

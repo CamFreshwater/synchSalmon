@@ -53,7 +53,8 @@ selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series fr
 recDatTrim <- recDat[recDat$stk %in% selectedStks,]
 # recDatTrim <- recDatTrim[recDatTrim$yr > 1972, ]
 recDatTrim <- subset(recDatTrim, !is.na(prod) & !is.na(eff3) & !yr == "2012")
-recDatTrim2 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
+# recDatTrim2 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
+# write.csv(recDatTrim, file = here("data/recDatLongTS.csv"), row.names = FALSE)
 
 wideRec <- spread(recDatTrim[,c("stk", "yr", "ets")], stk, ets)
 yrs <- unique(wideRec$yr)
@@ -76,7 +77,7 @@ rollS <- rollapplyr(recMat, width=10, function(x) wtdMean(x), fill=NA, by.column
 rollProd <- rollapplyr(prodMat, width=10, function(x) wtdMean(x, recMat = recMat), fill=NA, by.column=FALSE)
 
 
-## Fit Ricker and Larkin models to each and examine trends in residuals (accounts for 
+## Fit Ricker and Larkin models to each CU and examine trends in residuals (accounts for 
 ## density dependence and changes in exploitation rates through time)
 stkIndex <- unique(recDatTrim$stk)
 residVec <- NULL
@@ -160,5 +161,11 @@ for(i in seq_along(stkIndex)) {
   d <- logResidMat[ , i]
   plot(d ~ yrs, type = "l", ylab = "Residuals")
   abline(h = 0)
+}
+par(mfrow=c(4, 3), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
+for(i in seq_along(stkIndex)) {
+  d <- logResidMat[ , i]
+  hist(d, ylab = "Residuals")
+  abline(v = 0, col = "red")
 }
 dev.off()

@@ -48,10 +48,10 @@ for(j in seq_along(stkIndex)) {
 ts <- recDat %>% 
   group_by(stk) %>% 
   summarise(tsLength = length(!is.na(prod)), firstYr = min(yr), lastYr = max(yr))
-selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
-# selectedStks <- seq(from = 1, to = 19, by =1 )[-c(11, 15, 17)] #stocks w/ time series from 1973
+# selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
+selectedStks <- seq(from = 1, to = 19, by =1 )[-c(11, 15, 17)] #stocks w/ time series from 1973
 recDatTrim <- recDat[recDat$stk %in% selectedStks,]
-# recDatTrim <- recDatTrim[recDatTrim$yr > 1972, ]
+recDatTrim <- recDatTrim[recDatTrim$yr > 1972, ]
 recDatTrim <- subset(recDatTrim, !is.na(prod) & !is.na(eff3) & !yr == "2012")
 # recDatTrim2 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
 # write.csv(recDatTrim, file = here("data/recDatLongTS.csv"), row.names = FALSE)
@@ -127,6 +127,11 @@ plot(rollAgCVR ~ yrs, type = "l", ylab = "Aggregate CV")
 plot(rollLogResid ~ yrs, type = "l", ylab = "Mean")
 mtext(side=3, "Variability in Model Residuals", outer=TRUE)
 dev.off()
+
+rollCorrR <- rollapplyr(residMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
+rollCorrLogR <- rollapplyr(logResidMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
+plot(rollCorrR ~ yrs, type = "l", ylab = "Mean Correlation Residuals")
+plot(rollCorrLogR ~ yrs, type = "l", ylab = "Mean Correlation Log Residuals")
 
 
 #_________________________________________________________________________

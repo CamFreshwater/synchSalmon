@@ -48,19 +48,22 @@ for(j in seq_along(stkIndex)) {
 ts <- recDat %>% 
   group_by(stk) %>% 
   summarise(tsLength = length(!is.na(prod)), firstYr = min(yr), lastYr = max(yr))
-# selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
-selectedStks <- seq(from = 1, to = 19, by =1 )[-c(11, 15, 17)] #stocks w/ time series from 1973
-recDatTrim <- recDat[recDat$stk %in% selectedStks,]
-recDatTrim <- recDatTrim[recDatTrim$yr > 1972, ]
-recDatTrim <- subset(recDatTrim, !is.na(prod) & !is.na(eff3) & !yr == "2012")
+selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
+selectedStks2 <- seq(from = 1, to = 19, by =1 )[-c(11, 15, 17)] #stocks w/ time series from 1973
+recDatTrim1 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
+recDatTrim <- recDatTrim1[recDatTrim1$stk %in% selectedStks,]
+recDatTrim2 <- recDatTrim1[recDatTrim1$stk %in% selectedStks2,]
+recDatTrim2 <- recDatTrim2[recDatTrim2$yr > 1972, ]
 # recDatTrim2 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
 # write.csv(recDatTrim, file = here("data/recDatLongTS.csv"), row.names = FALSE)
 
 wideRec <- spread(recDatTrim[,c("stk", "yr", "ets")], stk, ets)
-yrs <- unique(wideRec$yr)
 recMat <- as.matrix(wideRec[,-1])
 wideProd <- spread(recDatTrim[,c("stk", "yr", "prod")], stk, prod)
 prodMat <- as.matrix(wideProd[,-1])
+yrs <- unique(wideProd$yr)
+wideProd2 <- spread(recDatTrim2[,c("stk", "yr", "prod")], stk, prod)
+prodMat2 <- as.matrix(wideProd2[,-1])
 
 
 #_________________________________________________________________________

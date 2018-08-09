@@ -1,0 +1,116 @@
+#*************************************************************************************
+# synchRetroAnalysis.R
+# Date revised: Aug 8, 2018; ONGOING
+# Inputs: stock-recruit data csv
+# Outputs: figure pdfs
+# Explainer: Spin off from synchExplore.R that's trimmed down to focus only on relevant 
+# metrics
+#*************************************************************************************
+
+setwd("C:/github/synchSalmon/")
+# setwd("/Users/cam/github/synchSalmon") #Cam's Mac wd
+
+require(here); require(synchrony); require(zoo); require(ggplot2); require(dplyr); require(tidyr); require(viridis)
+
+source(here("scripts/synchFunctions.R"))
+
+## Data clean
+recDat1 <- read.csv(here("/data/sox/fraserRecDatEFF.csv"), stringsAsFactors = FALSE)
+recDat2 <- read.csv(here("/data/sox/fraserRecDatTrim.csv"), stringsAsFactors = FALSE) 
+recDat <- merge(recDat1, recDat2[, c("stk", "yr", "ets")], by = c("stk", "yr")) #combine ets and eff estimates
+recDat <- with(recDat, recDat[order(stk, yr),])
+recDat$prod <- log(recDat$rec/recDat$eff)
+for (i in 1:nrow(recDat)) { #add top-fitting SR model
+  stk <- recDat$stk[i]
+  if (stk == 1 | stk == 2 | stk == 6 | stk == 8 | stk == 9) {
+    recDat$model[i] <- "larkin"
+  }	else {
+    recDat$model[i] <- "ricker"
+  } 
+}
+# Add lagged EFF abundances for larkin models
+recDat$eff1 <- NA
+recDat$eff2 <- NA
+recDat$eff3 <- NA
+stkIndex <- unique(recDat$stk)
+for(j in seq_along(stkIndex)) {
+  d <- subset(recDat, stk == stkIndex[j])
+  for (i in 1:nrow(d)) { #add top-fitting SR model
+    d$eff1[i] <- ifelse(i < 1, NA, d$eff[i - 1])
+    d$eff2[i] <- ifelse(i < 2, NA, d$eff[i - 2])
+    d$eff3[i] <- ifelse(i < 3, NA, d$eff[i - 3])
+  }
+  recDat[recDat$stk == stkIndex[j], c("eff1", "eff2", "eff3")] <- d[, c("eff1", "eff2", "eff3")]
+}
+# Trim and convert to matrix
+ts <- recDat %>% 
+  group_by(stk) %>% 
+  summarise(tsLength = length(!is.na(prod)), firstYr = min(yr), lastYr = max(yr))
+selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
+selectedStksShort <- seq(from = 1, to = 19, by =1 )[-c(11, 15, 17)] #stocks w/ time series from 1973
+recDatTrim1 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
+recDatTrim <- recDatTrim1[recDatTrim1$stk %in% selectedStks,]
+recDatTrimS <- recDatTrim1[recDatTrim1$stk %in% selectedStksShort,]
+recDatTrimS <- recDatTrimS[recDatTrimS$yr > 1972, ]
+
+wideRec <- spread(recDatTrim[,c("stk", "yr", "ets")], stk, ets)
+recMat <- as.matrix(wideRec[,-1])
+wideProd <- spread(recDatTrim[,c("stk", "yr", "prod")], stk, prod)
+prodMat <- as.matrix(wideProd[,-1])
+yrs <- unique(wideProd$yr)
+wideRecS <- spread(recDatTrimS[,c("stk", "yr", "ets")], stk, ets)
+recMatS <- as.matrix(wideRecS[,-1])
+wideProdS <- spread(recDatTrimS[,c("stk", "yr", "prod")], stk, prod)
+prodMatS <- as.matrix(wideProdS[,-1])
+yrsS <- unique(wideProdS$yr)
+
+
+#_________________________________________________________________________
+## Frequentist framework
+rollWtdCV <- rollapplyr(prodMat, width=10, function(x) wtdCV(x, recMat = recMat), fill=NA, by.column=FALSE)
+rollSynch <- rollapplyr(prodMat, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
+rollAgCV <- rollapplyr(prodMat, width=10, function(x) cvAgg(x, recMat = recMat), fill=NA, by.column=FALSE)
+rollWtdCVShort <- rollapplyr(prodMatS, width=10, function(x) wtdCV(x, recMat = recMatS), fill=NA, by.column=FALSE)
+rollSynchShort <- rollapplyr(prodMatS, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
+rollAgCVShort <- rollapplyr(prodMatS, width=10, function(x) cvAgg(x, recMat = recMatS), fill=NA, by.column=FALSE)
+
+## Helper objects for plots
+stks <- unique(recDatTrim1$stk)
+meanP <- recDatTrim1 %>% #mean productivity
+  group_by(yr) %>%
+  summarise(logRS = mean(prod))
+colPal <- viridis(n = length(stks), begin = 0, end = 1)
+
+## Plot
+pdf(here("figs/Fig1_RetroTrends.pdf"), height = 6, width = 8)
+par(mfrow=c(2, 2), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
+usr <- par( "usr" )
+plot(1, type="n", xlab="", ylab="Observed log(R/S)", xlim=range(recDatTrim1$yr), 
+     ylim = c(min(recDatTrim1$prod), max(recDatTrim1$prod)))
+for(i in seq_along(stks)) {
+  d <- subset(recDatTrim1, stk == stks[i])
+  lines(prod ~ yr, data= d, type = "l", ylab = "log RS", col = colPal[i])
+}
+lines(logRS ~ yr, data = meanP, lwd = 2)
+legend("bottomleft", "A)", bty="n") 
+plot(rollWtdCV ~ yrs, type = "l", ylab = "Weighted Mean Component CV", lwd = 1.5)
+lines(rollWtdCVShort ~ yrsS, col = "red")
+legend("bottomleft", "B)", bty="n") 
+plot(rollSynch ~ yrs, type = "l", ylab = "Synchrony Index", lwd = 1.5)
+lines(rollSynchShort ~ yrsS, col = "red")
+legend("bottomleft", "C)", bty="n") 
+plot(rollAgCV ~ yrs, type = "l", ylab = "Aggregate CV", lwd = 1.5)
+lines(rollAgCVShort ~ yrsS, col = "red")
+legend("bottomleft", "D)", bty="n") 
+dev.off()
+
+
+textCoord <- function(xRange, yRange, location) {
+  if (location == "lowleft") {
+    xOut <- 0.2 * (xRange[2] - xRange[1])
+    yOut <- 0.2 * diff(yRange[2], yRange[1])
+  }
+}
+
+xRange <- range(meanP$yr)
+yRange <- range(recDatTrim1$prod)

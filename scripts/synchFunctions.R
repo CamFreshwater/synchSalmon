@@ -7,7 +7,7 @@
 
 #_________________________________________________________________________
 # This function calculates weighted CV following eq. 4 in Thibault and Connolly 
-# 2013 Ecol Let
+# 2013 Ecol Let; recMat necessary to weight values appropriately
 wtdCV <- function(datMat, recMat = NULL){
   if (is.null(recMat)) { #if recMat is NULL assume datMat is a matrix of abundance
     recMat <- datMat

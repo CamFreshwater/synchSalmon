@@ -7,8 +7,8 @@
 # metrics
 #*************************************************************************************
 
-setwd("C:/github/synchSalmon/")
-# setwd("/Users/cam/github/synchSalmon") #Cam's Mac wd
+# setwd("C:/github/synchSalmon/")
+setwd("/Users/cam/github/synchSalmon") #Cam's Mac wd
 
 require(here); require(synchrony); require(zoo); require(ggplot2); require(dplyr); require(tidyr); require(viridis)
 

@@ -177,3 +177,4 @@ for(i in seq_along(stkIndex)) {
   abline(v = 0, col = "red")
 }
 dev.off()
+

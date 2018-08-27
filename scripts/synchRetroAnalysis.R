@@ -7,9 +7,6 @@
 # metrics
 #*************************************************************************************
 
-# setwd("C:/github/synchSalmon/")
-setwd("/Users/cam/github/synchSalmon") #Cam's Mac wd
-
 require(here); require(synchrony); require(zoo); require(ggplot2); require(dplyr); require(tidyr); require(viridis)
 
 source(here("scripts/synchFunctions.R"))
@@ -52,6 +49,8 @@ recDatTrim1 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
 recDatTrim <- recDatTrim1[recDatTrim1$stk %in% selectedStks,]
 recDatTrimS <- recDatTrim1[recDatTrim1$stk %in% selectedStksShort,]
 recDatTrimS <- recDatTrimS[recDatTrimS$yr > 1972, ]
+recDatTrimNoS <- recDatTrim %>% 
+  filter(!(yr == 2005 | yr == 2006))
 
 wideRec <- spread(recDatTrim[,c("stk", "yr", "ets")], stk, ets)
 recMat <- as.matrix(wideRec[,-1])
@@ -63,6 +62,12 @@ recMatS <- as.matrix(wideRecS[,-1])
 wideProdS <- spread(recDatTrimS[,c("stk", "yr", "prod")], stk, prod)
 prodMatS <- as.matrix(wideProdS[,-1])
 yrsS <- unique(wideProdS$yr)
+#Matrix of data without boom/bust years (2009 and 2010 returns)
+wideRec2 <- spread(recDatTrimNoS[,c("stk", "yr", "ets")], stk, ets)
+recMat2 <- as.matrix(wideRec2[,-1])
+wideProd2 <- spread(recDatTrimNoS[,c("stk", "yr", "prod")], stk, prod)
+prodMat2 <- as.matrix(wideProd2[,-1])
+yrs2 <- unique(wideProd2$yr)
 
 
 #_________________________________________________________________________
@@ -73,6 +78,10 @@ rollAgCV <- rollapplyr(prodMat, width=10, function(x) cvAgg(x, recMat = recMat),
 rollWtdCVShort <- rollapplyr(prodMatS, width=10, function(x) wtdCV(x, recMat = recMatS), fill=NA, by.column=FALSE)
 rollSynchShort <- rollapplyr(prodMatS, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
 rollAgCVShort <- rollapplyr(prodMatS, width=10, function(x) cvAgg(x, recMat = recMatS), fill=NA, by.column=FALSE)
+rollS <- rollapplyr(recMat, width=10, function(x) wtdMean(x), fill=NA, by.column=FALSE)
+
+aggRecMat <- apply(recMat, 1, sum)
+rollMedS <- rollapplyr(aggRecMat, width=10, function(x) median(x), fill=NA, by.column=FALSE)
 
 ## Helper objects for plots
 stks <- unique(recDatTrim1$stk)
@@ -105,12 +114,36 @@ legend("bottomleft", "D)", bty="n")
 dev.off()
 
 
-textCoord <- function(xRange, yRange, location) {
-  if (location == "lowleft") {
-    xOut <- 0.2 * (xRange[2] - xRange[1])
-    yOut <- 0.2 * diff(yRange[2], yRange[1])
-  }
-}
 
-xRange <- range(meanP$yr)
-yRange <- range(recDatTrim1$prod)
+## Helper objects for plots
+stks <- unique(recDatTrimNoS$stk)
+meanP <- recDatTrimNoS %>% #mean productivity
+  group_by(yr) %>%
+  summarise(logRS = mean(prod))
+colPal <- viridis(n = length(stks), begin = 0, end = 1)
+
+
+rollWtdCV2 <- rollapplyr(prodMat2, width=10, function(x) wtdCV(x, recMat = recMat2), fill=NA, by.column=FALSE)
+rollSynch2 <- rollapplyr(prodMat2, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
+rollAgCV2 <- rollapplyr(prodMat2, width=10, function(x) cvAgg(x, recMat = recMat2), fill=NA, by.column=FALSE)
+
+
+## Plot
+pdf(here("figs/Fig1_RetroTrends_noBoomBust.pdf"), height = 6, width = 8)
+par(mfrow=c(2, 2), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
+usr <- par( "usr" )
+plot(1, type="n", xlab="", ylab="Observed log(R/S)", xlim=range(recDatTrimNoS$yr), 
+     ylim = c(min(recDatTrimNoS$prod), max(recDatTrimNoS$prod)))
+for(i in seq_along(stks)) {
+  d <- subset(recDatTrimNoS, stk == stks[i])
+  lines(prod ~ yr, data= d, type = "l", ylab = "log RS", col = colPal[i])
+}
+lines(logRS ~ yr, data = meanP, lwd = 2)
+legend("bottomleft", "A)", bty="n") 
+plot(rollWtdCV2 ~ yrs2, type = "l", ylab = "Weighted Mean Component CV", lwd = 1.5)
+legend("bottomleft", "B)", bty="n") 
+plot(rollSynch2 ~ yrs2, type = "l", ylab = "Synchrony Index", lwd = 1.5)
+legend("bottomleft", "C)", bty="n") 
+plot(rollAgCV2 ~ yrs2, type = "l", ylab = "Aggregate CV", lwd = 1.5)
+legend("bottomleft", "D)", bty="n") 
+dev.off()

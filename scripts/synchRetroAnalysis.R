@@ -18,7 +18,9 @@ recDat2 <- read.csv(here("/data/sox/fraserRecDatTrim.csv"), stringsAsFactors = F
 recDat <- merge(recDat1, recDat2[, c("stk", "yr", "ets")], by = c("stk", "yr")) #combine ets and eff estimates
 recDat <- with(recDat, recDat[order(stk, yr),])
 recDat <- recDat %>%
-  mutate(prod = log(rec/eff), prodZ = as.numeric(scale(prod, center = TRUE, scale = TRUE)))
+  mutate(prod = log(rec/eff), 
+         prodZ = as.numeric(scale(prod, center = TRUE, scale = TRUE)),
+         spwnRetYr = yr + 4)
 for (i in 1:nrow(recDat)) { #add top-fitting SR model
   stk <- recDat$stk[i]
   if (stk == 1 | stk == 2 | stk == 6 | stk == 8 | stk == 9) {
@@ -66,10 +68,11 @@ yrsS <- unique(wideProdS$yr)
 
 # Calculate aggregate abundance
 aggRecLong <- recDat[recDat$stk %in% selectedStks, ] %>% 
-  group_by(yr) %>% 
+  group_by(spwnRetYr) %>% 
   summarize(aggRec = sum(rec))
 aggRecShort <- recDat[recDat$stk %in% selectedStksShort, ] %>% 
-  group_by(yr) %>% 
+  filter(yr > 1972) %>% 
+  group_by(spwnRetYr) %>% 
   summarize(aggRec = sum(rec))
 
 
@@ -79,6 +82,7 @@ catchDatLong <- catchDat[catchDat$stk %in% selectedStks, ] %>%
   group_by(yr) %>% 
   summarize(aggCatch = sum(totCatch))
 catchDatShort <- catchDat[catchDat$stk %in% selectedStksShort, ] %>% 
+  filter(yr > 1972) %>% 
   group_by(yr) %>% 
   summarize(aggCatch = sum(totCatch))
 
@@ -104,7 +108,7 @@ colPal <- viridis(n = length(stks), begin = 0, end = 1)
 
 ## Plot
 pdf(here("figs/Fig1_RetroTrends.pdf"), height = 6, width = 9)
-par(mfrow=c(2, 3), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
+par(mfrow=c(2, 3), oma=c(0,0,0,0)+0.1, mar=c(2,4,1,1), cex.lab = 1.25)
 usr <- par( "usr" )
 plot(1, type="n", xlab="", ylab="Observed log(R/S)", xlim=range(recDatTrim1$yr), 
      ylim = c(min(recDatTrim1$prodZ), max(recDatTrim1$prodZ)))
@@ -113,16 +117,17 @@ for(i in seq_along(stks)) {
   lines(prodZ ~ yr, data= d, type = "l", ylab = "log RS", col = colPal[i])
 }
 lines(meanP$zLogRS ~ meanP$yr, lwd = 2)
-legend("bottomleft", "A)", bty="n") 
+plot(aggRec ~ spwnRetYr, data = aggRecLong, type = "l", ylab = "Aggregate Spawner Abundance", lwd = 1.5)
+lines(aggRec ~ spwnRetYr, data = aggRecShort, col = "red")
+plot(aggCatch ~ yr, data = catchDatLong, type = "l", ylab = "Aggregate Catch", 
+     lwd = 1.5, ylim = c(0, max(catchDatShort$aggCatch)))
+lines(aggCatch ~ yr, data = catchDatShort, col = "red")
 plot(rollWtdCV ~ yrs, type = "l", ylab = "Weighted Mean Component CV", lwd = 1.5)
 lines(rollWtdCVShort ~ yrsS, col = "red")
-legend("bottomleft", "B)", bty="n") 
 plot(rollSynch ~ yrs, type = "l", ylab = "Synchrony Index", lwd = 1.5)
 lines(rollSynchShort ~ yrsS, col = "red")
-legend("bottomleft", "C)", bty="n") 
 plot(rollAgCV ~ yrs, type = "l", ylab = "Aggregate CV", lwd = 1.5)
 lines(rollAgCVShort ~ yrsS, col = "red")
-legend("bottomleft", "D)", bty="n") 
 dev.off()
 
 

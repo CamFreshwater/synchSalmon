@@ -12,6 +12,7 @@ require(here); require(synchrony); require(zoo); require(ggplot2); require(dplyr
 source(here("scripts/synchFunctions.R"))
 
 ## Data clean
+# SR data
 recDat1 <- read.csv(here("/data/sox/fraserRecDatEFF.csv"), stringsAsFactors = FALSE)
 recDat2 <- read.csv(here("/data/sox/fraserRecDatTrim.csv"), stringsAsFactors = FALSE) 
 recDat <- merge(recDat1, recDat2[, c("stk", "yr", "ets")], by = c("stk", "yr")) #combine ets and eff estimates
@@ -26,6 +27,7 @@ for (i in 1:nrow(recDat)) { #add top-fitting SR model
     recDat$model[i] <- "ricker"
   } 
 }
+
 # Add lagged EFF abundances for larkin models
 recDat$eff1 <- NA
 recDat$eff2 <- NA
@@ -62,10 +64,28 @@ wideProdS <- spread(recDatTrimS[,c("stk", "yr", "prod")], stk, prod)
 prodMatS <- as.matrix(wideProdS[,-1])
 yrsS <- unique(wideProdS$yr)
 
+# Calculate aggregate abundance
+aggRecLong <- recDat[recDat$stk %in% selectedStks, ] %>% 
+  group_by(yr) %>% 
+  summarize(aggRec = sum(rec))
+aggRecShort <- recDat[recDat$stk %in% selectedStksShort, ] %>% 
+  group_by(yr) %>% 
+  summarize(aggRec = sum(rec))
+
+
+# Trim catch data
+catchDat <- read.csv(here("/data/sox/fraserCatchDatTrim.csv"), stringsAsFactors = FALSE)
+catchDatLong <- catchDat[catchDat$stk %in% selectedStks, ] %>% 
+  group_by(yr) %>% 
+  summarize(aggCatch = sum(totCatch))
+catchDatShort <- catchDat[catchDat$stk %in% selectedStksShort, ] %>% 
+  group_by(yr) %>% 
+  summarize(aggCatch = sum(totCatch))
 
 
 #_________________________________________________________________________
 ## Frequentist framework
+rollCorr <- rollapplyr(prodMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
 rollWtdCV <- rollapplyr(prodMat, width=10, function(x) wtdCV(x, recMat = recMat), fill=NA, by.column=FALSE)
 rollSynch <- rollapplyr(prodMat, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
 rollAgCV <- rollapplyr(prodMat, width=10, function(x) cvAgg(x, recMat = recMat), fill=NA, by.column=FALSE)
@@ -83,8 +103,8 @@ meanP <- recDatTrim1 %>% #mean productivity
 colPal <- viridis(n = length(stks), begin = 0, end = 1)
 
 ## Plot
-pdf(here("figs/Fig1_RetroTrends.pdf"), height = 6, width = 8)
-par(mfrow=c(2, 2), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
+pdf(here("figs/Fig1_RetroTrends.pdf"), height = 6, width = 9)
+par(mfrow=c(2, 3), oma=c(0,0,2,0)+0.1, mar=c(2,4,1,1))
 usr <- par( "usr" )
 plot(1, type="n", xlab="", ylab="Observed log(R/S)", xlim=range(recDatTrim1$yr), 
      ylim = c(min(recDatTrim1$prodZ), max(recDatTrim1$prodZ)))

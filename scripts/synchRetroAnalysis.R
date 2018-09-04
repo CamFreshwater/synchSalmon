@@ -117,17 +117,23 @@ for(i in seq_along(stks)) {
   lines(prodZ ~ yr, data= d, type = "l", ylab = "log RS", col = colPal[i])
 }
 lines(meanP$zLogRS ~ meanP$yr, lwd = 2)
+text(x = min(d$yr) + 1, y = 0.95*min(recDatTrim1$prodZ), label = "a)")
 plot(aggRec ~ spwnRetYr, data = aggRecLong, type = "l", ylab = "Aggregate Spawner Abundance", lwd = 1.5)
 lines(aggRec ~ spwnRetYr, data = aggRecShort, col = "red")
+text(x = min(aggRecLong$spwnRetYr) + 1, y = 1.05*min(aggRecLong$aggRec, na.rm = TRUE), label = "b)")
 plot(aggCatch ~ yr, data = catchDatLong, type = "l", ylab = "Aggregate Catch", 
      lwd = 1.5, ylim = c(0, max(catchDatShort$aggCatch)))
 lines(aggCatch ~ yr, data = catchDatShort, col = "red")
+text(x = min(catchDatLong$yr) + 1, y = 1.05*min(catchDatShort$aggCatch, na.rm = TRUE), label = "c)")
 plot(rollWtdCV ~ yrs, type = "l", ylab = "Weighted Mean Component CV", lwd = 1.5)
 lines(rollWtdCVShort ~ yrsS, col = "red")
+text(x = min(yrs) + 1, y = 1.05*min(rollWtdCV, na.rm = TRUE), label = "d)")
 plot(rollSynch ~ yrs, type = "l", ylab = "Synchrony Index", lwd = 1.5)
 lines(rollSynchShort ~ yrsS, col = "red")
+text(x = min(yrs) + 1, y = 1.05*min(rollSynch, na.rm = TRUE), label = "e)")
 plot(rollAgCV ~ yrs, type = "l", ylab = "Aggregate CV", lwd = 1.5)
 lines(rollAgCVShort ~ yrsS, col = "red")
+text(x = min(yrs) + 1, y = 1.05*min(rollAgCV, na.rm = TRUE), label = "f)")
 dev.off()
 
 

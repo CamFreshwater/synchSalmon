@@ -18,7 +18,8 @@ recDat2 <- read.csv(here("/data/sox/fraserRecDatTrim.csv"), stringsAsFactors = F
 recDat <- merge(recDat1, recDat2[, c("stk", "yr", "ets")], by = c("stk", "yr")) #combine ets and eff estimates
 recDat <- with(recDat, recDat[order(stk, yr),])
 recDat <- recDat %>%
-  mutate(prod = log(rec/eff), 
+  mutate(prod = log(rec/ets),
+         prod2 = log(rec/eff),
          prodZ = as.numeric(scale(prod, center = TRUE, scale = TRUE)),
          spwnRetYr = yr + 4)
 for (i in 1:nrow(recDat)) { #add top-fitting SR model
@@ -54,6 +55,20 @@ recDatTrim1 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
 recDatTrim <- recDatTrim1[recDatTrim1$stk %in% selectedStks,]
 recDatTrimS <- recDatTrim1[recDatTrim1$stk %in% selectedStksShort,]
 recDatTrimS <- recDatTrimS[recDatTrimS$yr > 1972, ]
+
+# wideRec <- spread(recDat[,c("stk", "yr", "ets")], stk, ets)
+# recMat <- as.matrix(wideRec[,-1])
+# wideProd <- spread(recDat[,c("stk", "yr", "prod")], stk, prod)
+# prodMat <- as.matrix(wideProd[,-1])
+# wideProd2 <- spread(recDat[,c("stk", "yr", "prod2")], stk, prod2)
+# prodMat2 <- as.matrix(wideProd2[,-1])
+# 
+# temp <- recDat %>% filter(stk == 6) %>% select(yr, ets, eff, prod, prod2)
+# rollapplyr(temp$prod, width = 10, function(x) 
+#   sqrt(var(x, na.rm = TRUE))/ mean(x, na.rm = TRUE))
+# rollapplyr(temp$prod2, width = 10, function(x) 
+#   sqrt(var(x, na.rm = TRUE))/ mean(x, na.rm = TRUE))
+# temp$prod - temp$prod2
 
 wideRec <- spread(recDatTrim[,c("stk", "yr", "ets")], stk, ets)
 recMat <- as.matrix(wideRec[,-1])

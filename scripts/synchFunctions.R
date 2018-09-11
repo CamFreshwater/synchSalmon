@@ -15,12 +15,17 @@ wtdCV <- function(datMat, recMat = NULL){
   if (ncol(datMat) != ncol(recMat)){
     stop("Input matrices have unequal number of components")
   }
-  aggAbund <- sum(apply(recMat, 2, mean)) #temporal mean of aggregate abundance
-  wtdAbund <- apply(recMat, 2, function (x) mean(x) / aggAbund) #wtd mean of aggregate abundance
-  wtdCV <- sum(wtdAbund * apply(datMat, 2, function(x) sqrt(var(x))/ mean(x)))
+  if (any(is.na(datMat))) {
+    warning("NAs present. This will affect estimates of weighted CV.")
+  }
+  #temporal mean of aggregate abundance
+  aggAbund <- sum(apply(recMat, 2, function (x) mean(x, na.rm = TRUE)))
+  #wtd mean of aggregate abundance
+  wtdAbund <- apply(recMat, 2, function (x) mean(x, na.rm = TRUE) / aggAbund) 
+  wtdCV <- sum(wtdAbund * apply(datMat, 2, function(x) 
+    sqrt(var(x, na.rm = TRUE))/ mean(x, na.rm = TRUE)), na.rm = TRUE)
   return(wtdCV)
 }
-
 
 #_________________________________________________________________________
 # This function calculates aggregate CV following eq. 3 in Thibault and Connolly 

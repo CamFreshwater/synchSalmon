@@ -4,10 +4,12 @@
 # Inputs: stock-recruit data csv
 # Outputs: figure pdfs
 # Explainer: Spin off from synchExplore.R that's trimmed down to focus only on relevant 
-# metrics
+# metrics; adjusted Sep 12 to focus on exp(residuals) or non-logged R/S; use ETS to be
+# consistent w/ forward simulation and FRSSI fitted SR models
 #*************************************************************************************
 
-require(here); require(synchrony); require(zoo); require(ggplot2); require(dplyr); require(tidyr); require(viridis)
+require(here); require(synchrony); require(zoo); require(ggplot2); require(dplyr)
+require(tidyr); require(viridis)
 
 source(here("scripts/synchFunctions.R"))
 
@@ -18,13 +20,13 @@ recDat2 <- read.csv(here("/data/sox/fraserRecDatTrim.csv"), stringsAsFactors = F
 recDat <- merge(recDat1, recDat2[, c("stk", "yr", "ets")], by = c("stk", "yr")) #combine ets and eff estimates
 recDat <- with(recDat, recDat[order(stk, yr),])
 recDat <- recDat %>%
-  mutate(prod = log(rec/ets),
-         prod2 = log(rec/eff),
+  mutate(prod = (rec/ets),
+         logProd = log(rec/ets),
          prodZ = as.numeric(scale(prod, center = TRUE, scale = TRUE)),
          spwnRetYr = yr + 4)
 for (i in 1:nrow(recDat)) { #add top-fitting SR model
-  stk <- recDat$stk[i]
-  if (stk == 1 | stk == 2 | stk == 6 | stk == 8 | stk == 9) {
+  stkN <- recDat$stk[i]
+  if (stkN == 1 | stkN == 2 | stkN == 6 | stkN == 8 | stkN == 9) {
     recDat$model[i] <- "larkin"
   }	else {
     recDat$model[i] <- "ricker"
@@ -45,111 +47,203 @@ for(j in seq_along(stkIndex)) {
   }
   recDat[recDat$stk == stkIndex[j], c("eff1", "eff2", "eff3")] <- d[, c("eff1", "eff2", "eff3")]
 }
-# Trim and convert to matrix
-ts <- recDat %>% 
-  group_by(stk) %>% 
-  summarise(tsLength = length(!is.na(prod)), firstYr = min(yr), lastYr = max(yr))
-selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
-selectedStksShort <- seq(from = 1, to = 19, by =1 )[-c(11, 15, 17)] #stocks w/ time series from 1973
 recDatTrim1 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
-recDatTrim <- recDatTrim1[recDatTrim1$stk %in% selectedStks,]
-recDatTrimS <- recDatTrim1[recDatTrim1$stk %in% selectedStksShort,]
-recDatTrimS <- recDatTrimS[recDatTrimS$yr > 1972, ]
 
-# wideRec <- spread(recDat[,c("stk", "yr", "ets")], stk, ets)
-# recMat <- as.matrix(wideRec[,-1])
-# wideProd <- spread(recDat[,c("stk", "yr", "prod")], stk, prod)
-# prodMat <- as.matrix(wideProd[,-1])
-# wideProd2 <- spread(recDat[,c("stk", "yr", "prod2")], stk, prod2)
-# prodMat2 <- as.matrix(wideProd2[,-1])
-# 
-# temp <- recDat %>% filter(stk == 6) %>% select(yr, ets, eff, prod, prod2)
-# rollapplyr(temp$prod, width = 10, function(x) 
-#   sqrt(var(x, na.rm = TRUE))/ mean(x, na.rm = TRUE))
-# rollapplyr(temp$prod2, width = 10, function(x) 
-#   sqrt(var(x, na.rm = TRUE))/ mean(x, na.rm = TRUE))
-# temp$prod - temp$prod2
+# Fit single-stock SR models
+stkIndex <- unique(recDatTrim1$stk)
+residVec <- NULL
+for(j in seq_along(stkIndex)) {
+  d <- subset(recDatTrim1, stk == stkIndex[j])
+  mod <- unique(d$model)
+  if (mod == "ricker") {
+    srMod <- lm(logProd ~ eff, data = d)
+  }
+  if (mod == "larkin") {
+    srMod <- lm(logProd ~ eff + eff1 + eff2 + eff3, data = d)
+  }
+  residVec <- c(residVec, resid(srMod))
+}
+recDatTrim1$logResid <- residVec
+recDatTrim1$modResid <- exp(residVec)
 
-wideRec <- spread(recDatTrim[,c("stk", "yr", "ets")], stk, ets)
-recMat <- as.matrix(wideRec[,-1])
-wideProd <- spread(recDatTrim[,c("stk", "yr", "prod")], stk, prod)
-prodMat <- as.matrix(wideProd[,-1])
-yrs <- unique(wideProd$yr)
-wideRecS <- spread(recDatTrimS[,c("stk", "yr", "ets")], stk, ets)
-recMatS <- as.matrix(wideRecS[,-1])
-wideProdS <- spread(recDatTrimS[,c("stk", "yr", "prod")], stk, prod)
-prodMatS <- as.matrix(wideProdS[,-1])
-yrsS <- unique(wideProdS$yr)
 
-# Calculate aggregate abundance
-aggRecLong <- recDat[recDat$stk %in% selectedStks, ] %>% 
+# Trim and convert to matrix
+# recDatTrim1 %>% 
+#   group_by(stk) %>% 
+#   summarise(tsLength = length(!is.na(prod)), firstYr = min(yr), lastYr = max(yr))
+selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
+recDatTrim <- recDatTrim1 %>% 
+  filter(stk %in% selectedStks)
+yrs <- unique(recDatTrim$yr)
+spwnMat <- recDatTrim %>% 
+  select(stk, yr, ets) %>% 
+  spread(stk, ets) %>% 
+  select(-yr) %>% 
+  as.matrix()
+prodMat <- recDatTrim %>% 
+  select(stk, yr, prod) %>% 
+  spread(stk, prod) %>% 
+  select(-yr) %>% 
+  as.matrix()
+residMat <- recDatTrim %>% 
+  select(stk, yr, modResid) %>% 
+  spread(stk, modResid) %>% 
+  select(-yr) %>% 
+  as.matrix()
+aggRecLong <- recDatTrim %>% 
   group_by(spwnRetYr) %>% 
-  summarize(aggRec = sum(rec))
-aggRecShort <- recDat[recDat$stk %in% selectedStksShort, ] %>% 
-  filter(yr > 1972) %>% 
-  group_by(spwnRetYr) %>% 
-  summarize(aggRec = sum(rec))
+  summarize(aggRec = sum(rec)) %>% 
+  mutate(ts = "long")
+prodDat <- data.frame(year = yrs,
+                       wtdCV = rollapplyr(prodMat, width = 10, 
+                                              function(x) wtdCV(x, recMat = spwnMat),
+                                              fill = NA, by.column = FALSE),
+                       synch = rollapplyr(prodMat, width = 10, 
+                                              function(x) community.sync(x)$obs, 
+                                              fill = NA, by.column = FALSE),
+                       agCV = rollapplyr(prodMat, width = 10, 
+                                             function(x) cvAgg(x, recMat = spwnMat),
+                                             fill = NA, by.column = FALSE)) %>% 
+  gather(key = var, value = index, 2:4) %>% 
+  mutate(data = "prod", ts = "long") 
+residDat <- data.frame(year = yrs, #repeat w/ resid data
+                      wtdCV = rollapplyr(residMat, width = 10, 
+                                         function(x) wtdCV(x, recMat = spwnMat),
+                                         fill = NA, by.column = FALSE),
+                      synch = rollapplyr(residMat, width = 10, 
+                                         function(x) community.sync(x)$obs, 
+                                         fill = NA, by.column = FALSE),
+                      agCV = rollapplyr(residMat, width = 10, 
+                                        function(x) cvAgg(x, recMat = spwnMat),
+                                        fill = NA, by.column = FALSE)) %>% 
+  gather(key = var, value = index, 2:4) %>% 
+  mutate(data = "resid", ts = "long") 
 
+# repeat above, but for more stocks and shorter time period
+selectedStksShort <- seq(from = 1, to = 19, by =1 )[-c(11, 15, 17)] 
+recDatTrimS <- recDatTrim1 %>%  
+  filter(stk %in% selectedStksShort, yr > 1972)
+yrsShort <- unique(recDatTrimS$yr)
+spwnMatShort <- recDatTrimS %>% 
+  select(stk, yr, ets) %>% 
+  spread(stk, ets) %>% 
+  select(-yr) %>% 
+  as.matrix()
+prodMatShort <- recDatTrimS %>% 
+  select(stk, yr, prod) %>% 
+  spread(stk, prod) %>% 
+  select(-yr) %>% 
+  as.matrix()
+residMatShort <- recDatTrimS %>% 
+  select(stk, yr, modResid) %>% 
+  spread(stk, modResid) %>% 
+  select(-yr) %>% 
+  as.matrix()
+aggRecShort <- recDatTrimS %>% 
+  group_by(spwnRetYr) %>% 
+  summarize(aggRec = sum(rec)) %>% 
+  mutate(ts = "short")
+prodDatS <- data.frame(year = yrsShort,
+                      wtdCV = rollapplyr(prodMatShort, width = 10, 
+                                         function(x) wtdCV(x, recMat = spwnMatShort),
+                                         fill = NA, by.column = FALSE),
+                      synch = rollapplyr(prodMatShort, width = 10, 
+                                         function(x) community.sync(x)$obs, 
+                                         fill = NA, by.column = FALSE),
+                      agCV = rollapplyr(prodMatShort, width = 10, 
+                                        function(x) cvAgg(x, recMat = spwnMatShort),
+                                        fill = NA, by.column = FALSE)) %>% 
+  gather(key = var, value = index, 2:4) %>% 
+  mutate(data = "prod", ts = "short") 
+residDatS <- data.frame(year = yrsShort, #repeat w/ resid data
+                       wtdCV = rollapplyr(residMatShort, width = 10, 
+                                          function(x) wtdCV(x, recMat = spwnMatShort),
+                                          fill = NA, by.column = FALSE),
+                       synch = rollapplyr(residMatShort, width = 10, 
+                                          function(x) community.sync(x)$obs, 
+                                          fill = NA, by.column = FALSE),
+                       agCV = rollapplyr(residMatShort, width = 10, 
+                                         function(x) cvAgg(x, recMat = spwnMatShort),
+                                         fill = NA, by.column = FALSE)) %>% 
+  gather(key = var, value = index, 2:4) %>% 
+  mutate(data = "resid", ts = "short")
+
+dat <- rbind(prodDat, residDat, prodDatS, residDatS) %>%
+  mutate(var = as.factor(var), data = as.factor(data), ts = as.factor(ts)) %>% 
+  mutate(var = recode(var, "rollAgCV" ="Aggregate CV", "rollSynch" = "Synchrony",
+                      "rollWtdCV" = "Component CV", .default = levels(var)))
+aggRec <- rbind(aggRecLong, aggRecShort) %>% 
+  mutate(ts = as.factor(ts))
 
 # Trim catch data
-catchDat <- read.csv(here("/data/sox/fraserCatchDatTrim.csv"), stringsAsFactors = FALSE)
-catchDatLong <- catchDat[catchDat$stk %in% selectedStks, ] %>% 
+catchDat <- read.csv(here("/data/sox/fraserCatchDatTrim.csv"), 
+                     stringsAsFactors = FALSE)
+catchDatLong <- catchDat %>% 
+  filter(stk %in% selectedStks) %>% 
   group_by(yr) %>% 
-  summarize(aggCatch = sum(totCatch))
-catchDatShort <- catchDat[catchDat$stk %in% selectedStksShort, ] %>% 
-  filter(yr > 1972) %>% 
+  summarize(catch = sum(totCatch)) %>% 
+  mutate(ts = as.factor("long"))
+catchDatShort <- catchDat %>% 
+  filter(stk %in% selectedStksShort, yr > 1972) %>% 
   group_by(yr) %>% 
-  summarize(aggCatch = sum(totCatch))
+  summarize(catch = sum(totCatch)) %>% 
+  mutate(ts = as.factor("short"))
+aggCatch <- rbind(catchDatLong, catchDatShort)
 
+# Trim productivity residual data
+rawDat <- recDatTrim1 %>%
+  select(stk, yr, prod, logProd, modResid, logResid) %>% 
+  mutate(stk = as.factor(stk))
 
 #_________________________________________________________________________
-## Frequentist framework
-rollCorr <- rollapplyr(prodMat, width=10, function(x) meancorr(x)$obs, fill=NA, by.column=FALSE)
-rollWtdCV <- rollapplyr(prodMat, width=10, function(x) wtdCV(x, recMat = recMat), fill=NA, by.column=FALSE)
-rollSynch <- rollapplyr(prodMat, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
-rollAgCV <- rollapplyr(prodMat, width=10, function(x) cvAgg(x, recMat = recMat), fill=NA, by.column=FALSE)
-rollWtdCVShort <- rollapplyr(prodMatS, width=10, function(x) wtdCV(x, recMat = recMatS), fill=NA, by.column=FALSE)
-rollSynchShort <- rollapplyr(prodMatS, width=10, function(x) community.sync(x)$obs, fill=NA, by.column=FALSE)
-rollAgCVShort <- rollapplyr(prodMatS, width=10, function(x) cvAgg(x, recMat = recMatS), fill=NA, by.column=FALSE)
-rollS <- rollapplyr(recMat, width=10, function(x) wtdMean(x), fill=NA, by.column=FALSE)
-
-
-## Helper objects for plots
-stks <- unique(recDatTrim1$stk)
-meanP <- recDatTrim1 %>% #mean productivity
-  group_by(yr) %>%
-  summarise(logRS = mean(prod), zLogRS = mean(prodZ))
-colPal <- viridis(n = length(stks), begin = 0, end = 1)
-
 ## Plot
-pdf(here("figs/Fig1_RetroTrends.pdf"), height = 6, width = 9)
-par(mfrow=c(2, 3), oma=c(0,0,0,0)+0.1, mar=c(2,4,1,1), cex.lab = 1.25)
-usr <- par( "usr" )
-plot(1, type="n", xlab="", ylab="Observed log(R/S)", xlim=range(recDatTrim1$yr), 
-     ylim = c(min(recDatTrim1$prodZ), max(recDatTrim1$prodZ)))
-for(i in seq_along(stks)) {
-  d <- subset(recDatTrim1, stk == stks[i])
-  lines(prodZ ~ yr, data= d, type = "l", ylab = "log RS", col = colPal[i])
-}
-lines(meanP$zLogRS ~ meanP$yr, lwd = 2)
-text(x = min(d$yr) + 1, y = 0.95*min(recDatTrim1$prodZ), label = "a)")
-plot(aggRec ~ spwnRetYr, data = aggRecLong, type = "l", ylab = "Aggregate Spawner Abundance", lwd = 1.5)
-lines(aggRec ~ spwnRetYr, data = aggRecShort, col = "red")
-text(x = min(aggRecLong$spwnRetYr) + 1, y = 1.05*min(aggRecLong$aggRec, na.rm = TRUE), label = "b)")
-plot(aggCatch ~ yr, data = catchDatLong, type = "l", ylab = "Aggregate Catch", 
-     lwd = 1.5, ylim = c(0, max(catchDatShort$aggCatch)))
-lines(aggCatch ~ yr, data = catchDatShort, col = "red")
-text(x = min(catchDatLong$yr) + 1, y = 1.05*min(catchDatShort$aggCatch, na.rm = TRUE), label = "c)")
-plot(rollWtdCV ~ yrs, type = "l", ylab = "Weighted Mean Component CV", lwd = 1.5)
-lines(rollWtdCVShort ~ yrsS, col = "red")
-text(x = min(yrs) + 1, y = 1.05*min(rollWtdCV, na.rm = TRUE), label = "d)")
-plot(rollSynch ~ yrs, type = "l", ylab = "Synchrony Index", lwd = 1.5)
-lines(rollSynchShort ~ yrsS, col = "red")
-text(x = min(yrs) + 1, y = 1.05*min(rollSynch, na.rm = TRUE), label = "e)")
-plot(rollAgCV ~ yrs, type = "l", ylab = "Aggregate CV", lwd = 1.5)
-lines(rollAgCVShort ~ yrsS, col = "red")
-text(x = min(yrs) + 1, y = 1.05*min(rollAgCV, na.rm = TRUE), label = "f)")
+xLab = "Year"
+colPal <- viridis(n = length(unique(rawDat$stk)), begin = 0, end = 1)
+axisSize = 12
+
+rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logResid, colour = stk)) + 
+  labs(x = "", y = "Observed Productivitiy") + 
+  geom_line(size = 1) +
+  scale_color_manual(values = colPal, guide = FALSE) +
+  stat_summary(fun.y = mean, colour = "black", geom = "line", size = 1.75) +
+  theme_sleekX()
+
+aggSpwnPlot <- ggplot(aggRec, aes(x = spwnRetYr, y = aggRec, colour = ts, 
+                                  size = ts)) + 
+  geom_line() +
+  scale_size_manual(values = c(1.25, 1), guide = FALSE) +
+  scale_color_manual(values = c("black", "red"), guide = FALSE) +
+  theme_sleekX() +
+  theme(axis.text = element_text(size = 0.9 * axisSize)) +
+  labs(x = "", y = "Aggregate Spawner Abundance") 
+
+aggCatchPlot <- ggplot(aggCatch, aes(x = yr, y = catch, colour = ts)) + 
+  geom_line() +
+  scale_size_manual(values = c(1.25, 1), guide = FALSE) +
+  scale_color_manual(values = c("black", "red"), guide = FALSE) +
+  theme_sleekX() +
+  theme(axis.text = element_text(size = 0.9 * axisSize)) +
+  labs(x = "", y = "Aggregate Catch") 
+
+pdf(here("figs/productivityTrends.pdf"), height = 6, width = 8)
+ggplot(dat %>% filter(data == "prod"), aes(x = year, y = index, colour = ts)) + 
+  geom_line() +
+  scale_size_manual(values = c(1.25, 1), guide = FALSE) +
+  scale_color_manual(values = c("black", "red"), guide = FALSE) +
+  theme_sleekX() +
+  theme(axis.text = element_text(size = 0.9 * axisSize)) +
+  labs(x = "", y = "Index", main = "R/S Trends") +
+  facet_wrap(~var)
+ggplot(dat %>% filter(data == "resid"), aes(x = year, y = index, colour = ts)) + 
+  geom_line() +
+  scale_size_manual(values = c(1.25, 1), guide = FALSE) +
+  scale_color_manual(values = c("black", "red"), guide = FALSE) +
+  theme_sleekX() +
+  theme(axis.text = element_text(size = 0.9 * axisSize)) +
+  labs(x = "", y = "Index", main = "Residual Trends") +
+  facet_wrap(~var)
 dev.off()
+
 
 
 ## Plot w/ rolling median recruit abundance instead of productivity
@@ -176,6 +270,23 @@ plot(rollAgCV ~ yrs, type = "l", ylab = "Aggregate CV", lwd = 1.5)
 lines(rollAgCVShort ~ yrsS, col = "red")
 legend("bottomleft", "D)", bty="n") 
 dev.off()
+
+
+
+# wideRec <- spread(recDat[,c("stk", "yr", "ets")], stk, ets)
+# recMat <- as.matrix(wideRec[,-1])
+# wideProd <- spread(recDat[,c("stk", "yr", "prod")], stk, prod)
+# prodMat <- as.matrix(wideProd[,-1])
+# wideProd2 <- spread(recDat[,c("stk", "yr", "prod2")], stk, prod2)
+# prodMat2 <- as.matrix(wideProd2[,-1])
+# 
+# temp <- recDat %>% filter(stk == 6) %>% select(yr, ets, eff, prod, prod2)
+# rollapplyr(temp$prod, width = 10, function(x) 
+#   sqrt(var(x, na.rm = TRUE))/ mean(x, na.rm = TRUE))
+# rollapplyr(temp$prod2, width = 10, function(x) 
+#   sqrt(var(x, na.rm = TRUE))/ mean(x, na.rm = TRUE))
+# temp$prod - temp$prod2
+
 
 
 ## Repeat analysis but exclude boom/bust years (2009 and 2010 returns)

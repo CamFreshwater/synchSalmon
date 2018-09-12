@@ -66,7 +66,6 @@ for(j in seq_along(stkIndex)) {
 recDatTrim1$logResid <- residVec
 recDatTrim1$modResid <- exp(residVec)
 
-
 # Trim and convert to matrix
 # recDatTrim1 %>% 
 #   group_by(stk) %>% 
@@ -88,6 +87,11 @@ prodMat <- recDatTrim %>%
 residMat <- recDatTrim %>% 
   select(stk, yr, modResid) %>% 
   spread(stk, modResid) %>% 
+  select(-yr) %>% 
+  as.matrix()
+logResidMat <- recDatTrim %>% 
+  select(stk, yr, logResid) %>% 
+  spread(stk, logResid) %>% 
   select(-yr) %>% 
   as.matrix()
 aggRecLong <- recDatTrim %>% 
@@ -119,6 +123,16 @@ residDat <- data.frame(year = yrs, #repeat w/ resid data
   gather(key = var, value = index, 2:4) %>% 
   mutate(data = "resid", ts = "long") 
 
+# Changes in mean pairwise corrleations through time
+cbind(yrs, 
+      rollapplyr(prodMat, width = 10, function(x) meancorr(x)$obs, 
+                 fill = NA, by.column = FALSE),
+      rollapplyr(residMat, width = 10, function(x) meancorr(x)$obs, 
+                 fill = NA, by.column = FALSE),
+      rollapplyr(logResidMat, width = 10, function(x) meancorr(x)$obs, 
+                 fill = NA, by.column = FALSE))
+
+
 # repeat above, but for more stocks and shorter time period
 selectedStksShort <- seq(from = 1, to = 19, by =1 )[-c(11, 15, 17)] 
 recDatTrimS <- recDatTrim1 %>%  
@@ -143,6 +157,7 @@ aggRecShort <- recDatTrimS %>%
   group_by(spwnRetYr) %>% 
   summarize(aggRec = sum(rec)) %>% 
   mutate(ts = "short")
+
 prodDatS <- data.frame(year = yrsShort,
                       wtdCV = rollapplyr(prodMatShort, width = 10, 
                                          function(x) wtdCV(x, recMat = spwnMatShort),
@@ -168,6 +183,13 @@ residDatS <- data.frame(year = yrsShort, #repeat w/ resid data
   gather(key = var, value = index, 2:4) %>% 
   mutate(data = "resid", ts = "short")
 
+cbind(yrsShort, 
+      rollapplyr(prodMatShort, width = 10, function(x) meancorr(x)$obs, 
+                 fill = NA, by.column = FALSE),
+      rollapplyr(residMatShort, width = 10, function(x) meancorr(x)$obs, 
+                 fill = NA, by.column = FALSE))
+
+# Combine data
 dat <- rbind(prodDat, residDat, prodDatS, residDatS) %>%
   mutate(var = as.factor(var), data = as.factor(data), ts = as.factor(ts)) %>% 
   mutate(var = recode(var, "rollAgCV" ="Aggregate CV", "rollSynch" = "Synchrony",

@@ -194,6 +194,9 @@ dat <- rbind(prodDat, residDat, prodDatS, residDatS) %>%
   mutate(var = as.factor(var), data = as.factor(data), ts = as.factor(ts)) %>% 
   mutate(var = recode(var, "rollAgCV" ="Aggregate CV", "rollSynch" = "Synchrony",
                       "rollWtdCV" = "Component CV", .default = levels(var)))
+# saveRDS(dat, file = here("data/retroSynchData.Rdata"))
+
+
 aggRec <- rbind(aggRecLong, aggRecShort) %>% 
   mutate(ts = as.factor(ts))
 

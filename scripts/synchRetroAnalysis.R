@@ -257,7 +257,7 @@ ggplot(dat %>% filter(data == "prod"), aes(x = year, y = index, colour = ts)) +
   scale_color_manual(values = c("black", "red"), guide = FALSE) +
   theme_sleekX() +
   theme(axis.text = element_text(size = 0.9 * axisSize)) +
-  labs(x = "", y = "Index", main = "R/S Trends") +
+  labs(x = "", y = "Index", title = "R/S Trends") +
   facet_wrap(~var)
 ggplot(dat %>% filter(data == "resid"), aes(x = year, y = index, colour = ts)) + 
   geom_line() +
@@ -265,7 +265,7 @@ ggplot(dat %>% filter(data == "resid"), aes(x = year, y = index, colour = ts)) +
   scale_color_manual(values = c("black", "red"), guide = FALSE) +
   theme_sleekX() +
   theme(axis.text = element_text(size = 0.9 * axisSize)) +
-  labs(x = "", y = "Index", main = "Residual Trends") +
+  labs(x = "", y = "Index", title = "Residual Trends") +
   facet_wrap(~var)
 dev.off()
 

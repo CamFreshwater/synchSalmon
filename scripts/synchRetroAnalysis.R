@@ -261,7 +261,7 @@ ggplot(dat %>% filter(data == "prod"), aes(x = year, y = index, colour = ts)) +
   facet_wrap(~var)
 ggplot(dat %>% filter(data == "resid"), aes(x = year, y = index, colour = ts)) + 
   geom_line() +
-  scale_size_manual(values = c(1.25, 1), guide = FALSE) +
+  scale_size_manual(values = c(1.25, 1),  qguide = FALSE) +
   scale_color_manual(values = c("black", "red"), guide = FALSE) +
   theme_sleekX() +
   theme(axis.text = element_text(size = 0.9 * axisSize)) +

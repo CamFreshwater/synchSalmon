@@ -21,7 +21,7 @@ recDat1 <- read.csv(here("/data/sox/fraserRecDatEFF.csv"), stringsAsFactors = FA
 recDat2 <- read.csv(here("/data/sox/fraserRecDatTrim.csv"), stringsAsFactors = FALSE) 
 recDat <- merge(recDat1, recDat2[, c("stk", "yr", "ets")], by = c("stk", "yr")) #combine ets and eff estimates
 recDat <- with(recDat, recDat[order(stk, yr),])
-recDat$prod <- log(recDat$rec/recDat$eff)
+recDat$prod <- log(recDat$rec/recDat$ets)
 for (i in 1:nrow(recDat)) { #add top-fitting SR model
   stk <- recDat$stk[i]
   if (stk == 1 | stk == 2 | stk == 6 | stk == 8 | stk == 9) {
@@ -30,19 +30,19 @@ for (i in 1:nrow(recDat)) { #add top-fitting SR model
     recDat$model[i] <- "ricker"
   } 
 }
-# Add lagged EFF abundances for larkin models
-recDat$eff1 <- NA
-recDat$eff2 <- NA
-recDat$eff3 <- NA
+# Add lagged ETS abundances for larkin models
+recDat$ets1 <- NA
+recDat$ets2 <- NA
+recDat$ets3 <- NA
 stkIndex <- unique(recDat$stk)
 for(j in seq_along(stkIndex)) {
   d <- subset(recDat, stk == stkIndex[j])
   for (i in 1:nrow(d)) { #add top-fitting SR model
-    d$eff1[i] <- ifelse(i < 1, NA, d$eff[i - 1])
-    d$eff2[i] <- ifelse(i < 2, NA, d$eff[i - 2])
-    d$eff3[i] <- ifelse(i < 3, NA, d$eff[i - 3])
+    d$ets1[i] <- ifelse(i < 1, NA, d$ets[i - 1])
+    d$ets2[i] <- ifelse(i < 2, NA, d$ets[i - 2])
+    d$ets3[i] <- ifelse(i < 3, NA, d$ets[i - 3])
   }
-  recDat[recDat$stk == stkIndex[j], c("eff1", "eff2", "eff3")] <- d[, c("eff1", "eff2", "eff3")]
+  recDat[recDat$stk == stkIndex[j], c("ets1", "ets2", "ets3")] <- d[, c("ets1", "ets2", "ets3")]
 }
 # Trim and convert to matrix
 ts <- recDat %>% 

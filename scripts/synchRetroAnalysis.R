@@ -34,20 +34,20 @@ for (i in 1:nrow(recDat)) { #add top-fitting SR model
 }
 
 # Add lagged EFF abundances for larkin models
-recDat$eff1 <- NA
-recDat$eff2 <- NA
-recDat$eff3 <- NA
+recDat$ets1 <- NA
+recDat$ets2 <- NA
+recDat$ets3 <- NA
 stkIndex <- unique(recDat$stk)
 for(j in seq_along(stkIndex)) {
   d <- subset(recDat, stk == stkIndex[j])
   for (i in 1:nrow(d)) { #add top-fitting SR model
-    d$eff1[i] <- ifelse(i < 1, NA, d$eff[i - 1])
-    d$eff2[i] <- ifelse(i < 2, NA, d$eff[i - 2])
-    d$eff3[i] <- ifelse(i < 3, NA, d$eff[i - 3])
+    d$ets1[i] <- ifelse(i < 1, NA, d$ets[i - 1])
+    d$ets2[i] <- ifelse(i < 2, NA, d$ets[i - 2])
+    d$ets3[i] <- ifelse(i < 3, NA, d$ets[i - 3])
   }
-  recDat[recDat$stk == stkIndex[j], c("eff1", "eff2", "eff3")] <- d[, c("eff1", "eff2", "eff3")]
+  recDat[recDat$stk == stkIndex[j], c("ets1", "ets2", "ets3")] <- d[, c("ets1", "ets2", "ets3")]
 }
-recDatTrim1 <- subset(recDat, !is.na(prod) & !is.na(eff3) & !yr == "2012")
+recDatTrim1 <- subset(recDat, !is.na(prod) & !is.na(ets3) & !yr == "2012")
 
 # Fit single-stock SR models
 stkIndex <- unique(recDatTrim1$stk)
@@ -56,10 +56,10 @@ for(j in seq_along(stkIndex)) {
   d <- subset(recDatTrim1, stk == stkIndex[j])
   mod <- unique(d$model)
   if (mod == "ricker") {
-    srMod <- lm(logProd ~ eff, data = d)
+    srMod <- lm(logProd ~ ets, data = d)
   }
   if (mod == "larkin") {
-    srMod <- lm(logProd ~ eff + eff1 + eff2 + eff3, data = d)
+    srMod <- lm(logProd ~ ets + ets1 + ets2 + ets3, data = d)
   }
   residVec <- c(residVec, resid(srMod))
 }
@@ -261,7 +261,7 @@ ggplot(dat %>% filter(data == "prod"), aes(x = year, y = index, colour = ts)) +
   facet_wrap(~var)
 ggplot(dat %>% filter(data == "resid"), aes(x = year, y = index, colour = ts)) + 
   geom_line() +
-  scale_size_manual(values = c(1.25, 1),  qguide = FALSE) +
+  scale_size_manual(values = c(1.25, 1),  guide = FALSE) +
   scale_color_manual(values = c("black", "red"), guide = FALSE) +
   theme_sleekX() +
   theme(axis.text = element_text(size = 0.9 * axisSize)) +

@@ -49,6 +49,7 @@ for(j in seq_along(stkIndex)) {
 }
 recDatTrim1 <- subset(recDat, !is.na(prod) & !is.na(ets3) & !yr == "2012")
 
+saveRDS(recDatTrim1, file = here("data", "generated", "recDatTrim1.rds"))
 # Fit single-stock SR models
 stkIndex <- unique(recDatTrim1$stk)
 residVec <- NULL

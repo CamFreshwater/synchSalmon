@@ -114,7 +114,7 @@ out_t <- plyr::dlply(recDatTrim1, "stk", function(d) {
 })
 out_tskew <- plyr::dlply(recDatTrim1, "stk", function(d) {
   fit_sr_stan(d, model_type = "lmtskew", sr_type = unique(d$model), chains = 2,
-    iter = 1000, adapt_delta = 0.999)
+    iter = 1000, adapt_delta = 0.99)
 })
 ```
 

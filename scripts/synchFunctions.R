@@ -8,7 +8,7 @@
 #_________________________________________________________________________
 # This function calculates weighted CV following eq. 4 in Thibault and Connolly 
 # 2013 Ecol Let; recMat necessary to weight values appropriately
-wtdCV <- function(datMat, recMat = NULL){
+wtdCV <- function(datMat, recMat = NULL, weight = TRUE) {
   if (is.null(recMat)) { #if recMat is NULL assume datMat is a matrix of abundance
     recMat <- datMat
   }
@@ -21,26 +21,34 @@ wtdCV <- function(datMat, recMat = NULL){
   #temporal mean of aggregate abundance
   aggAbund <- sum(apply(recMat, 2, function (x) mean(x, na.rm = TRUE)))
   #wtd mean of aggregate abundance
-  wtdAbund <- apply(recMat, 2, function (x) mean(x, na.rm = TRUE) / aggAbund) 
-  wtdCV <- sum(wtdAbund * apply(datMat, 2, function(x) 
-    sqrt(var(x, na.rm = TRUE))/ mean(x, na.rm = TRUE)), na.rm = TRUE)
-  return(wtdCV)
+  wtdAbund <- apply(recMat, 2, function (x) mean(x, na.rm = TRUE) / aggAbund)
+  wtdCV <- sum(wtdAbund * apply(datMat, 2, 
+                                function(x) sqrt(var(x, na.rm = TRUE)) / 
+                                  mean(x, na.rm = TRUE)), na.rm = TRUE)
+  unWtdCV <- mean(apply(datMat, 2, 
+                        function(x) sqrt(var(x, na.rm = TRUE)) / 
+                          mean(x, na.rm = TRUE)), na.rm = TRUE)
+  if (weight == TRUE) {
+    return(wtdCV) 
+  } else {
+      return(unWtdCV)
+    }
 }
 
 #_________________________________________________________________________
 # This function calculates aggregate CV following eq. 3 in Thibault and Connolly 
 # 2013 Ecol Let
-cvAgg <- function(datMat, recMat = NULL){
+cvAgg <- function(datMat, recMat = NULL, weight = TRUE){
   if (is.null(recMat)) {
     recMat <- datMat
   }
-  sqrt(community.sync(datMat)$obs) * wtdCV(datMat, recMat)
+  sqrt(community.sync(datMat)$obs) * wtdCV(datMat, recMat, weight = weight)
 }
 
 
 #_________________________________________________________________________
 # This function calculates a mean weighted by abundance
-wtdMean <- function(datMat, recMat = NULL){
+wtdMean <- function(datMat, recMat = NULL, weight = TRUE){
   if (is.null(recMat)) { #if recMat is NULL assume datMat is a matrix of abundance
     recMat <- datMat
   }

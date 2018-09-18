@@ -21,3 +21,9 @@ hake-example.tex
 myNotes.*
 outputs/
 .Rproj.user
+scripts/lm-t-skew.rds
+scripts/lm-t.rds
+scripts/lm.rds
+*.html
+scripts/*cache*
+*.png

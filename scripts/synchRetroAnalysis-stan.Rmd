@@ -1,0 +1,202 @@
+# Fitting heavy-tailed and skew-heavy-tailed stock-recruit functions for Fraser Sockeye Salmon
+
+```{r, warning=FALSE, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(rstan)
+library(here)
+rstan_options(auto_write = TRUE)
+```
+
+First we will compile the Stan models. Ordinarily you would just fit these with `stan()`, but since we will be iterating over the models many times it's better if we compile them separately. 
+
+```{r}
+sm_lm <- stan_model(here("scripts/lm.stan"))
+sm_lmt <- stan_model(here("scripts/lm-t.stan"))
+sm_lmtskew <- stan_model(here("scripts/lm-t-skew.stan"))
+```
+
+I'll print the 3 models below. The first is just a linear regression:
+
+```{r, echo=FALSE}
+sourcecode <- paste(readLines(here("scripts/lm.stan")), collapse="\n")
+```
+
+```{r, eval=FALSE, code = sourcecode}
+```
+
+The second is a linear regression with student-t  errors:
+
+```{r, echo=FALSE}
+sourcecode <- paste(readLines(here("scripts/lm-t.stan")), collapse="\n")
+```
+
+```{r, eval=FALSE, code = sourcecode}
+```
+
+The third is a linear regression with skew-t errors. This one is a bit more complex because we have to define our own log density function first.
+
+```{r, echo=FALSE}
+sourcecode <- paste(readLines(here("scripts/lm-t-skew.stan")), collapse="\n")
+```
+
+```{r, eval=FALSE, code = sourcecode}
+```
+
+I've chosen some fairly generic weakly informative priors but we could adjust those.
+
+Let's load the data and pull out a single stock to experiment with:
+
+```{r}
+recDatTrim1 <- readRDS(here("data", "generated", "recDatTrim1.rds"))
+d <- subset(recDatTrim1, stk == recDatTrim1$stk[[1]])
+```
+
+We can try running one of our functions:
+
+```{r, results='hide'}
+X_ij <- model.matrix(~ets, data = d)
+m_lmt <- sampling(sm_lmt, data =
+    list(X_ij = X_ij, y_i = d$logProd, N = nrow(X_ij), J = ncol(X_ij)),
+  iter = 1000, chains = 4, cores = 1, control = list(adapt_delta = 0.99))
+```
+
+A summary of our model output:
+
+```{r}
+m_lmt
+```
+
+Traceplots:
+
+```{r}
+rstan::traceplot(m_lmt)
+```
+
+Let's write a small helper function to fit whatever model we want:
+
+```{r}
+fit_sr_stan <- function(dat,
+  model_type = c("lm", "lmt", "lmtskew"),
+  sr_type = c("ricker", "larkin"),
+  chains = 4, iter = 2000, cores = 1, adapt_delta = 0.95) {
+  
+  sr_type <- match.arg(sr_type)
+  model_type <- match.arg(model_type)
+  
+  if (sr_type == "ricker")
+    X_ij <- model.matrix(~ets, data = dat)
+  else
+    X_ij <- model.matrix(~ets + ets1 + ets2 + ets3, data = dat)
+  
+  model <- switch(model_type,
+    lm = sm_lm,
+    lmt = sm_lmt,
+    lmtskew = sm_lmtskew
+  )
+  
+  sampling(model,
+    data = list(X_ij = X_ij, y_i = dat$logProd, N = nrow(X_ij), J = ncol(X_ij)),
+    iter = iter, chains = chains, cores = cores,
+    control = list(adapt_delta = 0.99, max_treedepth = 20))
+}
+```
+
+Now we can apply our function to all the stocks across the 3 model versions. For now I'm just running a single chain for speed and not always 2000 iterations. You likely want to run 4 chains and 2000 iterations for your final runs.
+
+```{r, results='hide', cache=TRUE}
+out <- plyr::dlply(recDatTrim1, "stk", function(d) {
+  fit_sr_stan(d, model_type = "lm", sr_type = unique(d$model), chains = 1)
+})
+out_t <- plyr::dlply(recDatTrim1, "stk", function(d) {
+  fit_sr_stan(d, model_type = "lmt", sr_type = unique(d$model), chains = 1,
+    iter = 800)
+})
+out_tskew <- plyr::dlply(recDatTrim1, "stk", function(d) {
+  fit_sr_stan(d, model_type = "lmtskew", sr_type = unique(d$model), chains = 2,
+    iter = 1000, adapt_delta = 0.99)
+})
+```
+
+Now we have 3 lists where each element is a model object from Stan. We can iterate over those and extract whatever we want. Here I will extract `nu` (the heavy tailedness parameter) and the skewness parameter if we modeled it. I will also extract the maximum Rhat (potential scale reduction factor) and the minimum effective sample size (an estimate of the number of uncorrelated samples). We want Rhat to be close to 1 and certainly less than 1.1. We want n_eff to be at least 100 if we want reasonable inference on the mean (Gelmen et al. Bayesian Data Analysis 3 book).
+
+```{r}
+post_t <- plyr::ldply(out_t, function(x) {
+  e <- extract(x)
+  sm_summ <- summary(x)$summary
+  max_rhat <- max(sm_summ[, "Rhat"])
+  min_neff <- min(sm_summ[, "n_eff"])
+  data.frame(nu = e$nu, max_rhat, min_neff)
+})
+post_tskew <- plyr::ldply(out_tskew, function(x) {
+  e <- extract(x)
+  sm_summ <- summary(x)$summary
+  max_rhat <- max(sm_summ[, "Rhat"])
+  min_neff <- min(sm_summ[, "n_eff"])
+  data.frame(log_skew = e$log_skew, nu = e$nu, max_rhat, min_neff)
+})
+```
+
+Check rhat and n_eff:
+
+```{r, results='asis'}
+post_t %>% select(stk, max_rhat, min_neff) %>% unique() %>% 
+  knitr::kable(digits = c(0, 2, 1), row.names = FALSE)
+```
+
+```{r, results='asis'}
+post_tskew %>% select(stk, max_rhat, min_neff) %>% unique() %>% 
+  knitr::kable(digits = c(0, 2, 1), row.names = FALSE)
+```
+
+Make some plots:
+
+Heavy tailed nu posteriors by stock:
+
+```{r}
+ggplot(post_t, aes(as.factor(stk), nu)) + geom_violin() +
+  geom_hline(yintercept = c(2, 10), lty = 2) + coord_flip(ylim = c(2, 65))
+```
+
+Heavy tailed nu posteriors by stock from the skew-t model :
+
+```{r}
+ggplot(post_tskew, aes(as.factor(stk), nu)) + geom_violin() +
+  geom_hline(yintercept = c(2, 10), lty = 2) + coord_flip(ylim = c(2, 65))
+```
+
+Skewness posteriors by stock. Less than one is downward skewed.
+
+```{r}
+ggplot(post_tskew, aes(as.factor(stk), exp(log_skew))) + geom_violin() +
+  geom_hline(yintercept = 1, lty = 2) + coord_flip()
+```
+
+Average the posteriors weighting each stock evenly. I've also overlaid the mean (red) and the median and 80% credible intervals (blue).
+
+```{r}
+ggplot(post_tskew, aes(exp(log_skew))) + geom_density() +
+  geom_vline(xintercept = 1, lty = 2) +
+  geom_vline(xintercept = mean(exp(post_tskew$log_skew)), col = "red") +
+  geom_vline(xintercept = median(exp(post_tskew$log_skew)), col = "blue") +
+  geom_vline(xintercept = quantile(exp(post_tskew$log_skew), probs = 0.1), col = "blue") +
+  geom_vline(xintercept = quantile(exp(post_tskew$log_skew), probs = 0.9), col = "blue")
+```
+
+So in summary, there is some evidence for heavy-tailed recruitment deviations for 1 to 3 of the stocks. If we use the model that doesn't estimate the skewness parameter, stocks 3, 13, and possibly 12 have `nu` posteriors that are fairly low. E.g. this is the probability that nu is less than 10 for these stocks. This is a threshold that we used in our first black swan paper. 
+
+```{r}
+filter(post_t, stk == 13) %>% summarise(p = mean(nu < 10)) %>% pull(p)
+filter(post_t, stk == 3) %>% summarise(p = mean(nu < 10)) %>% pull(p)
+filter(post_t, stk == 12) %>% summarise(p = mean(nu < 10)) %>% pull(p)
+```
+
+That evidence goes away for all but stock 13 when we allow for skewed deviations. 
+
+For the most part, the skewness parameter is less than 1, although the posteriors are quite wide on most of these. When we average them all together the general tendency is for slightly downward skewed deviations. The mean, median, and 80% CIs are:
+
+```{r}
+mean(exp(post_tskew$log_skew))
+median(exp(post_tskew$log_skew))
+quantile(exp(post_tskew$log_skew), probs = c(0.1, 0.9))
+```

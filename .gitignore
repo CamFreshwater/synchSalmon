@@ -27,3 +27,4 @@ scripts/lm.rds
 *.html
 scripts/*cache*
 *.png
+scripts/sync.rds

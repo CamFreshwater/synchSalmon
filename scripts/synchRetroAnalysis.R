@@ -99,6 +99,11 @@ aggRecLong <- recDatTrim %>%
   group_by(spwnRetYr) %>% 
   summarize(aggRec = sum(rec)) %>% 
   mutate(ts = "long")
+
+community.sync <- function (x)
+  list(obs = var(rowSums(x)) / (sum(apply(x, 2, sd)) ^ 2))
+
+saveRDS(prodMat, file = here("data", "generated", "prodMat.rds"))
 prodDat <- data.frame(year = yrs,
                        wtdCV = rollapplyr(prodMat, width = 10, 
                                               function(x) wtdCV(x, recMat = spwnMat),

@@ -8,20 +8,20 @@
 #_________________________________________________________________________
 # This function calculates weighted CV following eq. 4 in Thibault and Connolly 
 # 2013 Ecol Let; recMat necessary to weight values appropriately
-wtdCV <- function(datMat, wtMat = NULL, weight = TRUE) {
-  if (is.null(wtMat)) { #if recMat is NULL assume datMat is a matrix of abundance
-    wtMat <- datMat
+wtdCV <- function(datMat, weightMat = NULL, weight = TRUE) {
+  if (is.null(weightMat)) { #if recMat is NULL assume datMat is a matrix of abundance
+    weightMat <- datMat
   }
-  if (ncol(datMat) != ncol(wtMat)){
+  if (ncol(datMat) != ncol(weightMat)){
     stop("Input matrices have unequal number of components")
   }
   if (any(is.na(datMat))) {
     warning("NAs present. This will affect estimates of weighted CV.")
   }
   #temporal mean of aggregate abundance
-  aggAbund <- sum(apply(wtMat, 2, function (x) mean(x, na.rm = TRUE)))
+  aggAbund <- sum(apply(weightMat, 2, function (x) mean(x, na.rm = TRUE)))
   #wtd mean of aggregate abundance
-  wtdAbund <- apply(wtMat, 2, function (x) mean(x, na.rm = TRUE) / aggAbund)
+  wtdAbund <- apply(weightMat, 2, function (x) mean(x, na.rm = TRUE) / aggAbund)
   wtdCV <- sum(wtdAbund * apply(datMat, 2, 
                                 function(x) sqrt(var(x, na.rm = TRUE)) / 
                                   mean(x, na.rm = TRUE)), na.rm = TRUE)
@@ -38,25 +38,25 @@ wtdCV <- function(datMat, wtMat = NULL, weight = TRUE) {
 #_________________________________________________________________________
 # This function calculates aggregate CV following eq. 3 in Thibault and Connolly 
 # 2013 Ecol Let
-cvAgg <- function(datMat, wtMat = NULL, weight = TRUE){
-  if (is.null(wtMat)) {
-    wtMat <- datMat
+cvAgg <- function(datMat, weightMat = NULL, weight = TRUE){
+  if (is.null(weightMat)) {
+    weightMat <- datMat
   }
-  sqrt(community.sync(datMat)$obs) * wtdCV(datMat, wtMat, weight = weight)
+  sqrt(community.sync(datMat)$obs) * wtdCV(datMat, weightMat, weight = weight)
 }
 
 
 #_________________________________________________________________________
 # This function calculates a mean weighted by abundance
-wtdMean <- function(datMat, wtMat = NULL, weight = TRUE){
-  if (is.null(wtMat)) { #if wtMat is NULL assume datMat is a matrix of abundance
-    wtMat <- datMat
+wtdMean <- function(datMat, weightMat = NULL, weight = TRUE){
+  if (is.null(weightMat)) { #if weightMat is NULL assume datMat is a matrix of abundance
+    weightMat <- datMat
   }
-  if (ncol(datMat) != ncol(wtMat)){
+  if (ncol(datMat) != ncol(weightMat)){
     stop("Input matrices have unequal number of components")
   }
-  aggAbund <- sum(apply(wtMat, 2, mean)) #temporal mean of aggregate abundance
-  wtdAbund <- apply(wtMat, 2, function (x) mean(x) / aggAbund) #wtd mean of aggregate abundance
+  aggAbund <- sum(apply(weightMat, 2, mean)) #temporal mean of aggregate abundance
+  wtdAbund <- apply(weightMat, 2, function (x) mean(x) / aggAbund) #wtd mean of aggregate abundance
   wtdMean <- sum(wtdAbund * apply(datMat, 2, function(x) mean(x)))
   return(wtdMean)
 }

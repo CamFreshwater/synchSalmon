@@ -44,7 +44,7 @@ for(j in seq_along(stkIndex)) {
     d$ets1[i] <- ifelse(i < 1, NA, d$ets[i - 1])
     d$ets2[i] <- ifelse(i < 2, NA, d$ets[i - 2])
     d$ets3[i] <- ifelse(i < 3, NA, d$ets[i - 3])
-    d$prodZ <- as.numeric(scale(d$prod, center = TRUE, scale = TRUE))
+    d$prodZ <- as.numeric(scale(d$logProd, center = TRUE, scale = TRUE))
   }
   recDat[recDat$stk == stkIndex[j], c("prodZ", "ets1", "ets2", "ets3")] <- d[, c("prodZ", "ets1", "ets2", "ets3")]
 }
@@ -215,7 +215,7 @@ xLab = "Year"
 colPal <- viridis(n = length(unique(rawDat$stk)), begin = 0, end = 1)
 axisSize = 12
 
-rawProdPlot <- ggplot(rawDat, aes(x = yr, y = prodZ, colour = stk)) + 
+rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, colour = stk)) + 
   labs(x = "", y = "Standardized Productivity") + 
   geom_line(size = 0.75) +
   scale_color_manual(values = colPal, guide = FALSE) +

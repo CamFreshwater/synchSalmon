@@ -104,25 +104,25 @@ aggRec <- recDatTrim %>%
 # saveRDS(prodMat, file = here("data", "generated", "prodMat.rds"))
 prodDat <- data.frame(year = yrs,
                        wtdCV = rollapplyr(prodMat, width = 12, 
-                                              function(x) wtdCV(x, wtMat = recMat),
+                                              function(x) wtdCV(x, weightMat = recMat),
                                               fill = NA, by.column = FALSE),
                        synch = rollapplyr(prodMat, width = 12, 
                                               function(x) community.sync(x)$obs, 
                                               fill = NA, by.column = FALSE),
                        agCV = rollapplyr(prodMat, width = 12, 
-                                             function(x) cvAgg(x, wtMat = recMat),
+                                             function(x) cvAgg(x, weightMat = recMat),
                                              fill = NA, by.column = FALSE)) %>% 
   gather(key = var, value = index, 2:4) %>% 
   mutate(data = "prod", ts = "long", weight = "s") 
 residDat <- data.frame(year = yrs, #repeat w/ resid data
                       wtdCV = rollapplyr(residMat, width = 12, 
-                                         function(x) wtdCV(x, wtMat = recMat),
+                                         function(x) wtdCV(x, weightMat = recMat),
                                          fill = NA, by.column = FALSE),
                       synch = rollapplyr(residMat, width = 12, 
                                          function(x) community.sync(x)$obs, 
                                          fill = NA, by.column = FALSE),
                       agCV = rollapplyr(residMat, width = 12, 
-                                        function(x) cvAgg(x, wtMat = recMat),
+                                        function(x) cvAgg(x, weightMat = recMat),
                                         fill = NA, by.column = FALSE)) %>% 
   gather(key = var, value = index, 2:4) %>% 
   mutate(data = "resid", ts = "long", weight = "s")

@@ -13,6 +13,8 @@ require(tidyr); require(viridis); require(ggpubr)
 
 source(here("scripts/synchFunctions.R"))
 
+select <- dplyr::select
+
 ## Data clean
 # SR data
 recDat1 <- read.csv(here("/data/sox/fraserRecDatEFF.csv"), stringsAsFactors = FALSE)
@@ -67,6 +69,10 @@ for(j in seq_along(stkIndex)) {
 }
 recDatTrim1$logResid <- residVec
 recDatTrim1$modResid <- exp(residVec)
+
+recDatTrim1 %>% 
+  group_by(stk) %>% 
+  summarize(mean(rec), mean(prod))
 
 # Trim and convert to matrix
 selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
@@ -126,55 +132,18 @@ residDat <- data.frame(year = yrs, #repeat w/ resid data
                                         fill = NA, by.column = FALSE)) %>% 
   gather(key = var, value = index, 2:4) %>% 
   mutate(data = "resid", ts = "long", weight = "s")
-# prodByPDat <- data.frame(year = yrs,
-#                          wtdCV = rollapplyr(prodMat, width = 12, 
-#                                                function(x) wtdCV(x),
-#                                                fill = NA, by.column = FALSE),
-#                          synch = rollapplyr(prodMat, width = 12, 
-#                                             function(x) community.sync(x)$obs, 
-#                                             fill = NA, by.column = FALSE),
-#                          agCV = rollapplyr(prodMat, width = 12, 
-#                                               function(x) cvAgg(x),
-#                                               fill = NA, by.column = FALSE)) %>% 
-#   gather(key = var, value = index, 2:4) %>% 
-#   mutate(data = "prod", ts = "long", weight = "p") 
-# residByPDat <- data.frame(year = yrs, #repeat w/ resid data
-#                           wtdCV = rollapplyr(residMat, width = 12, 
-#                                                 function(x) wtdCV(x),
-#                                                 fill = NA, by.column = FALSE),
-#                           synch = rollapplyr(residMat, width = 12, 
-#                                              function(x) community.sync(x)$obs, 
-#                                              fill = NA, by.column = FALSE),
-#                           agCV = rollapplyr(residMat, width = 12, 
-#                                                function(x) cvAgg(x),
-#                                                fill = NA, by.column = FALSE)) %>% 
-#   gather(key = var, value = index, 2:4) %>% 
-#   mutate(data = "resid", ts = "long", weight = "p") 
-# prodDat <- data.frame(year = yrs,
-#                          wtdCV = rollapplyr(prodMat, width = 12, 
-#                                             function(x) wtdCV(x, weight =),
-#                                             fill = NA, by.column = FALSE),
-#                          synch = rollapplyr(prodMat, width = 12, 
-#                                             function(x) community.sync(x)$obs, 
-#                                             fill = NA, by.column = FALSE),
-#                          agCV = rollapplyr(prodMat, width = 12, 
-#                                            function(x) cvAgg(x, weight =),
-#                                            fill = NA, by.column = FALSE)) %>% 
-#   gather(key = var, value = index, 2:4) %>% 
-#   mutate(data = "prod", ts = "long", weight = "none") 
-# residDat <- data.frame(year = yrs, #repeat w/ resid data
-#                           wtdCV = rollapplyr(residMat, width = 12, 
-#                                              function(x) wtdCV(x, weight = FALSE),
-#                                              fill = NA, by.column = FALSE),
-#                           synch = rollapplyr(residMat, width = 12, 
-#                                              function(x) community.sync(x)$obs, 
-#                                              fill = NA, by.column = FALSE),
-#                           agCV = rollapplyr(residMat, width = 12, 
-#                                             function(x) cvAgg(x, weight = FALSE),
-#                                             fill = NA, by.column = FALSE)) %>% 
-#   gather(key = var, value = index, 2:4) %>% 
-#   mutate(data = "resid", ts = "long", weight = "none") 
-
+rDat <- data.frame(year = yrs,
+                      wtdCV = rollapplyr(recMat, width = 12, 
+                                         function(x) wtdCV(x),
+                                         fill = NA, by.column = FALSE),
+                      synch = rollapplyr(recMat, width = 12, 
+                                         function(x) community.sync(x)$obs, 
+                                         fill = NA, by.column = FALSE),
+                      agCV = rollapplyr(recMat, width = 12, 
+                                        function(x) cvAgg(x),
+                                        fill = NA, by.column = FALSE)) %>% 
+  gather(key = var, value = index, 2:4) %>% 
+  mutate(data = "rec", ts = "long", weight = "s")
 
 # Changes in mean pairwise corrleations through time
 # cbind(yrs, 
@@ -188,7 +157,7 @@ residDat <- data.frame(year = yrs, #repeat w/ resid data
 
 
 # Combine data
-dat <- rbind(prodDat, residDat) %>%
+dat <- rbind(rDat, prodDat, residDat) %>%
   mutate(var = as.factor(var), data = as.factor(data), ts = as.factor(ts),
          weight = as.factor(weight)) %>%
   mutate(var = recode(var, "agCV" ="Aggregate CV", "synch" = "Synchrony",
@@ -253,6 +222,23 @@ png(here("outputs/expFigs/plotForCHoltPres.png"), height = 5, width = 7,
     units = "in", res = 200)
 ggarrange(rawProdPlot, aggCatchPlot, compCVPlot, synchPlot, nrow = 2, ncol = 2)
 dev.off()
+
+
+
+dum <- dat %>% 
+  filter(var == "Component CV", data == "rec")
+ggplot(dum, aes(x = year, y = index)) + 
+  geom_line(size = 1.25) +
+  theme_sleekX() +
+  theme(axis.text = element_text(size = 0.9 * axisSize)) +
+  labs(x = "", y = "Component Variability") 
+dum2 <- dat %>% 
+  filter(var == "Synchrony", data == "rec")
+ggplot(dum2, aes(x = year, y = index)) + 
+  geom_line(size = 1.25) +
+  theme_sleekX() +
+  theme(axis.text = element_text(size = 0.9 * axisSize)) +
+  labs(x = "", y = "Synchrony Index") 
 
 # w/ faceting
 # pdf(here("figs/productivityTrends.pdf"), height = 6, width = 8)

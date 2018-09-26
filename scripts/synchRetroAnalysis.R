@@ -211,7 +211,7 @@ compCVPlot <- ggplot(dum, aes(x = year, y = index)) +
   theme(axis.text = element_text(size = 0.9 * axisSize)) +
   labs(x = "", y = "Component Variability") 
 dum2 <- dat %>% 
-  filter(var == "Synchrony", data == "prod")
+  filter(var == "Synchrony", data == "rec")
 synchPlot <- ggplot(dum2, aes(x = year, y = index)) + 
   geom_line(size = 1.25) +
   theme_sleekX() +

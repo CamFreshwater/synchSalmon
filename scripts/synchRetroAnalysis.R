@@ -79,11 +79,6 @@ selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series fr
 recDatTrim <- recDatTrim1 %>% 
   filter(stk %in% selectedStks)
 yrs <- unique(recDatTrim$yr)
-spwnMat <- recDatTrim %>% 
-  select(stk, yr, ets) %>% 
-  spread(stk, ets) %>% 
-  select(-yr) %>% 
-  as.matrix()
 recMat <- recDatTrim %>% 
   select(stk, yr, rec) %>% 
   spread(stk, rec) %>% 
@@ -104,64 +99,7 @@ aggRec <- recDatTrim %>%
   summarize(aggRec = sum(rec)) %>% 
   mutate(ts = "long")
 
-# community.sync <- function (x)
-  # list(obs = var(rowSums(x)) / (sum(apply(x, 2, sd)) ^ 2))
-
-# saveRDS(prodMat, file = here("data", "generated", "prodMat.rds"))
-prodDat <- data.frame(year = yrs,
-                       wtdCV = rollapplyr(prodMat, width = 12, 
-                                              function(x) wtdCV(x, weightMat = recMat),
-                                              fill = NA, by.column = FALSE),
-                       synch = rollapplyr(prodMat, width = 12, 
-                                              function(x) community.sync(x)$obs, 
-                                              fill = NA, by.column = FALSE),
-                       agCV = rollapplyr(prodMat, width = 12, 
-                                             function(x) cvAgg(x, weightMat = recMat),
-                                             fill = NA, by.column = FALSE)) %>% 
-  gather(key = var, value = index, 2:4) %>% 
-  mutate(data = "prod", ts = "long", weight = "s") 
-residDat <- data.frame(year = yrs, #repeat w/ resid data
-                      wtdCV = rollapplyr(residMat, width = 12, 
-                                         function(x) wtdCV(x, weightMat = recMat),
-                                         fill = NA, by.column = FALSE),
-                      synch = rollapplyr(residMat, width = 12, 
-                                         function(x) community.sync(x)$obs, 
-                                         fill = NA, by.column = FALSE),
-                      agCV = rollapplyr(residMat, width = 12, 
-                                        function(x) cvAgg(x, weightMat = recMat),
-                                        fill = NA, by.column = FALSE)) %>% 
-  gather(key = var, value = index, 2:4) %>% 
-  mutate(data = "resid", ts = "long", weight = "s")
-rDat <- data.frame(year = yrs,
-                      wtdCV = rollapplyr(recMat, width = 12, 
-                                         function(x) wtdCV(x),
-                                         fill = NA, by.column = FALSE),
-                      synch = rollapplyr(recMat, width = 12, 
-                                         function(x) community.sync(x)$obs, 
-                                         fill = NA, by.column = FALSE),
-                      agCV = rollapplyr(recMat, width = 12, 
-                                        function(x) cvAgg(x),
-                                        fill = NA, by.column = FALSE)) %>% 
-  gather(key = var, value = index, 2:4) %>% 
-  mutate(data = "rec", ts = "long", weight = "s")
-
-# Changes in mean pairwise corrleations through time
-# cbind(yrs, 
-#       rollapplyr(prodMat, width = 12, function(x) meancorr(x)$obs, 
-#                  fill = NA, by.column = FALSE),
-#       rollapplyr(residMat, width = 12, function(x) meancorr(x)$obs, 
-#                  fill = NA, by.column = FALSE),
-#       rollapplyr(logResidMat, width = 12, function(x) meancorr(x)$obs, 
-#                  fill = NA, by.column = FALSE))
-
-
-
-# Combine data
-dat <- rbind(rDat, prodDat, residDat) %>%
-  mutate(var = as.factor(var), data = as.factor(data), ts = as.factor(ts),
-         weight = as.factor(weight)) %>%
-  mutate(var = recode(var, "agCV" ="Aggregate CV", "synch" = "Synchrony",
-                      "wtdCV" = "Component CV", .default = levels(var)))
+saveRDS(recMat, file = here("data", "generated", "recMat.rds"))
 
 
 # Trim catch data
@@ -178,11 +116,31 @@ rawDat <- recDatTrim1 %>%
   select(stk, yr, prodZ, logProd, modResid, logResid) %>% 
   mutate(stk = as.factor(stk))
 
+# Import stan model outputs
+m <- readRDS(here("data/generated/stanSynchModOut.rds"))
+varNames <- c("cv_s", "phi", "cv_c")
+parList <- lapply(seq_along(varNames), function(x) {
+  d <- plyr::ldply(m, function(y) 
+    quantile(y[[varNames[i]]], probs = c(0.1, 0.25, 0.5, 0.75, 0.9))) %>% 
+    mutate(year = yrs)
+})
+names(parList) <- c("cvC", "synch", "cvA")
+
 #_________________________________________________________________________
 ## Plot
-xLab = "Year"
 colPal <- viridis(n = length(unique(rawDat$stk)), begin = 0, end = 1)
-axisSize = 12
+
+linePlot <- function(dat, X, Y, col = "black", yLab, xLab = "") {
+  ggplot(dat, aes(x = dat[[X]], y = dat[[Y]], 
+                  colour = ifelse(col == "black", col, dat[[col]]))) + 
+    labs(x = xLab, y = yLab) + 
+    geom_line(size = 0.75) +
+    scale_color_manual(values = colPal, guide = FALSE) +
+    theme_sleekX() +
+    theme(axis.text = element_text(size = 0.9 * 12))
+}
+
+linePlot(rawDat, "yr", "logProd", col = "stk", yLab = "Standardized Productivity")
 
 rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, colour = stk)) + 
   labs(x = "", y = "Standardized Productivity") + 
@@ -256,66 +214,50 @@ ggplot(dum2, aes(x = year, y = index)) +
 #   facet_wrap(~var)
 # dev.off()
 
-#______________________________________________________________________________
-# repeat above, but for more stocks and shorter time period
-# selectedStksShort <- seq(from = 1, to = 19, by =1 )[-c(11, 15, 17)] 
-# recDatTrimS <- recDatTrim1 %>%  
-#   filter(stk %in% selectedStksShort, yr > 1972)
-# yrsShort <- unique(recDatTrimS$yr)
-# spwnMatShort <- recDatTrimS %>% 
-#   select(stk, yr, ets) %>% 
-#   spread(stk, ets) %>% 
-#   select(-yr) %>% 
-#   as.matrix()
-# prodMatShort <- recDatTrimS %>% 
-#   select(stk, yr, prod) %>% 
-#   spread(stk, prod) %>% 
-#   select(-yr) %>% 
-#   as.matrix()
-# residMatShort <- recDatTrimS %>% 
-#   select(stk, yr, modResid) %>% 
-#   spread(stk, modResid) %>% 
-#   select(-yr) %>% 
-#   as.matrix()
-# aggRecShort <- recDatTrimS %>% 
-#   group_by(spwnRetYr) %>% 
-#   summarize(aggRec = sum(rec)) %>% 
-#   mutate(ts = "short")
-# 
-# prodDatS <- data.frame(year = yrsShort,
-#                        wtdCV = rollapplyr(prodMatShort, width = 12, 
-#                                           function(x) wtdCV(x, recMat = spwnMatShort),
-#                                           fill = NA, by.column = FALSE),
-#                        synch = rollapplyr(prodMatShort, width = 12, 
-#                                           function(x) community.sync(x)$obs, 
-#                                           fill = NA, by.column = FALSE),
-#                        agCV = rollapplyr(prodMatShort, width = 12, 
-#                                          function(x) cvAgg(x, recMat = spwnMatShort),
-#                                          fill = NA, by.column = FALSE)) %>% 
-#   gather(key = var, value = index, 2:4) %>% 
-#   mutate(data = "prod", ts = "short") 
-# residDatS <- data.frame(year = yrsShort, #repeat w/ resid data
-#                         wtdCV = rollapplyr(residMatShort, width = 12, 
-#                                            function(x) wtdCV(x, recMat = spwnMatShort),
-#                                            fill = NA, by.column = FALSE),
-#                         synch = rollapplyr(residMatShort, width = 12, 
-#                                            function(x) community.sync(x)$obs, 
-#                                            fill = NA, by.column = FALSE),
-#                         agCV = rollapplyr(residMatShort, width = 12, 
-#                                           function(x) cvAgg(x, recMat = spwnMatShort),
-#                                           fill = NA, by.column = FALSE)) %>% 
-#   gather(key = var, value = index, 2:4) %>% 
-#   mutate(data = "resid", ts = "short")
-# 
-# # cbind(yrsShort, 
-# #       rollapplyr(prodMatShort, width = 12, function(x) meancorr(x)$obs, 
-# #                  fill = NA, by.column = FALSE),
-# #       rollapplyr(residMatShort, width = 12, function(x) meancorr(x)$obs, 
-# #                  fill = NA, by.column = FALSE))
-# catchDatShort <- catchDat %>% 
-#   filter(stk %in% selectedStksShort, yr > 1972) %>% 
-#   group_by(yr) %>% 
-#   summarize(catch = sum(totCatch)) %>% 
-#   mutate(ts = as.factor("short"))
-# aggCatch <- rbind(catchDatLong, catchDatShort)
+
+#### Old frequentist version
+prodDat <- data.frame(year = yrs,
+                      wtdCV = rollapplyr(prodMat, width = 12, 
+                                         function(x) wtdCV(x, weightMat = recMat),
+                                         fill = NA, by.column = FALSE),
+                      synch = rollapplyr(prodMat, width = 12, 
+                                         function(x) community.sync(x)$obs, 
+                                         fill = NA, by.column = FALSE),
+                      agCV = rollapplyr(prodMat, width = 12, 
+                                        function(x) cvAgg(x, weightMat = recMat),
+                                        fill = NA, by.column = FALSE)) %>% 
+  gather(key = var, value = index, 2:4) %>% 
+  mutate(data = "prod", ts = "long", weight = "s") 
+residDat <- data.frame(year = yrs, #repeat w/ resid data
+                       wtdCV = rollapplyr(residMat, width = 12, 
+                                          function(x) wtdCV(x, weightMat = recMat),
+                                          fill = NA, by.column = FALSE),
+                       synch = rollapplyr(residMat, width = 12, 
+                                          function(x) community.sync(x)$obs, 
+                                          fill = NA, by.column = FALSE),
+                       agCV = rollapplyr(residMat, width = 12, 
+                                         function(x) cvAgg(x, weightMat = recMat),
+                                         fill = NA, by.column = FALSE)) %>% 
+  gather(key = var, value = index, 2:4) %>% 
+  mutate(data = "resid", ts = "long", weight = "s")
+rDat <- data.frame(year = yrs,
+                   wtdCV = rollapplyr(recMat, width = 12, 
+                                      function(x) wtdCV(x),
+                                      fill = NA, by.column = FALSE),
+                   synch = rollapplyr(recMat, width = 12, 
+                                      function(x) community.sync(x)$obs, 
+                                      fill = NA, by.column = FALSE),
+                   agCV = rollapplyr(recMat, width = 12, 
+                                     function(x) cvAgg(x),
+                                     fill = NA, by.column = FALSE)) %>% 
+  gather(key = var, value = index, 2:4) %>% 
+  mutate(data = "rec", ts = "long", weight = "s")
+
+
+# Combine data
+dat <- rbind(rDat, prodDat, residDat) %>%
+  mutate(var = as.factor(var), data = as.factor(data), ts = as.factor(ts),
+         weight = as.factor(weight)) %>%
+  mutate(var = recode(var, "agCV" ="Aggregate CV", "synch" = "Synchrony",
+                      "wtdCV" = "Component CV", .default = levels(var)))
 

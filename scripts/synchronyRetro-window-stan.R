@@ -4,7 +4,7 @@ library(rstan)
 library(here)
 rstan_options(auto_write = TRUE)
 
-X <- readRDS(here("data", "generated", "prodMat.rds"))
+X <- readRDS(here("data", "generated", "recMat.rds"))
 X_raw <- X
 
 y_group <- rowSums(X)
@@ -18,7 +18,7 @@ m <- sampling(sm,
     G = ncol(X), y_ind = t(y_ind)
   )
 )
-
+saveRDS(m, here("data/generated/stanSynchModOut.rds"))
 # rstan::traceplot(m)
 
 sqrt_phi <- sqrt(extract(m)$phi)
@@ -37,16 +37,16 @@ pal <- rep(RColorBrewer::brewer.pal(8, "Dark2"), 999L)[seq_len(ncol(X))]
 # pdf("thibaut2013-eg4.pdf", width = 5, height = 7)
 par(mfrow = c(4, 1), mar = c(3.5, 3.5, 0, 0), oma = c(2, 1, 1, 1),
   mgp = c(1.6, 0.4, 0), tck = -0.02, las = 1)
-matplot(X_raw, type = "l", col = pal, xlab = "Time", ylab = "Productivity",
+matplot(X_raw, type = "l", col = pal, xlab = "Time", ylab = "Recruit Abundance",
   lty = 1, xaxs = "i")
 plot(density(sqrt_phi), xlim = c(0, 1), xlab = "sqrt(phi)", main = "", xaxs = "i")
 add_label(0.01, 0.1, "Synchrony component")
-plot(density(cv_s), xlim = c(0, 2), xlab = "CV_s", main = "", xaxs = "i")
+plot(density(cv_s), xlim = c(0, 2.5), xlab = "CV_s", main = "", xaxs = "i")
 add_label(0.01, 0.1, "Component variability")
 for (i in seq_len(G)) {
   polygon(density(extract(m)$cv_s_ind[, i]), border = paste0(pal[i], "60"))
 }
-plot(density(cv_c), xlim = c(0, 1), xlab = "CV_c", main = "", xaxs = "i")
+plot(density(cv_c), xlim = c(0, 1.5), xlab = "CV_c", main = "", xaxs = "i")
 add_label(0.01, 0.1, "Realized aggregate variability")
 # hist(extract(m)$cv_s * sqrt(extract(m)$phi))
 # dev.off()
@@ -71,9 +71,6 @@ for (i in seq(window, nrow(X))) {
   m[[i]] <- extract(m_temp)
 }
 
-out_cv_s <- plyr::ldply(m, function(y)
-  quantile(y$cv_s, probs = c(0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9)))
-
 plot_ts <- function(dat, column, ylim = c(0, 1), ylab = column, xlab = "Year") {
   out <- plyr::ldply(dat, function(y) quantile(y[[column]],
     probs = c(0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9)))
@@ -91,7 +88,9 @@ plot_ts <- function(dat, column, ylim = c(0, 1), ylab = column, xlab = "Year") {
 # pdf("fraser-synchrony-trends.pdf", width = 3.5, height = 7)
 par(mfrow = c(3, 1), mar = c(2, 3, 0, 0), oma = c(2, 1, 1, 1),
   mgp = c(2.0, 0.5, 0), tck = -0.02, las = 1)
-plot_ts(m, "cv_s", ylim = c(0, 1.6), ylab = "Weighted stream-level CV", xlab = "")
+plot_ts(m, "cv_s", ylim = c(0, 1.6), ylab = "Weighted CU-level CV", xlab = "")
 plot_ts(m, "phi", ylab = "Synchrony", xlab = "")
 plot_ts(m, "cv_c", ylim = c(0, 1.5), ylab = "Fraser CV")
 # dev.off()
+
+

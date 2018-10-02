@@ -129,6 +129,7 @@ names(parList) <- c("cvC", "synch", "cvA")
 #_________________________________________________________________________
 ## Plot
 colPal <- viridis(n = length(unique(rawDat$stk)), begin = 0, end = 1)
+axisSize = 14
 
 linePlot <- function(dat, X, Y, col = "black", yLab, xLab = "") {
   ggplot(dat, aes(x = dat[[X]], y = dat[[Y]], 
@@ -148,55 +149,43 @@ rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, colour = stk)) +
   scale_color_manual(values = colPal, guide = FALSE) +
   stat_summary(fun.y = mean, colour = "black", geom = "line", size = 1.25)  +
   theme_sleekX() +
-  theme(axis.text = element_text(size = 0.9 * axisSize))
-aggSpwnPlot <- ggplot(aggRecLong, aes(x = spwnRetYr, y = aggRec)) + 
-  geom_line(size = 1.25) +
-  theme_sleekX() +
-  theme(axis.text = element_text(size = 0.9 * axisSize)) +
-  labs(x = "", y = "Aggregate Spawner Abundance") 
+  theme(axis.text = element_text(size = 0.9 * axisSize),
+        axis.title = element_text(size = axisSize))
+# aggSpwnPlot <- ggplot(aggRecLong, aes(x = spwnRetYr, y = aggRec)) + 
+#   geom_line(size = 1.25) +
+#   theme_sleekX() +
+#   theme(axis.text = element_text(size = 0.9 * axisSize)) +
+#   labs(x = "", y = "Aggregate Spawner Abundance") 
 
 aggCatchPlot <- ggplot(catchDatLong, aes(x = yr, y = catch)) + 
   geom_line(size = 1.25) +
   theme_sleekX() +
-  theme(axis.text = element_text(size = 0.9 * axisSize)) +
+  theme(axis.text = element_text(size = 0.9 * axisSize),
+        axis.title = element_text(size = axisSize)) +
   labs(x = "", y = "Aggregate Catch") 
 
 dum <- dat %>% 
-  filter(var == "Component CV", data == "prod")
+  filter(var == "Component CV", data == "rec")
 compCVPlot <- ggplot(dum, aes(x = year, y = index)) + 
   geom_line(size = 1.25) +
   theme_sleekX() +
-  theme(axis.text = element_text(size = 0.9 * axisSize)) +
+  theme(axis.text = element_text(size = 0.9 * axisSize),
+        axis.title = element_text(size = axisSize)) +
   labs(x = "", y = "Component Variability") 
 dum2 <- dat %>% 
   filter(var == "Synchrony", data == "rec")
 synchPlot <- ggplot(dum2, aes(x = year, y = index)) + 
   geom_line(size = 1.25) +
   theme_sleekX() +
-  theme(axis.text = element_text(size = 0.9 * axisSize)) +
+  theme(axis.text = element_text(size = 0.9 * axisSize),
+        axis.title = element_text(size = axisSize)) +
   labs(x = "", y = "Synchrony Index") 
 
-png(here("outputs/expFigs/plotForCHoltPres.png"), height = 5, width = 7,
+png(here("outputs/expFigs/plotForCHoltPres.png"), height = 6, width = 7.5,
     units = "in", res = 200)
 ggarrange(rawProdPlot, aggCatchPlot, compCVPlot, synchPlot, nrow = 2, ncol = 2)
 dev.off()
 
-
-
-dum <- dat %>% 
-  filter(var == "Component CV", data == "rec")
-ggplot(dum, aes(x = year, y = index)) + 
-  geom_line(size = 1.25) +
-  theme_sleekX() +
-  theme(axis.text = element_text(size = 0.9 * axisSize)) +
-  labs(x = "", y = "Component Variability") 
-dum2 <- dat %>% 
-  filter(var == "Synchrony", data == "rec")
-ggplot(dum2, aes(x = year, y = index)) + 
-  geom_line(size = 1.25) +
-  theme_sleekX() +
-  theme(axis.text = element_text(size = 0.9 * axisSize)) +
-  labs(x = "", y = "Synchrony Index") 
 
 # w/ faceting
 # pdf(here("figs/productivityTrends.pdf"), height = 6, width = 8)

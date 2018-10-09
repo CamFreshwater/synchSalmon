@@ -18,7 +18,6 @@ m <- sampling(sm,
     G = ncol(X), y_ind = t(y_ind)
   )
 )
-saveRDS(m, here("data/generated/stanSynchModOut.rds"))
 # rstan::traceplot(m)
 
 sqrt_phi <- sqrt(extract(m)$phi)
@@ -56,7 +55,7 @@ X <- X / sd(as.matrix(X)) # scale
 y_group <- rowSums(X)
 y_ind <- X
 
-window <- 10
+window <- 12
 
 for (i in seq(window, nrow(X))) {
   y_group <- rowSums(X[(i - (window-1)):i, ])
@@ -70,6 +69,8 @@ for (i in seq(window, nrow(X))) {
   )
   m[[i]] <- extract(m_temp)
 }
+saveRDS(m, here("data/generated/stanSynchModOut.rds"))
+
 
 plot_ts <- function(dat, column, ylim = c(0, 1), ylab = column, xlab = "Year") {
   out <- plyr::ldply(dat, function(y) quantile(y[[column]],
@@ -84,6 +85,9 @@ plot_ts <- function(dat, column, ylim = c(0, 1), ylab = column, xlab = "Year") {
   polygon(c(xt, rev(xt)), c(sqrt(out[, "10%"]), rev(sqrt(out[, "90%"]))),
     border = NA, col = "#00000025")
 }
+
+out <- plyr::ldply(m, function(y) quantile(y[["cv_s"]],
+                                             probs = c(0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9)))
 
 # pdf("fraser-synchrony-trends.pdf", width = 3.5, height = 7)
 par(mfrow = c(3, 1), mar = c(2, 3, 0, 0), oma = c(2, 1, 1, 1),

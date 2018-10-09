@@ -117,11 +117,12 @@ rawDat <- recDatTrim1 %>%
   mutate(stk = as.factor(stk))
 
 # Import stan model outputs
-m <- readRDS(here("data/generated/stanSynchModOut.rds"))
+m <- readRDS(here("data/generated/stanSynchModOut.rds")) #window size = 12
 varNames <- c("cv_s", "phi", "cv_c")
 parList <- lapply(seq_along(varNames), function(x) {
   d <- plyr::ldply(m, function(y) 
-    quantile(y[[varNames[i]]], probs = c(0.1, 0.25, 0.5, 0.75, 0.9))) %>% 
+    quantile(y[[varNames[x]]], probs = c(0.1, 0.25, 0.5, 0.75, 0.9))) %>% 
+    dplyr::rename(low = "10%", med = "50%", high = "90%") %>% 
     mutate(year = yrs)
 })
 names(parList) <- c("cvC", "synch", "cvA")
@@ -131,18 +132,6 @@ names(parList) <- c("cvC", "synch", "cvA")
 colPal <- viridis(n = length(unique(rawDat$stk)), begin = 0, end = 1)
 axisSize = 14
 
-linePlot <- function(dat, X, Y, col = "black", yLab, xLab = "") {
-  ggplot(dat, aes(x = dat[[X]], y = dat[[Y]], 
-                  colour = ifelse(col == "black", col, dat[[col]]))) + 
-    labs(x = xLab, y = yLab) + 
-    geom_line(size = 0.75) +
-    scale_color_manual(values = colPal, guide = FALSE) +
-    theme_sleekX() +
-    theme(axis.text = element_text(size = 0.9 * 12))
-}
-
-linePlot(rawDat, "yr", "logProd", col = "stk", yLab = "Standardized Productivity")
-
 rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, colour = stk)) + 
   labs(x = "", y = "Standardized Productivity") + 
   geom_line(size = 0.75) +
@@ -151,39 +140,43 @@ rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, colour = stk)) +
   theme_sleekX() +
   theme(axis.text = element_text(size = 0.9 * axisSize),
         axis.title = element_text(size = axisSize))
-# aggSpwnPlot <- ggplot(aggRecLong, aes(x = spwnRetYr, y = aggRec)) + 
-#   geom_line(size = 1.25) +
-#   theme_sleekX() +
-#   theme(axis.text = element_text(size = 0.9 * axisSize)) +
-#   labs(x = "", y = "Aggregate Spawner Abundance") 
-
+aggRecPlot <- ggplot(aggRec, aes(x = spwnRetYr, y = aggRec)) +
+  geom_line(size = 1.25) +
+  theme_sleekX() +
+  theme(axis.text = element_text(size = 0.9 * axisSize)) +
+  labs(x = "", y = "Aggregate Recruit Abundance")
 aggCatchPlot <- ggplot(catchDatLong, aes(x = yr, y = catch)) + 
   geom_line(size = 1.25) +
   theme_sleekX() +
   theme(axis.text = element_text(size = 0.9 * axisSize),
         axis.title = element_text(size = axisSize)) +
   labs(x = "", y = "Aggregate Catch") 
-
-dum <- dat %>% 
-  filter(var == "Component CV", data == "rec")
-compCVPlot <- ggplot(dum, aes(x = year, y = index)) + 
+compCVPlot <- ggplot(parList$cvC, aes(x = year, y = med)) + 
   geom_line(size = 1.25) +
+  geom_ribbon(aes(ymin = low, ymax = high), alpha=0.2) +
   theme_sleekX() +
   theme(axis.text = element_text(size = 0.9 * axisSize),
         axis.title = element_text(size = axisSize)) +
   labs(x = "", y = "Component Variability") 
-dum2 <- dat %>% 
-  filter(var == "Synchrony", data == "rec")
-synchPlot <- ggplot(dum2, aes(x = year, y = index)) + 
+synchPlot <- ggplot(parList$synch, aes(x = year, y = med)) + 
   geom_line(size = 1.25) +
+  geom_ribbon(aes(ymin = low, ymax = high), alpha=0.2) +
   theme_sleekX() +
   theme(axis.text = element_text(size = 0.9 * axisSize),
         axis.title = element_text(size = axisSize)) +
-  labs(x = "", y = "Synchrony Index") 
+  labs(x = "", y = "Synchrony")
+agCVPlot <- ggplot(parList$cvA, aes(x = year, y = med)) + 
+  geom_line(size = 1.25) +
+  geom_ribbon(aes(ymin = low, ymax = high), alpha=0.2) +
+  theme_sleekX() +
+  theme(axis.text = element_text(size = 0.9 * axisSize),
+        axis.title = element_text(size = axisSize)) +
+  labs(x = "", y = "Aggregate Variability")
 
-png(here("outputs/expFigs/plotForCHoltPres.png"), height = 6, width = 7.5,
+png(here("figs/Fig1New_Retro.png"), height = 6, width = 7.5,
     units = "in", res = 200)
-ggarrange(rawProdPlot, aggCatchPlot, compCVPlot, synchPlot, nrow = 2, ncol = 2)
+ggarrange(rawProdPlot, aggRecPlot, aggCatchPlot, compCVPlot, synchPlot, 
+          agCVPlot, nrow = 2, ncol = 3)
 dev.off()
 
 

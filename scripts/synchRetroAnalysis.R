@@ -132,29 +132,52 @@ names(parList) <- c("cvC", "synch", "cvA")
 colPal <- viridis(n = length(unique(rawDat$stk)), begin = 0, end = 1)
 axisSize = 14
 
+labDat <- data.frame(lab = c("a)", "b)", "c)", "d)", "e)", "f)"),
+                     var = c("prod", "rec", "catch", "cv", "synch", "aggCV"))
+
 rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, colour = stk)) + 
   labs(x = "", y = "Standardized Productivity") + 
+  ylim(min(rawDat$logProd), 5.1) +
   geom_line(size = 0.75) +
   scale_color_manual(values = colPal, guide = FALSE) +
   stat_summary(fun.y = mean, colour = "black", geom = "line", size = 1.25)  +
   theme_sleekX() +
+  geom_text(data = labDat %>% filter(var == "prod"),
+            mapping = aes(x = min(rawDat$yr), y = max(rawDat$logProd), label = lab, 
+                          hjust = 0.5, vjust = -0.5), show.legend = FALSE, 
+            inherit.aes = FALSE) +
   theme(axis.text = element_text(size = 0.9 * axisSize),
         axis.title = element_text(size = axisSize))
 aggRecPlot <- ggplot(aggRec, aes(x = spwnRetYr, y = aggRec)) +
   geom_line(size = 1.25) +
   theme_sleekX() +
+  geom_text(data = labDat %>% filter(var == "rec"),
+            mapping = aes(x = min(aggRec$spwnRetYr), y = max(aggRec$aggRec), 
+                          label = lab, hjust = 0.5, vjust = 0.5), 
+            show.legend = FALSE, inherit.aes = FALSE) +
   theme(axis.text = element_text(size = 0.9 * axisSize)) +
   labs(x = "", y = "Aggregate Recruit Abundance")
 aggCatchPlot <- ggplot(catchDatLong, aes(x = yr, y = catch)) + 
   geom_line(size = 1.25) +
   theme_sleekX() +
+  geom_text(data = labDat %>% filter(var == "catch"),
+            mapping = aes(x = min(catchDatLong$yr), 
+                          y = max(catchDatLong$catch), 
+                          label = lab, hjust = 0.5, vjust = 0.5), 
+            show.legend = FALSE, inherit.aes = FALSE) +
   theme(axis.text = element_text(size = 0.9 * axisSize),
         axis.title = element_text(size = axisSize)) +
+  scale_x_continuous(breaks = round(seq(1960, 2000, by = 20), 1)) +
   labs(x = "", y = "Aggregate Catch") 
 compCVPlot <- ggplot(parList$cvC, aes(x = year, y = med)) + 
   geom_line(size = 1.25) +
   geom_ribbon(aes(ymin = low, ymax = high), alpha=0.2) +
   theme_sleekX() +
+  geom_text(data = labDat %>% filter(var == "cv"),
+            mapping = aes(x = min(parList$cvC$year), 
+                          y = max(parList$cvC$high, na.rm = TRUE), 
+                          label = lab, hjust = 0.5, vjust = 0.5), 
+            show.legend = FALSE, inherit.aes = FALSE) +
   theme(axis.text = element_text(size = 0.9 * axisSize),
         axis.title = element_text(size = axisSize)) +
   labs(x = "", y = "Component Variability") 
@@ -162,6 +185,11 @@ synchPlot <- ggplot(parList$synch, aes(x = year, y = med)) +
   geom_line(size = 1.25) +
   geom_ribbon(aes(ymin = low, ymax = high), alpha=0.2) +
   theme_sleekX() +
+  geom_text(data = labDat %>% filter(var == "synch"),
+            mapping = aes(x = min(parList$synch$year), 
+                          y = max(parList$synch$high, na.rm = TRUE), 
+                          label = lab, hjust = 0.5, vjust = 0.5), 
+            show.legend = FALSE, inherit.aes = FALSE) +
   theme(axis.text = element_text(size = 0.9 * axisSize),
         axis.title = element_text(size = axisSize)) +
   labs(x = "", y = "Synchrony")
@@ -169,6 +197,11 @@ agCVPlot <- ggplot(parList$cvA, aes(x = year, y = med)) +
   geom_line(size = 1.25) +
   geom_ribbon(aes(ymin = low, ymax = high), alpha=0.2) +
   theme_sleekX() +
+  geom_text(data = labDat %>% filter(var == "aggCV"),
+            mapping = aes(x = min(parList$cvA$year), 
+                          y = max(parList$cvA$high, na.rm = TRUE), 
+                          label = lab, hjust = 0.5, vjust = 0.5), 
+            show.legend = FALSE, inherit.aes = FALSE) +
   theme(axis.text = element_text(size = 0.9 * axisSize),
         axis.title = element_text(size = axisSize)) +
   labs(x = "", y = "Aggregate Variability")

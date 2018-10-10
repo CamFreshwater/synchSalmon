@@ -1,7 +1,7 @@
 data {
   int<lower=1> N; // rows of data
   int<lower=1> G; // groups
-  vector[N] y_group; // vector to hold observations
+  vector[N] y_time; // vector to hold observations of summed abundance each year
   row_vector[N] y_ind[G]; // vectors to hold observations
 }
 parameters {
@@ -19,6 +19,7 @@ model {
 
   // likelihood model:
   y_group ~ normal(group_mean, group_sigma);
+  y_time ~ normal(time_mean, time_sigma);
   for (i in 1:G) {
     y_ind[i] ~ normal(ind_mean[i], ind_sigma[i]);
   }
@@ -29,7 +30,7 @@ generated quantities {
   vector[G] cv_s_ind_w;
   real cv_s;
   real cv_c;
-  phi = group_sigma^2 / sum(ind_sigma)^2;
+  phi = time_sigma^2 / sum(ind_sigma)^2;
   for (i in 1:G) {
     cv_s_ind[i] = (ind_sigma[i] / (ind_mean[i]));
     cv_s_ind_w[i] = cv_s_ind[i] * (ind_mean[i] / group_mean);

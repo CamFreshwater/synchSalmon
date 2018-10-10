@@ -28,3 +28,5 @@ scripts/lm.rds
 scripts/*cache*
 *.png
 scripts/sync.rds
+*.o
+*.so

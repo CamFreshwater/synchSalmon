@@ -94,7 +94,8 @@ calcCov <- function(recMat) {
 #___________________________________________________________________________________________________________
 # This function is a copy of S. Anderson's now that ggsidekick is not supported; adds argument
 # for top, bottom, middle for multipanel functionality
-theme_sleekX <- function(base_size = 11, base_family = "", position = "standard") {
+theme_sleekX <- function(base_size = 11, base_family = "", position = "standard",
+                         axisSize = 12, legendSize = 1, facetSize = 1.1) {
   half_line <- base_size/2
   q <- theme_light(base_size = 11, base_family = "") +
     theme(
@@ -102,14 +103,14 @@ theme_sleekX <- function(base_size = 11, base_family = "", position = "standard"
       panel.grid.minor = element_blank(),
       axis.ticks.length = unit(half_line / 2.2, "pt"),
       strip.background = element_rect(fill = NA, colour = NA),
-      strip.text.x = element_text(colour = "grey30"),
+      strip.text.x = element_text(colour = "grey30", size = rel(facetSize)),
       strip.text.y = element_text(colour = "grey30"),
       axis.text = element_text(colour = "grey30"),
       axis.title = element_text(colour = "grey30"),
-      legend.title = element_text(colour = "grey30", size = rel(1.1)),
+      legend.title = element_text(colour = "grey30", size = rel(1.1 * legendSize)),
       panel.border = element_rect(fill = NA, colour = "grey70", size = 1),
       legend.key.size = unit(1, "lines"),
-      legend.text = element_text(size = rel(1), colour = "grey30"),
+      legend.text = element_text(size = rel(legendSize), colour = "grey30"),
       legend.key = element_rect(colour = NA, fill = NA),
       legend.background = element_rect(colour = NA, fill = NA),
       plot.title = element_text(colour = "grey30", size = rel(1)),
@@ -152,4 +153,3 @@ theme_sleekX <- function(base_size = 11, base_family = "", position = "standard"
   }
   return(q)
 }
-

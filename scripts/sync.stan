@@ -1,14 +1,17 @@
 data {
   int<lower=1> N; // rows of data
   int<lower=1> G; // groups
+  vector[N] y_group; // vector to hold observations
   vector[N] y_time; // vector to hold observations of summed abundance each year
   row_vector[N] y_ind[G]; // vectors to hold observations
 }
 parameters {
   real<lower=0> group_sigma;
   real<lower=0> ind_sigma[G];
+  real<lower=0> time_sigma[G];
   real<lower=0> group_mean;
   real<lower=0> ind_mean[G];
+  real<lower=0> time_mean;
 }
 model {
   // very weak priors:

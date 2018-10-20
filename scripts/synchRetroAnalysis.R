@@ -70,14 +70,15 @@ for(j in seq_along(stkIndex)) {
 recDatTrim1$logResid <- residVec
 recDatTrim1$modResid <- exp(residVec)
 
-recDatTrim1 %>% 
-  group_by(stk) %>% 
-  summarize(mean(rec), mean(prod))
+# recDatTrim1 %>% 
+#   group_by(stk) %>% 
+#   summarize(mean(rec), mean(prod))
 
 # Trim and convert to matrix
 selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
 recDatTrim <- recDatTrim1 %>% 
-  filter(stk %in% selectedStks)
+  filter(#stk %in% selectedStks,
+         yr > 1975, !stk == "11", !stk == "15")
 yrs <- unique(recDatTrim$yr)
 recMat <- recDatTrim %>% 
   select(stk, yr, rec) %>% 
@@ -99,7 +100,8 @@ aggRec <- recDatTrim %>%
   summarize(aggRec = sum(rec)) %>% 
   mutate(ts = "long")
 
-saveRDS(recMat, file = here("data", "generated", "recMat.rds"))
+# saveRDS(recMat, file = here("data", "generated", "recMat.rds"))
+# saveRDS(recMatShort, file = here("data", "generated", "recMatShort.rds"))
 
 
 # Trim catch data

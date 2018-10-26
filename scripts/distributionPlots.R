@@ -7,12 +7,11 @@
 
 require(here); require(ggplot2); require(viridis); require(sn); require(tidyverse)
 source(here("scripts/synchFunctions.R"))
-source(here("scripts/synchFunctions.R"))
 
 dat <- data.frame(norm = rst(n = 100000, xi = 0, alpha = 0, nu = Inf, omega = 0.75),
-                  sNorm = rst(n = 100000, xi = 0, alpha = log(0.65), nu = Inf, 
+                  sNorm = rst(n = 100000, xi = 0, alpha = log(0.67), nu = Inf, 
                               omega = 0.75),
-                  sT = rst(n = 100000, xi = 0, alpha = log(0.65), nu = 3, omega = 0.75)) %>% 
+                  sT = rst(n = 100000, xi = 0, alpha = log(0.67), nu = 2, omega = 0.75)) %>% 
   gather(key = dist, value = values) %>% 
   mutate(dist = as.factor(dist),
          expDev = exp(values))
@@ -25,7 +24,7 @@ dat <- data.frame(norm = rst(n = 100000, xi = 0, alpha = 0, nu = Inf, omega = 0.
 #   mutate(dist = as.factor(dist))
 
 colPal <- c("black", "#fd8d3c", "#bd0026")
-p <- ggplot(dat, aes(x = expDev)) +
+p <- ggplot(dat, aes(x = values)) +
   geom_density(aes(group = dist, color = dist, fill = dist), position = "identity", 
                alpha = 0.1) +
   scale_x_continuous(limits = c(-5, 5)) +
@@ -45,4 +44,10 @@ png(here("outputs/distFig.png"), height = 3, width = 5, res = 300, units = "in")
 print(p)
 dev.off()
 
-  
+
+### How often do extreme events occur?
+nDist <- rst(n = 100000, xi = 0, alpha = 0, nu = Inf, omega = 1)
+sTDist <- rst(n = 100000, xi = 0, alpha = log(0.67), nu = 3, omega = 1)
+
+1 / (length(nDist[nDist < -3]) / length(nDist))
+1 / (length(sTDist[sTDist < -3]) / length(sTDist))

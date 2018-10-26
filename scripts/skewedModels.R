@@ -50,9 +50,10 @@ fit_sr_stan <- function(dat,
 }
 
 # Apply each model to each stock
-# out <- plyr::dlply(recDatTrim1, "stk", function(d) {
-#   fit_sr_stan(d, model_type = "lm", sr_type = unique(d$model), chains = 4)
-# })
+out <- plyr::dlply(recDatTrim1, "stk", function(d) {
+  fit_sr_stan(d, model_type = "lm", sr_type = unique(d$model), chains = 4,
+  iter = 2000)
+})
 out_t <- plyr::dlply(recDatTrim1, "stk", function(d) {
   fit_sr_stan(d, model_type = "lmt", sr_type = unique(d$model), chains = 4,
               iter = 2000)
@@ -62,7 +63,16 @@ out_tskew <- plyr::dlply(recDatTrim1, "stk", function(d) {
               iter = 2000, adapt_delta = 0.99)
 })
 
-# Exatract par estimates
+# Extract par estimates
+post_n <- plyr::ldply(out, function(x) {
+  e <- extract(x)
+  sm_summ <- summary(x)$summary
+  max_rhat <- max(sm_summ[, "Rhat"])
+  min_neff <- min(sm_summ[, "n_eff"])
+  data.frame(alpha = e$b_j[, 1], beta = e$b_j[, 2], max_rhat, min_neff)
+})
+saveRDS(post_n, file = here("data", "generated", "normModelOut.rds"))
+
 post_t <- plyr::ldply(out_t, function(x) {
   e <- extract(x)
   sm_summ <- summary(x)$summary
@@ -70,6 +80,7 @@ post_t <- plyr::ldply(out_t, function(x) {
   min_neff <- min(sm_summ[, "n_eff"])
   data.frame(alpha = e$b_j[, 1], beta = e$b_j[, 2], nu = e$nu, max_rhat, min_neff)
 })
+saveRDS(post_t, file = here("data", "generated", "studentTModelOut.rds"))
 
 e <- extract(out_t[[19]])
 
@@ -81,6 +92,8 @@ post_tskew <- plyr::ldply(out_tskew, function(x) {
   data.frame(alpha = e$b_j[, 1], beta = e$b_j[, 2], log_skew = e$log_skew, 
              nu = e$nu, max_rhat, min_neff)
 })
+saveRDS(post_tskew, file = here("data", "generated", "studentTSkewModelOut.rds"))
+
 
 # Check diagnostics
 post_t %>% 
@@ -135,5 +148,23 @@ median(exp(post_tskew$log_skew))
 quantile(exp(post_tskew$log_skew), probs = c(0.1, 0.25, 0.75, 0.9))
 
 
-## Use log(0.65) as skewness parameter, approximately equivalent to 75th percentile of
+## Use log(0.67) as skewness parameter, approximately equivalent to 75th percentile of
 # skewness distribution
+
+
+## Compare alpha and beta estimates from skewed vs. skewed t
+post_n <- saveRDS(post_n, file = here("data", "generated", "normModelOut.rds"))
+post_t <- readRDS(file = here("data", "generated", "studentTModelOut.rds"))
+post_tskew <- readRDS(file = here("data", "generated", "studentTSkewModelOut.rds"))
+
+
+parsT <- post_t %>% 
+  select(stk, alpha, beta) %>% 
+  mutate(model = "t")
+parsSkewT <- post_tskew %>% 
+  select(stk, alpha, beta) %>% 
+  mutate(model = "skewT")
+modPars <- rbind(parsT, parsSkewT)
+ggplot(modPars, aes(x = as.factor(model), y = beta, fill = model)) +
+  geom_boxplot() +
+  facet_wrap(~as.factor(stk))

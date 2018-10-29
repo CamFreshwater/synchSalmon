@@ -33,4 +33,4 @@ scripts/sync.rds
 
 # Private data
 data/simRunInputs/
-data/sox
+data/sox/

@@ -1,0 +1,142 @@
+---
+title: "Response Variables and Weighting CV"
+author: "Cam Freshwater"
+date: "September 23, 2018"
+output: html_document
+---
+
+**R/S vs. Residuals**
+
+One issue that came up during Tuesday's meeting was uncertainty about whether to use model residuals or R/S as the principal response variabe.
+
+Figure 1 shows time series of mean pairwise correlations (top) and synchrony (bottom) when residuals or recruits per spawner are the response. The goal here was to figure out if something wonky was causing the spike in synchrony when looking at residuals as opposed to R/S (i.e. why dashed lines are always higher than solid). 
+
+As expected, synchrony closely reflects the mean pairwise correlation and when the response is model residuals, the lines match up with the treatment values (see legend). So nothing wonky seems to be going on from a modeling perspective. Instead I think that synchrony and correlations in R/S are dampened relative to the same metrics for residuals. In any given year we are coercing the model to produce recruitment deviations that are correlated, which leads to total recruitment that is ~equally correlated. However the spawner abundance of that cohort will drift a bit because of additional stochasticity via differences in realized harvest, age structure, and en route mortality. Hence, when we use recruits per spawner as a metric, we get a value intermediate to the correlation between recruitment deviations (strong) and spawner abundance (weaker). 
+
+
+```{r, warning=FALSE, message=FALSE, echo = FALSE}
+library(plyr)
+library(here)
+library(dplyr)
+library(reshape2)
+library(tidyr)
+library(ggpubr)
+source(here("scripts/func/postProcessing.R"))
+```
+
+
+```{r import and clean data, echo = FALSE}
+datWeighByP <- readRDS(file = here("outputs/cleanedData/synchTS_weighByP.rda"))
+datWeighByS <- readRDS(file = here("outputs/cleanedData/synchTS_weighByS.rda"))
+datWeighByP$weight <- "prod"
+datWeighByS$weight <- "spwn"
+plotDat <- rbind(datWeighByP, datWeighByS) %>% 
+  mutate(weight = as.factor(weight))
+
+start <- plotDat %>% 
+  filter(!sigmaOM == "obs") %>% 
+  summarise(min(year))
+start <- start[[1]]
+
+axisSize = 15; dotSize = 3.5; lineSize = 0.8; legendSize = 14
+```
+
+
+```{r generate synch plots comparing response variables, echo = FALSE, warning = FALSE}
+colPal2 <- c("black", viridis(length(unique(plotDat$synchOM)) - 1, begin = 0, end = 1))
+names(colPal2) <- levels(plotDat$synchOM)
+dum <- plotDat %>%
+  filter(weight == "spwn", sigmaOM == "medSigma" | sigmaOM == "obs", 
+                prodOM == "Reference Productivity") %>%
+  select(1:4, medCorrProd, medCorrResid) %>% 
+  gather(key = response, value = corrIndex, medCorrProd, medCorrResid) %>%
+  mutate(response = as.factor(response)) %>% 
+  mutate(response = recode(response, "medCorrProd" = "R/S", "medCorrResid" = "Resids",
+                       .default = levels(response)))
+p <- ggplot(dum, aes(x = year, y = corrIndex, colour = synchOM, 
+                       linetype = response)) +
+  labs(x = "Year", y = "Mean Correlation", title = NULL) +
+  geom_line(size = 1) +
+  geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
+  scale_colour_manual(name = "Operating Model", values = colPal2,
+                      labels = c("obs" = "Observed",
+                                 "lowSynch" = expression(paste(rho, " = 0.05")),
+                                 "medSynch" = expression(paste(rho, " = 0.50")),
+                                 "highSynch" = expression(paste(rho, " = 0.75")))) +
+  scale_linetype_discrete(name = "Response\nVariable") +
+  theme_sleekX(position = "top")
+
+dum2 <- plotDat %>%
+  filter(weight == "spwn", sigmaOM == "medSigma" | sigmaOM == "obs", 
+                prodOM == "Reference Productivity") %>%
+  select(1:4, medSynchProd, medSynchResid) %>% 
+  gather(key = response, value = synchIndex, medSynchProd, medSynchResid) %>%
+  mutate(response = as.factor(response)) %>% 
+  mutate(response = recode(response, "medSynchProd" = "R/S", "medSynchResid" = "Resids",
+                       .default = levels(response)))
+p2 <- ggplot(dum2, aes(x = year, y = synchIndex, colour = synchOM, 
+                       linetype = response)) +
+  labs(x = "Year", y = "Synchrony Index", title = NULL) +
+  geom_line(size = 1) +
+  geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
+  scale_colour_manual(name = "Operating Model", values = colPal2,
+                      labels = c("obs" = "Observed",
+                                 "lowSynch" = expression(paste(rho, " = 0.05")),
+                                 "medSynch" = expression(paste(rho, " = 0.50")),
+                                 "highSynch" = expression(paste(rho, " = 0.75")))) +
+  scale_linetype_discrete(name = "Response\nVariable") +
+  theme_sleekX(position = "bottom")
+```
+
+
+```{r figure1, echo = FALSE, warning = FALSE, fig.cap = "Figure 1. Trends in different productivity metrics."}
+ggarrange(p, p2, nrow = 2, ncol = 1, common.legend = TRUE, legend = "right")
+```
+
+All that said, this doesn't really tell us which to use or whether the synchrony "treatments" are appropriate. Basically they appear to be about right if we want to produce realistic trends in observed recruits per spawner, but too strong if we're trying to recreate trends in spawner residuals. While I think it is interesting to account for density dependent effects for the retrospective analysis, I would still lean towards using recruits per spawner because from a forward simulation perspective the residuals are a tool to drive patterns in productivity and spawner abundance that are consistent with what has been observed, but we're not interested in them per se. Does this make sense?
+
+**Weighting Variability**
+
+A second issue that came up revolved around whether estimates of component variability should be weighted by abundance, by productivity, or not at all. Figure 2 shows trends from simulations where component and aggregate CV are weighted by either spawner abundance (dashed line) or productivity (solid line). Weighting by spawner abundance increases variability, but the effect on aggregate variability is fairly moderate because of synchrony's influence (which is not weighted in any way). I also looked at time series where there was no weighting, but these were basically indistinguishable from trends where productivity was used to weight variability. This convergence makes sense because compared to spawner abundance, all the CUs have relatively similar productivity values. 
+
+As far as I can tell there is no reason to choose one over the other from a mathematical perspective because aggregate CV is linearly related to component CV, with synchrony acting as a scalar. It is simply a question of what we think is more relevant from a practical perspective. Given that fisheries (and most of our PMs) are highly dependent on a handful of abundant CUs I'd lean towards weighting by spawner abundance, but I'm open to other perspectives.
+
+
+```{r generate CV weighting plots, echo = FALSE, warning = FALSE}
+colPal <- c("black", viridis(length(unique(plotDat$sigmaOM)) - 1, begin = 0, 
+                             end = 1))
+names(colPal) <- levels(plotDat$sigmaOM)
+dum <- plotDat %>%
+  filter(synchOM == "medSynch" | synchOM == "obs", 
+         prodOM == "Reference Productivity")
+q <- ggplot(dum, aes(x = year, y = medCompCVProd, colour = sigmaOM, 
+                     linetype = weight)) +
+  labs(x = "Year", y = "Component CV", title = NULL) +
+  geom_line(size = 1) +
+  geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
+  scale_colour_manual(name = "Operating Model", values = colPal,
+                      labels = c("obs" = "Observed",
+                                 "lowSigma" = expression(paste("0.75", sigma)),
+                                 "medSigma" = expression(paste("1.0", sigma)),
+                                 "highSigma" = expression(paste("1.25", 
+                                                                sigma)))) +
+  scale_linetype_discrete(name = "Response\nVariable") +
+  theme_sleekX(position = "top")
+q2 <- ggplot(dum, aes(x = year, y = medAgCVProd, 
+                      colour = sigmaOM, linetype = weight)) +
+  labs(x = "Year", y = "Aggregate CV", title = NULL) +
+  geom_line(size = 1) +
+  geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
+  scale_colour_manual(name = "Operating Model", values = colPal,
+                      labels = c("obs" = "Observed",
+                                 "lowSigma" = expression(paste("0.75", sigma)),
+                                 "medSigma" = expression(paste("1.0", sigma)),
+                                 "highSigma" = expression(paste("1.25", 
+                                                                sigma)))) +
+  scale_linetype_discrete(name = "Response\nVariable") +
+  theme_sleekX(position = "bottom")
+```
+
+```{r figure2, echo = FALSE, warning = FALSE, fig.cap = "Figure 2. Different weights for component variability."}
+ggarrange(q, q2, nrow = 2, ncol = 1, common.legend = TRUE, legend = "right")
+```

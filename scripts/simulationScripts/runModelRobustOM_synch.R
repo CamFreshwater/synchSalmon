@@ -30,23 +30,24 @@ tamFRP <- read.csv(here("data/fraserSimDat/tamRefPts.csv"), stringsAsFactors = F
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 5
+nTrials <- 25
 
 ## General robustness runs
 simParTrim <- subset(simPar,
                      scenario == "lowSig" | scenario == "medSig" | scenario == "highSig" |
                      scenario == "lowSigSkew" | scenario == "medSigSkew" | scenario == "highSigSkew" |
                      scenario == "lowSigSkewT" | scenario == "medSigSkewT" |
-                     scenario == "highSigSkewT"
+                     scenario == "highSigSkewT" | scenario == "lowSigLowA" | 
+                     scenario == "medSigLowA" | scenario == "highSigLowA"
                      )
 
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), sep = "_"))
 
-recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat, 
-            variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP, 
-            cuCustomCorrMat = cuCustomCorrMat, dirName = "test", nTrials = 5, 
-            multipleMPs = FALSE)
+# recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat, 
+#             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP, 
+#             cuCustomCorrMat = NULL, dirName = "test", nTrials = 5, 
+#             multipleMPs = FALSE)
 # for(i in seq_along(dirNames)) {
 # d <- subset(simParTrim, scenario == scenNames[i])
 # simsToRun <- split(d, seq(nrow(d)))
@@ -69,40 +70,23 @@ for (i in seq_along(dirNames)) {
                   library(sensitivity),
                   library(mvtnorm),
                   library(scales), #shaded colors for figs
-                  library(here), #use this package so wd are common across different computers
-                  library(synchrony),
-                  library(zoo), #synch and zoo used to calculate rolling estimates of synchrony
                   library(viridis), #color blind gradient palette
-                  library(ggplot2),
                   library(gsl), #to calculate exact estimate of MSY following Scheuerell 2016 PeerJ
                   library(dplyr),
                   library(Rcpp),
                   library(RcppArmadillo),
-                  library(sn)))
-  if (simsToRun[[1]]$species == "sockeye") {
-    clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials", "catchDat", "srDat",
-                        "ricPars", "dirName", "larkPars", "tamFRP", "cuCustomCorrMat"), envir = environment()) #export custom function and objects
-    tic("run in parallel")
-    parLapply(cl, simsToRun, function(x) {
-      recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, variableCU = FALSE,
-                  ricPars, larkPars = larkPars, tamFRP = tamFRP, cuCustomCorrMat = cuCustomCorrMat,
-                  dirName = dirName, nTrials = nTrials, multipleMPs = FALSE)
-    })
-    stopCluster(cl) #end cluster
-    toc()
-  }
-  if (simsToRun[[1]]$species == "chum") {
-    clusterExport(cl, c("simsToRun","recoverySim","cuPar","dirName","nTrials","catchDat","srDat",
-                        "ricPars","dirName"), envir = environment()) #export custom function and objects
-    tic("run in parallel")
-    parLapply(cl, simsToRun, function(x) {
-      recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, variableCU = FALSE, ricPars,
-                  larkPars = NULL, tamFRP = NULL, dirName = dirName, nTrials = nTrials,
-                  multipleMPs = FALSE)
-      })
-    stopCluster(cl) #end cluster
-    toc()
-  }
+                  library(sn),
+                  library(samSim)))
+  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials", "catchDat", "srDat",
+                      "ricPars", "dirName", "larkPars", "tamFRP"), envir = environment()) #export custom function and objects
+  tic("run in parallel")
+  parLapply(cl, simsToRun, function(x) {
+    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, variableCU = FALSE,
+                ricPars, larkPars = larkPars, tamFRP = tamFRP, cuCustomCorrMat = NULL,
+                dirName = dirName, nTrials = nTrials, multipleMPs = FALSE)
+  })
+  stopCluster(cl) #end cluster
+  toc()
 }
 
 

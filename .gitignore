@@ -30,3 +30,7 @@ scripts/*cache*
 scripts/sync.rds
 *.o
 *.so
+
+# Private data
+data/simRunInputs/
+data/sox/

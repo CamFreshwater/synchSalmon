@@ -10,10 +10,10 @@
 
 
 # Check if required packages are installed and run
-listOfPackages <- c("plyr", "here", "parallel", "doParallel", "foreach", "reshape2", "tidyr",
-                    "gsl", "tictoc", "stringr", "dplyr", "synchrony", "zoo", "Rcpp",
-                    "RcppArmadillo", "sn", "sensitivity", "mvtnorm", "forcats",
-                    "ggpubr", "samSim")
+listOfPackages <- c("plyr", "here", "parallel", "doParallel", "foreach", 
+                    "reshape2", "tidyr", "gsl", "tictoc", "stringr", "dplyr", 
+                    "synchrony", "zoo", "Rcpp", "RcppArmadillo", "sn", "sensitivity",
+                    "mvtnorm", "forcats", "ggpubr", "viridis", "samSim")
 
 newPackages <- listOfPackages[!(listOfPackages %in% installed.packages()[ , "Package"])]
 if(length(newPackages)) install.packages(newPackages)
@@ -44,9 +44,9 @@ simParTrim <- subset(simPar,
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), sep = "_"))
 
-# recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat, 
-#             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP, 
-#             cuCustomCorrMat = NULL, dirName = "test", nTrials = 5, 
+# recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat,
+#             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
+#             cuCustomCorrMat = NULL, dirName = "test", nTrials = 5,
 #             multipleMPs = FALSE)
 # for(i in seq_along(dirNames)) {
 # d <- subset(simParTrim, scenario == scenNames[i])
@@ -214,14 +214,14 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
   return(q)
 })
 
-png(file = paste(here(),"/outputs/synchrony/consGroupedPlots_3OMs.png", sep = ""),
+png(file = paste(here(),"/figs/Fig4_consGroupedPlots_3OMs.png", sep = ""),
     height = 5.5, width = 8.5, units = "in", res = 300)
 ggarrange(consPlots[[1]], consPlots[[2]],
           consPlots[[3]],
           ncol = 1, nrow = 3, common.legend = TRUE, legend = "right",
           align = "v", heights = c(1.1,1,1.2))
 dev.off()
-png(file = paste(here(),"/outputs/synchrony/catchGroupedPlots_3OMs.png", sep = ""),
+png(file = paste(here(),"/figs/Fig5_catchGroupedPlots_3OMs.png", sep = ""),
     height = 5.5, width = 8.5, units = "in", res = 300)
 ggarrange(catchPlots[[1]], catchPlots[[2]],
           catchPlots[[3]],
@@ -233,29 +233,35 @@ dev.off()
 #_________________________________________________________________________
 # Generate time series of component CV, synch and ag CV
 plotList = vector("list", length = length(dirNames))
-arrayNames <- sapply(dirNames, function(x) { #matrix of array names to be passed
-  list.files(paste(here("outputs/simData"), x, sep="/"), pattern = "\\Arrays.RData$")
+#matrix of array names to be passed
+arrayNames <- sapply(dirNames, function(x) {
+  list.files(paste(here("outputs/simData"), x, sep="/"), 
+             pattern = "\\Arrays.RData$")
 })
 
 tic("runParallel")
 Ncores <- detectCores()
 cl <- makeCluster(Ncores - 2) #save two cores
 registerDoParallel(cl)
-clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo), library(parallel),
-  library(doParallel), library(foreach)))
+clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo), 
+                   library(parallel), library(doParallel), library(foreach), 
+                   library(samSim)))
 newAgTSList <- lapply(seq_along(dirNames), function (h) {
-  clusterExport(cl, c("dirNames", "arrayNames", "calcSynchMetrics", "wtdCV", "cvAgg",
-                      "genOutputList", "h"), envir = environment()) #export custom function and objects
+  #export custom function and objects
+  clusterExport(cl, c("dirNames", "arrayNames", "calcSynchMetrics", "wtdCV", 
+                      "genOutputList", "h"), envir = environment()) 
   listSynchLists <- parLapply(cl, 1:length(arrayNames[, h]), function(x) {
-    datList <- readRDS(paste(here("outputs/simData"), dirNames[h], arrayNames[x, h], sep = "/"))
+    datList <- readRDS(paste(here("outputs/simData"), dirNames[h], 
+                             arrayNames[x, h], sep = "/"))
+    # Don't log productivity because creates nonsensical CV values
     synchList <- calcSynchMetrics(datList, log = FALSE, corr = TRUE,
-                                  weightMat = "rec", windowSize = 12)
+                                  weight = TRUE, windowSize = 12)
     synchList <- c(datList$nameOM, synchList)
     names(synchList)[1] <- "opMod"
     return(synchList)
   }) #iterate across different OMs within a scenario
-  # pull list of time series metrics estimated internally, then merge with synch list
-  # generated above based on common op model
+  # pull list of time series metrics estimated internally, then merge with 
+  # synch list generated above based on common op model
   agTSList <- genOutputList(dirNames[h], agg = TRUE, aggTS = TRUE)
   for(j in seq_along(agTSList)) {
     for(k in seq_along(listSynchLists)) {
@@ -309,8 +315,8 @@ fullList <- sapply(seq_along(dirNames), function(h) {
 })
 plotDat <- do.call(rbind, fullList)
 
-# saveRDS(plotDat, file = here("outputs/cleanedData/fullSynchTS_3OMs.rda"))
-plotDat <- readRDS(file = here("outputs/cleanedData/fullSynchTS_3OMs.rda"))
+saveRDS(plotDat, file = here("outputs/generatedData/fullSynchTS_3OMs.rda"))
+# plotDat <- readRDS(file = here("outputs/generatedData/fullSynchTS_3OMs.rda"))
 start <- plotDat %>%
   filter(!sigmaOM == "obs") %>%
   summarise(min(year))
@@ -358,7 +364,7 @@ p2 <- ggplot(dum2, aes(x = year, y = medSynchRecBY, colour = synchOM)) +
 # ggarrange(q, p, nrow = 2, ncol = 1)
 # dev.off()
 
-png(file = paste(here(),"/outputs/synchrony/synchTS.png", sep = ""),
+png(file = paste(here(),"/figs/Fig3_SynchCompCvTS.png", sep = ""),
     height = 4.5, width = 4.5, units = "in", res = 300)
 ggarrange(q2, p2, nrow = 2, ncol = 1, heights = c(1, 1.2))
 dev.off()
@@ -371,7 +377,8 @@ nCUs <- length(selectedCUs)
 colPal <- c("#7fc97f", "#beaed4", "#fdc086")
 omNames <- rep(c("ref", "skewN", "skewT"), each = 3)
 sigNames <- rep(c("low", "med", "high"), length.out = 9)
-bmDat <- data.frame(cu = selectedCUs, #make DF to contain CU-specific benchmark estimates from sim run
+#make DF to contain CU-specific benchmark estimates from sim run
+bmDat <- data.frame(cu = selectedCUs, 
                     highBM = NA,
                     lowBM  = NA)
 plotDat <- NULL
@@ -410,7 +417,7 @@ q <- ggplot(plotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
   facet_wrap(~cu, scales = "free_y")
 
 
-png(file = here("outputs/synchrony/spawnerViolinSigma.png"),
+png(file = here("figs/Fig6_spawnerViolinSigma.png"),
     height = 3, width = 5.5, units = "in", res = 300)
 print(q)
 dev.off()
@@ -462,10 +469,15 @@ p <- ggplot(plotDat3, aes(x = om, y = spawners, fill = cu, alpha = synch)) +
   facet_wrap(~cu, scales = "free_y")
 
 
-png(file = paste(here(),"/outputs/synchrony/spawnerViolinSynch.png", sep = ""),
+png(file = paste(here(),"/figs/FigS3_spawnerViolinSynch.png", sep = ""),
     height = 3, width = 5.5, units = "in", res = 300)
 print(p)
 dev.off()
+
+
+##### END PRIMARY ANALYSIS #####
+
+
 #______________________________________________________________________________
 ## Stand alone analysis looking at relative performance of cyclic vs. non cylic stocks
 cuList <- genOutputList("medSig_sockeye", selectedCUs = NULL, agg = FALSE)[["lowSynch_TAM"]]

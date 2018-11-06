@@ -16,10 +16,10 @@
 knitr-cache
 .RData
 .RHistory
-hake-example.tex
 
 myNotes.*
-outputs/
+outputs/diagnostics
+outputs/simData
 .Rproj.user
 scripts/lm-t-skew.rds
 scripts/lm-t.rds

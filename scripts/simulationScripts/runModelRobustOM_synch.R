@@ -19,13 +19,13 @@ newPackages <- listOfPackages[!(listOfPackages %in% installed.packages()[ , "Pac
 if(length(newPackages)) install.packages(newPackages)
 lapply(listOfPackages, require, character.only = TRUE)
 
-simPar <- read.csv(here("data/fraserSimDat/fraserOMInputs_varyCorr.csv"), stringsAsFactors = F)
-cuPar <- read.csv(here("data/fraserSimDat/fraserCUpars.csv"), stringsAsFactors = F)
-srDat <- read.csv(here("data/fraserSimDat/fraserRecDatTrim.csv"), stringsAsFactors = F)
-catchDat <- read.csv(here("data/fraserSimDat/fraserCatchDatTrim.csv"), stringsAsFactors = F)
-ricPars <- read.csv(here("data/fraserSimDat/rickerMCMCPars.csv"), stringsAsFactors = F)
-larkPars <- read.csv(here("data/fraserSimDat/larkinMCMCPars.csv"), stringsAsFactors = F)
-tamFRP <- read.csv(here("data/fraserSimDat/tamRefPts.csv"), stringsAsFactors = F)
+simPar <- read.csv(here("data/simRunInputs/fraserOMInputs_varyCorr.csv"), stringsAsFactors = F)
+cuPar <- read.csv(here("data/simRunInputs/fraserCUpars.csv"), stringsAsFactors = F)
+srDat <- read.csv(here("data/simRunInputs/fraserRecDatTrim.csv"), stringsAsFactors = F)
+catchDat <- read.csv(here("data/simRunInputs/fraserCatchDatTrim.csv"), stringsAsFactors = F)
+ricPars <- read.csv(here("data/simRunInputs/rickerMCMCPars.csv"), stringsAsFactors = F)
+larkPars <- read.csv(here("data/simRunInputs/larkinMCMCPars.csv"), stringsAsFactors = F)
+tamFRP <- read.csv(here("data/simRunInputs/tamRefPts.csv"), stringsAsFactors = F)
 
 ### SET UP MODEL RUN -----------------------------------------------------
 

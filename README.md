@@ -1,5 +1,5 @@
 # synchSalmon
-*Analyses to explore drivers and consequences of aggregate variability and synchrony*
+*Analyses to explore drivers and consequences of component variability and synchrony using a combination of retrospective analyses and closed-loop simulations*
 
 *Authors: C. Freshwater*
 

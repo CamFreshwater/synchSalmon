@@ -7,14 +7,15 @@ output: html_document
 
 ```{r, warning=FALSE, message=FALSE, echo = FALSE}
 library(sn); library(tidyverse); library(here); library(ggpubr); require(synchrony);
-library(zoo)
-source(here("scripts/func/postProcessing.R"))
+library(zoo); library(reshape2); library(viridis); library(samSim)
 ```
 
 
-First examine three distributions that could represent hypothetical changes in recruitment using univariate version of parameterization in synchrony manuscript. Alpha represents skewness parameter (in the sn pacakge 0 is symmetrical, we use log space to be consistent w/ S. Anderson's manuscript) and nu represents the heavy tailed distribution (anything >10 approaches normal).
+The broad goal of this document is to get a better handle on what exactly the different productivity operating models (OMs) are doing in terms of driving changes in productivity (log R/S) and recruit abundance. We'll start by looking at the distributions themselves, then move to incorporating them into the closed loop model. 
 
-```{r generate distributions and construct histograms}
+First compare the three distributions in a univariate context. Alpha represents skewness parameter (in the sn pacakge 0 is symmetrical, we use log space to be consistent w/ S. Anderson's manuscript) and nu represents the heavy tailed distribution (anything >10 approaches normal). Remember we are using log(0.65) because that is a value marginally more pessimistic than the mean skewness parameter estimated from Fraser CU-specific stock-recruit models (i.e. Ricker or Larkin models that estimate additional skewness parameters).
+
+```{r generate distributions}
 n = 1000000
 mu = 0
 sig = 1
@@ -22,15 +23,16 @@ norm <- rst(n, xi = mu, omega = sig, alpha = log(1), nu = Inf)
 skewNorm <- rst(n, xi = mu, omega = sig, alpha = log(0.65), nu = Inf)
 skewT <- rst(n, xi = mu, omega = sig, alpha = log(0.65), nu = 3)
 
-
 distDat <- cbind(norm, skewNorm, skewT) %>% 
   as.data.frame() %>% 
   gather(key = dist, value = value) %>% 
   mutate(dist = as.factor(dist))
+```
 
+```{r calculate medians and generate violin plots, echo = FALSE}
 distDat %>% 
   group_by(dist) %>% 
-  summarize(median = median(value), mean = mean(value))
+  summarize(median = median(value), mean = mean(value), sd = sd(value))
 
 ggplot(distDat, aes(x = dist, y = value)) +
   geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) +
@@ -38,13 +40,55 @@ ggplot(distDat, aes(x = dist, y = value)) +
   ylim(-5, 5)
 ```
 
-Looks like I was incorrect. Skewed distributions do shift the median and mean, which makes sense - otherwise the effect wouldn't exist!
+So skewed distributions shift the median and mean, which makes sense - otherwise there would be no effect on productivity! Note also that while variance is similar for normal and skewed normal, it is substantially larger for skewed t.
+
+To get an idea of what this means for estimates of recruitment simply plug residual variance values into a Ricker model parameterized with median values for Chilko (which is used as an example in subsequent figures). Note that the low A value is the 5th percentile of the posterior estimate of alpha (courtesy of AMH)
+
+```{r generate estimates of recruitment}
+chlkA = 1.8315
+chlkLowA = 1.58795
+chlkB = 1.23182
+meanChlkS = 0.3792771
+chlkSig = 0.79075
+recCap = 14.4 #cap on maximum recruitment
+
+#Generate estimates of recruitment based on Chilko parameters and different
+#deviation distributions
+normRec <- rickerModel(meanChlkS, chlkA, chlkB, 
+                       error = rst(n, xi = 0, omega = chlkSig, alpha = log(1), 
+                                   nu = Inf), 
+                       rho = 0, utminus = 0)[[1]]
+normLowARec <- rickerModel(meanChlkS, chlkLowA, chlkB, 
+                       error = rst(n, xi = 0, omega = chlkSig, alpha = log(1), 
+                                   nu = Inf), 
+                       rho = 0, utminus = 0)[[1]]
+skewNormRec <- rickerModel(meanChlkS, chlkA, chlkB, 
+                       error = rst(n, xi = 0, omega = chlkSig, alpha = log(0.65), 
+                                   nu = Inf), 
+                       rho = 0, utminus = 0)[[1]]
+skewTRec <- rickerModel(meanChlkS, chlkA, chlkB, 
+                       error = rst(n, xi = 0, omega = chlkSig, alpha = log(0.65), 
+                                   nu = 3), 
+                       rho = 0, utminus = 0)[[1]]
+
+recDat <- cbind(normRec, normLowARec, skewNormRec, skewTRec) %>% 
+  as.data.frame() %>% 
+  gather(key = prodOM, value = recruits) %>% 
+  mutate(prodOM = as.factor(prodOM)) %>% 
+  mutate(prodOM = factor(prodOM, levels(prodOM)[c(2, 1, 3, 4)])) %>% 
+  filter(recruits < recCap) #remove absurdly large positive recruitment events
+
+ggplot(recDat, aes(x = prodOM, y = recruits)) +
+  geom_boxplot()
+```
+
+So for any given independent recruitment event there isn't a strong distribution effect (i.e. median recruitment is about the same across lowA, skewN and skewT operating models). However, obviously this changes in a closed loop simulation context where feedbacks occur.
 
 
-Next step is to read in data from a simulation run w/ the three different prod regimes and see what the effects on PMs look like.
+Next step is to read in data from a simulation run w/ the four different prod regimes and see what the effects on PMs look like. Note that this particular run is light on trials (n = 25), resulting in some messy trends but the overall patterns are approximately the same when n is bumped up to 500 or 1000.
 
-```{r retrieve data for PMs plot, echo = FALSE}
-simPar <- read.csv(here("data/opModelScenarios/fraserOMInputs_varyCorr.csv"), stringsAsFactors = F)
+```{r retrieve data for PMs plot, echo = FALSE, warning = FALSE}
+simPar <- read.csv(here("data/simRunInputs/fraserOMInputs_varyCorr.csv"), stringsAsFactors = F)
 simParTrim <- subset(simPar, 
                      scenario == "lowSig" | scenario == "medSig" | 
                        scenario == "highSig" | scenario == "lowSigLowA" | 
@@ -84,11 +128,11 @@ for(h in seq_along(dirNames)) {
   plotDat <- rbind(plotDat, singleScen) #merge multiple scenarios into one dataframe
 }
 plotDat <- plotDat %>% 
-  mutate(cat = recode(cat, "1" = "low", "2" = "med", "3" = "high", .default = levels(cat))
-         ,
-         om = recode(om, "ref" = "Reference", "lowA" = "Low Alpha", "skewN" = "Skewed Normal",
-                       "skewT" = "Skewed T",
-                       .default = levels(om))
+  mutate(cat = recode(cat, "1" = "low", "2" = "med", "3" = "high", 
+                      .default = levels(cat)),
+         om = recode(om, "ref" = "Reference", "lowA" = "Low Alpha", 
+                     "skewN" = "Skewed Normal", "skewT" = "Skewed T",
+                     .default = levels(om))
   ) %>% 
   mutate(om = factor(om, levels(om)[c(1,4,2,3)]))
 
@@ -97,14 +141,17 @@ names(colPal) <- levels(plotDat$sigma)
 axisSize = 14; dotSize = 3.5; lineSize = 0.8
 
 consVars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant") 
-consYLabs <- c("Recruit\nAbundance", "Prop. CUs Above\nUpper BM", "Prop. CUs\nExtant")
+consYLabs <- c("Recruit\nAbundance", "Prop. CUs Above\nUpper BM", 
+               "Prop. CUs\nExtant")
 consPlots <- lapply(seq_along(consVars), function(i) {
   temp <- plotDat %>% 
     filter(var == consVars[i])
   q <- ggplot(temp, aes(x = sigma, y = avg, ymin = lowQ, ymax = highQ, 
                         color = cat, shape = sigma)) +
-    labs(x = "Component Variance", y = consYLabs[i], color = "Sim.\nParameter\nValue") +
-    geom_pointrange(fatten = dotSize, size = lineSize, position = position_dodge(width = 0.5)) +
+    labs(x = "Component Variance", y = consYLabs[i], 
+         color = "Sim.\nParameter\nValue") +
+    geom_pointrange(fatten = dotSize, size = lineSize, 
+                    position = position_dodge(width = 0.5)) +
     scale_x_discrete(labels = c("low" = expression(paste("0.5", sigma)),
                                 "med" = expression(paste("1.0", sigma)),
                                 "high" = expression(paste("1.5", sigma)))) +
@@ -131,12 +178,12 @@ ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]],
           align = "v", heights = c(1.1,1,1.2))
 ```
 
-Similar effects at low levels of synchrony, but interactions between synchrony and recruitment deviations result in stronger declines in other treatments. Likely due to productivity being more synchronized when individual recruitment deviations are assoicated with one another.
+Similar effects among low A, skewN and skewT at low levels of synchrony, but interactions between synchrony and recruitment deviations result in stronger declines among the skewed OMs when synchrony is bumped to moderate or high values. In other words, the effect of synchrony is greater when declines in overall productivity are driven by changes in sigma rather than alpha **even though** mean abundance across a large number of independent events is the same across OMs.
 
 
-Next look at individual trials to assess how realized productivity vary across OMs. Look at single trial first, using only data from medium synchrony, medium sigma treatments.
+To determine what is driving this outcome look at individual trials to assess how realized productivity varies across OMs. Look at single trial first, using only data from medium synchrony, medium component variability treatments, focusing on Chilko.
 
-```{r plot temporal trends in realized productivity and distribution, echo = FALSE}
+```{r plot temporal trends in realized productivity and distribution, echo=FALSE, warning=FALSE}
 arrayNames <- sapply(dirNames[1], function(x) { #matrix of array names to be passed
   list.files(paste(here("outputs/simData"), x, sep="/"), pattern = "\\Arrays.RData$")
 })
@@ -153,11 +200,11 @@ prodList <- lapply(seq_along(dirNames), function(h) {
   return(prodDat)
 }) 
 
-drawTrials <- sample.int(50, size = 4, replace = FALSE)
 prodFull <- do.call(rbind, prodList) %>% 
   filter(sig == "medSig", !yr < 60) %>% #focus on median sig treatment, sim period
   mutate(om = as.factor(om)) %>% 
   mutate(om = factor(om, levels(om)[c(2,1,3,4)]))
+drawTrials <- sample.int(max(prodFull$trial), size = 4, replace = FALSE)
 
 plotList <- lapply(seq_along(drawTrials), function(i) { 
   dum <- prodFull %>% 
@@ -183,21 +230,22 @@ prodLine <- ggarrange(plotList[[1]][[1]], plotList[[2]][[1]],
           ncol = 4, nrow = 1, common.legend = TRUE, legend = "right", 
           align = "v", heights = c(1.1,1,1,1.2))
 annotate_figure(prodLine, 
-                left = text_grob("Productivity", rot = 90))
+                left = text_grob("Log Productivity", rot = 90))
 prodBox <- ggarrange(plotList[[1]][[2]], plotList[[2]][[2]],
           plotList[[3]][[2]], plotList[[4]][[2]], 
           ncol = 2, nrow = 2, common.legend = TRUE, legend = "right", 
           align = "v", heights = c(1,1,1.2,1.2))
 annotate_figure(prodBox, 
-                left = text_grob("Productivity", rot = 90), 
+                left = text_grob("Log Productivity", rot = 90), 
                 bottom = text_grob("Operating Model"))
 ```
 
-Declines in productivity associated with skewed t are severe, but do not appear unreasonable, at least for individuals trials. However trends in recruitment are more substantial
+So through time, in a given trial, in a given CU now we do see a difference among productivity operating models. I.e. there is an effect when we incorporate feedback between spawners and recruits. In particular large positive recruitment deviations, which are relatively common in both the reference and low alpha operating models, become very rare with a skewed distribution. We can see this in more detail when we look at trends in recruit abundance.
 
-```{r plot trends in recruitment by brood year, echo = FALSE}
+```{r plot trends in recruitment by brood year, echo = FALSE, warning = FALSE}
 recBYList <- lapply(seq_along(dirNames), function(h) { 
-  datList <- readRDS(paste(here("outputs/simData"), dirNames[h], arrayNames[3], sep = "/"))
+  datList <- readRDS(paste(here("outputs/simData"), dirNames[h], arrayNames[3], 
+                           sep = "/"))
   prodDat <- datList$recBY %>% 
     melt() %>% 
     rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", "var" = "value") %>% 
@@ -242,11 +290,11 @@ annotate_figure(recBox,
                 bottom = text_grob("Operating Model"))
 ```
 
-Declines in recruitment are much more severe than average productivity, due to relative declines in strong positive recruitments.
+Again, relatively severe declines in median recruit abundance through time in a given CU due to a reduced likelihood of large positive recruitment deviations.
 
-What happens to trends in synchrony across the same trials?
+Could differences in observed synchrony also play a role? I.e. is there some sort of interaction between distributions and covariation that may magnify impacts on abundance? Plot time series of synchrony and box plots of median synchrony, by trial, over the simulation period. 
 
-```{r plot synchrony across trials, echo = FALSE}
+```{r plot synchrony across trials, echo=FALSE, warning=FALSE}
 omNames <- c("ref", "skewN", "skewT", "lowA")
 dirNamesTrim <- dirNames[c(2, 5, 8, 11)] # cherry pick only mod sigma trials to speed up calcs
 recList <- lapply(seq_along(dirNamesTrim), function(h) { 
@@ -305,6 +353,6 @@ annotate_figure(synchBox,
                 bottom = text_grob("Operating Model"))
 ```
 
-No clear trend driving differences in synchrony patterns among operating models though lowA seems to be reduced in general.
+In short no. Although lowA seems to typically have lower levels of synchrony through time, skewed distributions do not appear to be more synchronized than reference.
 
-Intuitively it seems clear that changes in productivity via skewed deviations should result in strong declines in abundance because both the mean and average deviations are shared, but unclear why a decrease in the mean + high correlation in deviations does not get you to the same place.
+In short, the impacts of skewed distributions on performance metrics are worse than simply reducing mean productivity (via alpha), even though outside of a closed-loop simulation context they result in similar median estimates of recruitment. While I think that these operating models are pessimistic relative to a reference scenario, I do not believe they are unrealistic. Multiple studies have identified persistent negative trends in recruitment residuals for large aggregates of Pacific salmon stocks along the coast (sockeye Grant et al. 2018 SOPO and Freshwater et al. 2017 CJFAS; pink/chum Malick et al. 2016 PlosOne; chinook Dorner et al. 2018). In other words, when we see large returns now they are generally associated with large returns in the parental generation, rather than abnormally good survival. I would argue that these trends, plus Sean's papers, warrant including skewed distributions as an alternative to simply shifting average productivity down.

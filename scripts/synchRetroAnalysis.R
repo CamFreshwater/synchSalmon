@@ -1,25 +1,26 @@
-#*************************************************************************************
+#*******************************************************************************
 # synchRetroAnalysis.R
 # Date revised: Aug 8, 2018; ONGOING
 # Inputs: stock-recruit data csv
 # Outputs: figure pdfs
-# Explainer: Spin off from synchExplore.R that's trimmed down to focus only on relevant 
-# metrics; adjusted Sep 12 to focus on exp(residuals) or non-logged R/S; use ETS to be
-# consistent w/ forward simulation and FRSSI fitted SR models
-#*************************************************************************************
+# Explainer: Spin off from synchExplore.R that's trimmed down to focus only on 
+# relevantmetrics; adjusted Sep 12 to focus on exp(residuals) or non-logged R/S; 
+# use ETS to be consistent w/ forward simulation and FRSSI fitted SR models
+#*******************************************************************************
 
-require(here); require(synchrony); require(zoo); require(ggplot2); require(dplyr)
-require(tidyr); require(viridis); require(ggpubr)
-
-source(here("scripts/synchFunctions.R"))
+require(here); require(synchrony); require(zoo); require(ggplot2); 
+require(tidyverse); require(viridis); require(ggpubr); require(samSim)
 
 select <- dplyr::select
 
 ## Data clean
 # SR data
-recDat1 <- read.csv(here("/data/sox/fraserRecDatEFF.csv"), stringsAsFactors = FALSE)
-recDat2 <- read.csv(here("/data/sox/fraserRecDatTrim.csv"), stringsAsFactors = FALSE) 
-recDat <- merge(recDat1, recDat2[, c("stk", "yr", "ets")], by = c("stk", "yr")) #combine ets and eff estimates
+recDat1 <- read.csv(here("/data/sox/fraserRecDatEFF.csv"), 
+                    stringsAsFactors = FALSE)
+recDat2 <- read.csv(here("/data/sox/fraserRecDatTrim.csv"), 
+                    stringsAsFactors = FALSE) 
+#combine ets and eff estimates
+recDat <- merge(recDat1, recDat2[, c("stk", "yr", "ets")], by = c("stk", "yr"))
 recDat <- with(recDat, recDat[order(stk, yr),])
 recDat <- recDat %>%
   mutate(prod = (rec/ets),
@@ -70,15 +71,12 @@ for(j in seq_along(stkIndex)) {
 recDatTrim1$logResid <- residVec
 recDatTrim1$modResid <- exp(residVec)
 
-# recDatTrim1 %>% 
-#   group_by(stk) %>% 
-#   summarize(mean(rec), mean(prod))
-
-# Trim and convert to matrix
-selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) #stocks w/ time series from 1948
+# Trim and convert to matrix w/ stocks w/ time series from 1948
+selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) 
 recDatTrim <- recDatTrim1 %>% 
-  filter(#stk %in% selectedStks,
-         yr > 1975, !stk == "11", !stk == "15")
+  dplyr::filter(stk %in% selectedStks)
+# dplyr::filter(yr > 1975, !stk == "11", !stk == "15") #more stocks, shorter TS
+
 yrs <- unique(recDatTrim$yr)
 recMat <- recDatTrim %>% 
   select(stk, yr, rec) %>% 
@@ -100,7 +98,7 @@ aggRec <- recDatTrim %>%
   summarize(aggRec = sum(rec)) %>% 
   mutate(ts = "long")
 
-# saveRDS(recMat, file = here("data", "generated", "recMat.rds"))
+saveRDS(recMat, file = here("data", "generated", "recMat.rds"))
 # saveRDS(recMatShort, file = here("data", "generated", "recMatShort.rds"))
 
 
@@ -110,7 +108,7 @@ catchDat <- read.csv(here("/data/sox/fraserCatchDatTrim.csv"),
 catchDatLong <- catchDat %>% 
   filter(stk %in% selectedStks) %>% 
   group_by(yr) %>% 
-  summarize(catch = sum(totCatch)) %>% 
+  summarize(catch = sum(totalCatch)) %>% 
   mutate(ts = as.factor("long"))
 
 # Trim productivity residual data
@@ -128,7 +126,8 @@ parList <- lapply(seq_along(varNames), function(x) {
     mutate(year = yrs)
 })
 names(parList) <- c("cvC", "synch", "cvA")
-parList[["synch"]]$high[parList[["synch"]]$high > 1] <- 1 #synchrony bounded by 1, replace values
+parList[["synch"]]$high[parList[["synch"]]$high > 1] <- 1 
+#synchrony bounded by 1, replace values
 
 #_________________________________________________________________________
 ## Plot
@@ -214,23 +213,6 @@ png(here("figs/Fig1New_Retro.png"), height = 4.5, width = 6.5,
 ggarrange(rawProdPlot, aggRecPlot, aggCatchPlot, compCVPlot, synchPlot, 
           agCVPlot, nrow = 2, ncol = 3)
 dev.off()
-
-
-# w/ faceting
-# pdf(here("figs/productivityTrends.pdf"), height = 6, width = 8)
-# ggplot(dat %>% filter(data == "prod"), aes(x = year, y = index)) + 
-#   geom_line() +
-#   theme_sleekX() +
-#   theme(axis.text = element_text(size = 0.9 * axisSize)) +
-#   labs(x = "", y = "Index", title = "R/S Trends") +
-#   facet_wrap(~var)
-# ggplot(dat %>% filter(data == "resid"), aes(x = year, y = index, colour = weight)) + 
-#   geom_line() +
-#   theme_sleekX() +
-#   theme(axis.text = element_text(size = 0.9 * axisSize)) +
-#   labs(x = "", y = "Index", title = "Residual Trends") +
-#   facet_wrap(~var)
-# dev.off()
 
 
 #### Old frequentist version

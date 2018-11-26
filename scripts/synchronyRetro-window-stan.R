@@ -4,8 +4,8 @@ library(rstan)
 library(here)
 rstan_options(auto_write = TRUE)
 
-# X <- readRDS(here("data", "generated", "recMat.rds"))
-X <- readRDS(here("data", "generated", "recMatShort.rds"))
+X <- readRDS(here("outputs", "generatedData", "recMat.rds"))
+# X <- readRDS(here("data", "generated", "recMatShort.rds"))
 X_raw <- X
 
 y_group <- rowSums(X)

@@ -1,31 +1,41 @@
-#*************************************************************************************
+#*******************************************************************************
 # runModelRobustOM_synch.R
 # Date revised: ONGOING
 # Inputs: recoverySim.R
 # Outputs: pdf plots
-# Explainer: Runs closed loop simulation model with different OMs and constant MP;
-# basically equivalent to runModel.R, but with subset of plotting outputs;
-# FOCUSED ON SYNCHRONY
-#*************************************************************************************
+# Explainer: Runs closed loop simulation model with different OMs and constant 
+# MP
+#*******************************************************************************
 
 
 # Check if required packages are installed and run
 listOfPackages <- c("plyr", "here", "parallel", "doParallel", "foreach", 
-                    "reshape2", "tidyr", "gsl", "tictoc", "stringr", "dplyr", 
-                    "synchrony", "zoo", "Rcpp", "RcppArmadillo", "sn", "sensitivity",
-                    "mvtnorm", "forcats", "ggpubr", "viridis", "samSim")
+                    "reshape2", "tidyverse", "gsl", "tictoc", "stringr", 
+                    "synchrony", "zoo", "Rcpp", "RcppArmadillo", "sn", 
+                    "sensitivity", "mvtnorm", "forcats", "ggpubr", "viridis", 
+                    "samSim")
 
-newPackages <- listOfPackages[!(listOfPackages %in% installed.packages()[ , "Package"])]
+here <- here::here
+
+newPackages <- listOfPackages[!(listOfPackages %in% 
+                                  installed.packages()[ , "Package"])]
 if(length(newPackages)) install.packages(newPackages)
 lapply(listOfPackages, require, character.only = TRUE)
 
-simPar <- read.csv(here("data/simRunInputs/fraserOMInputs_varyCorr.csv"), stringsAsFactors = F)
-cuPar <- read.csv(here("data/simRunInputs/fraserCUpars.csv"), stringsAsFactors = F)
-srDat <- read.csv(here("data/simRunInputs/fraserRecDatTrim.csv"), stringsAsFactors = F)
-catchDat <- read.csv(here("data/simRunInputs/fraserCatchDatTrim.csv"), stringsAsFactors = F)
-ricPars <- read.csv(here("data/simRunInputs/rickerMCMCPars.csv"), stringsAsFactors = F)
-larkPars <- read.csv(here("data/simRunInputs/larkinMCMCPars.csv"), stringsAsFactors = F)
-tamFRP <- read.csv(here("data/simRunInputs/tamRefPts.csv"), stringsAsFactors = F)
+simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"), 
+                   stringsAsFactors = F)
+cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), 
+                  stringsAsFactors = F)
+srDat <- read.csv(here("data/sox/fraserRecDatTrim.csv"), 
+                  stringsAsFactors = F)
+catchDat <- read.csv(here("data/sox/fraserCatchDatTrim.csv"), 
+                     stringsAsFactors = F)
+ricPars <- read.csv(here("data/sox/rickerMCMCPars.csv"), 
+                    stringsAsFactors = F)
+larkPars <- read.csv(here("data/sox/larkinMCMCPars.csv"), 
+                     stringsAsFactors = F)
+tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), 
+                   stringsAsFactors = F)
 
 ### SET UP MODEL RUN -----------------------------------------------------
 
@@ -34,20 +44,27 @@ nTrials <- 25
 
 ## General robustness runs
 simParTrim <- subset(simPar,
-                     scenario == "lowSig" | scenario == "medSig" | scenario == "highSig" |
-                     scenario == "lowSigSkew" | scenario == "medSigSkew" | scenario == "highSigSkew" |
+                     scenario == "lowSig" | scenario == "medSig" | 
+                       scenario == "highSig" | scenario == "lowSigSkew" | 
+                       scenario == "medSigSkew" | scenario == "highSigSkew" |
                      scenario == "lowSigSkewT" | scenario == "medSigSkewT" |
-                     scenario == "highSigSkewT" | scenario == "lowSigLowA" | 
-                     scenario == "medSigLowA" | scenario == "highSigLowA"
+                     scenario == "highSigSkewT" 
+                     # | scenario == "lowSigLowA" | 
+                     # scenario == "medSigLowA" | scenario == "highSigLowA"
                      )
 
 scenNames <- unique(simParTrim$scenario)
-dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), sep = "_"))
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+                                                sep = "_"))
 
-# recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat,
-#             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
-#             cuCustomCorrMat = NULL, dirName = "test", nTrials = 5,
-#             multipleMPs = FALSE)
+recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat,
+            variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
+            cuCustomCorrMat = NULL, dirName = "test", nTrials = 5,
+            multipleMPs = FALSE)
+recoverySim(simPar, cuPar, catchDat = NULL, srDat = NULL,
+            variableCU = FALSE, multipleMPs = TRUE, ricPars, larkPars = NULL,
+            tamFRP = NULL, cuCustomCorrMat = NULL, erCorrMat = NULL, dirName,
+            nTrials = 100, uniqueProd = TRUE)
 # for(i in seq_along(dirNames)) {
 # d <- subset(simParTrim, scenario == scenNames[i])
 # simsToRun <- split(d, seq(nrow(d)))
@@ -71,19 +88,22 @@ for (i in seq_along(dirNames)) {
                   library(mvtnorm),
                   library(scales), #shaded colors for figs
                   library(viridis), #color blind gradient palette
-                  library(gsl), #to calculate exact estimate of MSY following Scheuerell 2016 PeerJ
+                  library(gsl), 
                   library(dplyr),
                   library(Rcpp),
                   library(RcppArmadillo),
                   library(sn),
                   library(samSim)))
-  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials", "catchDat", "srDat",
-                      "ricPars", "dirName", "larkPars", "tamFRP"), envir = environment()) #export custom function and objects
+  #export custom function and objects
+  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
+                      "catchDat", "srDat", "ricPars", "dirName", "larkPars", 
+                      "tamFRP"), envir = environment()) 
   tic("run in parallel")
   parLapply(cl, simsToRun, function(x) {
-    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, variableCU = FALSE,
-                ricPars, larkPars = larkPars, tamFRP = tamFRP, cuCustomCorrMat = NULL,
-                dirName = dirName, nTrials = nTrials, multipleMPs = FALSE)
+    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
+                variableCU = FALSE, ricPars, larkPars = larkPars, 
+                tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName, 
+                nTrials = nTrials, multipleMPs = FALSE)
   })
   stopCluster(cl) #end cluster
   toc()
@@ -91,8 +111,8 @@ for (i in seq_along(dirNames)) {
 
 
 #_________________________________________________________________________
-## Ugly custom code to generate proportional dot plots split across three different
-# productivity scenarios
+## Ugly custom code to generate proportional dot plots split across three 
+# different productivity scenarios
 vars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant",
           "medCatch", "ppnYrsHighCatch", "stabilityCatch")
 omNames <- rep(c("ref", "skewN", "skewT"), each = 3)
@@ -118,7 +138,8 @@ for(h in seq_along(dirNames)) {
     singleScen <- rbind(singleScen, dum)
   }
   rownames(singleScen) <- c()
-  plotDat <- rbind(plotDat, singleScen) #merge multiple scenarios into one dataframe
+  #merge multiple scenarios into one dataframe
+  plotDat <- rbind(plotDat, singleScen) 
 }
 plotDat <- plotDat %>%
   mutate(cat = recode(cat, "1" = "low", "2" = "med", "3" = "high", .default = levels(cat))

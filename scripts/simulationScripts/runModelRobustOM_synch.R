@@ -24,18 +24,13 @@ lapply(listOfPackages, require, character.only = TRUE)
 
 simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"), 
                    stringsAsFactors = F)
-cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), 
-                  stringsAsFactors = F)
-srDat <- read.csv(here("data/sox/fraserRecDatTrim.csv"), 
-                  stringsAsFactors = F)
+cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), stringsAsFactors = F)
+srDat <- read.csv(here("data/sox/fraserRecDatTrim.csv"), stringsAsFactors = F)
 catchDat <- read.csv(here("data/sox/fraserCatchDatTrim.csv"), 
                      stringsAsFactors = F)
-ricPars <- read.csv(here("data/sox/rickerMCMCPars.csv"), 
-                    stringsAsFactors = F)
-larkPars <- read.csv(here("data/sox/larkinMCMCPars.csv"), 
-                     stringsAsFactors = F)
-tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), 
-                   stringsAsFactors = F)
+ricPars <- read.csv(here("data/sox/rickerMCMCPars.csv"), stringsAsFactors = F)
+larkPars <- read.csv(here("data/sox/larkinMCMCPars.csv"), stringsAsFactors = F)
+tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 
 ### SET UP MODEL RUN -----------------------------------------------------
 
@@ -57,14 +52,10 @@ scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
                                                 sep = "_"))
 
-recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat,
-            variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
-            cuCustomCorrMat = NULL, dirName = "test", nTrials = 5,
-            multipleMPs = FALSE)
-recoverySim(simPar, cuPar, catchDat = NULL, srDat = NULL,
-            variableCU = FALSE, multipleMPs = TRUE, ricPars, larkPars = NULL,
-            tamFRP = NULL, cuCustomCorrMat = NULL, erCorrMat = NULL, dirName,
-            nTrials = 100, uniqueProd = TRUE)
+# recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat,
+#             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
+#             cuCustomCorrMat = NULL, dirName = "test", nTrials = 5,
+#             multipleMPs = FALSE)
 # for(i in seq_along(dirNames)) {
 # d <- subset(simParTrim, scenario == scenNames[i])
 # simsToRun <- split(d, seq(nrow(d)))

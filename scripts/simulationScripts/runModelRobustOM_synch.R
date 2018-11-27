@@ -133,10 +133,10 @@ for(h in seq_along(dirNames)) {
   plotDat <- rbind(plotDat, singleScen) 
 }
 plotDat <- plotDat %>%
-  mutate(cat = recode(cat, "1" = "low", "2" = "med", "3" = "high", .default = levels(cat))
-         ,
-         om = recode(om, "ref" = "Reference", "skewN" = "Skewed Normal",
-                       "skewT" = "Skewed T",
+  mutate(cat = recode(cat, "1" = "low", "2" = "med", "3" = "high", 
+                      .default = levels(cat)),
+         om = recode(om, "ref" = "Reference Prod.", "skewN" = "Low Prod.",
+                       "skewT" = "Very Low Prod.",
                        .default = levels(om))
   )
 
@@ -145,31 +145,37 @@ names(colPal) <- levels(plotDat$sigma)
 axisSize = 16; dotSize = 3.5; lineSize = 0.8; legendSize = 14
 
 consVars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant")
-consYLabs <- c("Recruit\nAbundance", "Prop. CUs Above\nUpper BM", "Prop. CUs\nExtant")
-consLabs <- data.frame(om = rep(factor(unique(plotDat$om), levels = unique(plotDat$om)),
+consYLabs <- c("Recruit\nAbundance", "Prop. CUs Above\nUpper BM", 
+               "Prop. CUs\nExtant")
+consLabs <- data.frame(om = rep(factor(unique(plotDat$om), 
+                                       levels = unique(plotDat$om)),
                                 each = 3),
                        lab = c("a)", "b)", "c)", "d)", "e)", "f)", "g)", "h)",
                                "i)"),
-                       var = rep(factor(consVars, levels = unique(vars)), times = 3)
+                       var = rep(factor(consVars, levels = unique(vars)), 
+                                 times = 3)
 )#make dataframe of labels to annotate facets
 consPlots <- lapply(seq_along(consVars), function(i) {
   temp <- plotDat %>%
     filter(var == consVars[i])
   q <- ggplot(temp, aes(x = sigma, y = avg, ymin = lowQ, ymax = highQ,
                         color = cat, shape = sigma)) +
-    labs(x = "Component Variance", y = consYLabs[i], color = "Sim.\nParameter\nValue") +
-    geom_pointrange(fatten = dotSize, size = lineSize, position = position_dodge(width = 0.5)) +
-    scale_x_discrete(labels = c("low" = expression(paste("0.5", sigma)),
-                                "med" = expression(paste("1.0", sigma)),
-                                "high" = expression(paste("1.5", sigma)))) +
+    labs(x = "Component Variance", y = consYLabs[i], 
+         color = "Sim.\nParameter\nValue") +
+    geom_pointrange(fatten = dotSize, size = lineSize,
+                    position = position_dodge(width = 0.5)) +
+    scale_x_discrete(labels = c("low" = "Low",
+                                "med" = "Reference",
+                                "high" = "High")) +
     scale_colour_manual(name = "Synchrony", values = colPal,
-                        labels = c("low" = expression(paste(rho, " = 0.05")),
-                                   "med" = expression(paste(rho, " = 0.50")),
-                                   "high" = expression(paste(rho, " = 0.75")))) +
+                        labels = c("low" = "Low",
+                                   "med" = "High",
+                                   "high" = "Very High")) +
     scale_shape_manual(name = "Sigma", breaks = c("low", "med", "high"),
                        values = c(16, 17, 18), guide = FALSE) +
     geom_text(data = consLabs %>% filter(var == consVars[i]),
-              mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab, hjust = 1.5, vjust = 0),
+              mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab, 
+                            hjust = 1.5, vjust = 0),
               show.legend = FALSE, inherit.aes = FALSE) +
     facet_wrap(~om, scales = "fixed")
   if (i == 1) {
@@ -187,31 +193,35 @@ consPlots <- lapply(seq_along(consVars), function(i) {
 catchVars <- c("medCatch", "ppnYrsHighCatch", "stabilityCatch")
 catchYLabs <- c("Catch\nAbundance", "Prop. Years Above\nCatch Threshold",
                 "Catch\nStability")
-catchLabs <- data.frame(om = rep(factor(unique(plotDat$om), levels = unique(plotDat$om)),
+catchLabs <- data.frame(om = rep(factor(unique(plotDat$om), 
+                                        levels = unique(plotDat$om)),
                                  each = 3),
-                        lab = c("a)", "b)", "c)", "d)", "e)", "f)", "g)", "h)", "i)"),
-                        var = rep(factor(catchVars, levels = unique(vars)), times = 3)
+                        lab = c("a)", "b)", "c)", "d)", "e)", "f)", "g)", "h)", 
+                                "i)"),
+                        var = rep(factor(catchVars, levels = unique(vars)), 
+                                  times = 3)
 )#make dataframe of labels to annotate facets
 catchPlots <- lapply(seq_along(catchVars), function(i) {
   temp <- plotDat %>%
     filter(var == catchVars[i])
   q <- ggplot(temp, aes(x = sigma, y = avg, ymin = lowQ, ymax = highQ,
                         color = cat, shape = sigma)) +
-    labs(x = "Component Variance", y = catchYLabs[i], color = "Sim.\nParameter\nValue") +
+    labs(x = "Component Variance", y = catchYLabs[i], 
+         color = "Sim.\nParameter\nValue") +
     geom_pointrange(fatten = dotSize, size = lineSize,
                     position = position_dodge(width = 0.5)) +
-    scale_x_discrete(labels = c("low" = expression(paste("0.5", sigma)),
-                                "med" = expression(paste("1.0", sigma)),
-                                "high" = expression(paste("1.5", sigma)))) +
+    scale_x_discrete(labels = c("low" = "Low",
+                                "med" = "Reference",
+                                "high" = "High")) +
     scale_colour_manual(name = "Synchrony", values = colPal,
-                        labels = c("low" = expression(paste(rho, " = 0.05")),
-                                   "med" = expression(paste(rho, " = 0.50")),
-                                   "high" = expression(paste(rho, " = 0.75")))) +
+                        labels = c("low" = "Low",
+                                   "med" = "High",
+                                   "high" = "Very High")) +
     scale_shape_manual(name = "Sigma", breaks = c("low", "med", "high"),
                        values = c(16, 17, 18), guide = FALSE) +
     geom_text(data = catchLabs %>% filter(var == catchVars[i]),
-              mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab, hjust = 1.5,
-                            vjust = 0),
+              mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
+                            hjust = 1.5, vjust = 0),
               show.legend = FALSE, inherit.aes = FALSE) +
     facet_wrap(~om, scales = "fixed")
   if (i == 1) {

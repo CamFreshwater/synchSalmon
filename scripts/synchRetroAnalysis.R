@@ -131,17 +131,17 @@ parList[["synch"]]$high[parList[["synch"]]$high > 1] <- 1
 
 #_________________________________________________________________________
 ## Plot
-colPal <- viridis(n = length(unique(rawDat$stk)), begin = 0, end = 1)
 axisSize = 12
+stkN <- length(unique(rawDat$stk))
 
 labDat <- data.frame(lab = c("a)", "b)", "c)", "d)", "e)", "f)"),
                      var = c("prod", "rec", "catch", "cv", "synch", "aggCV"))
 
-rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, colour = stk)) + 
+rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, col = stk)) + 
   labs(x = "", y = "log(Recruits/Spawner)") + 
   ylim(min(rawDat$logProd), 5.3) +
   geom_line(size = 0.75) +
-  scale_color_manual(values = colPal, guide = FALSE) +
+  scale_color_manual(values = rep("grey", length.out = stkN), guide = FALSE) +
   stat_summary(fun.y = mean, colour = "black", geom = "line", size = 1.25)  +
   theme_sleekX() +
   geom_text(data = labDat %>% filter(var == "prod"),

@@ -79,7 +79,8 @@ recDat <- cbind(normRec, normLowARec, skewNormRec, skewTRec) %>%
   filter(recruits < recCap) #remove absurdly large positive recruitment events
 
 ggplot(recDat, aes(x = prodOM, y = recruits)) +
-  geom_boxplot()
+    geom_violin(draw_quantiles = c(0.25, 0.5, 0.75))
+
 ```
 
 So for any given independent recruitment event there isn't a strong distribution effect (i.e. median recruitment is about the same across lowA, skewN and skewT operating models). However, obviously this changes in a closed loop simulation context where feedbacks occur.

@@ -344,50 +344,69 @@ start <- plotDat %>%
   summarise(min(year))
 start <- start[[1]]
 
-colPal <- c("black", viridis(length(unique(plotDat$sigmaOM)) - 1, begin = 0, end = 1))
-names(colPal) <- levels(plotDat$sigmaOM)
+
 dum <- plotDat %>%
   filter(synchOM == "medSynch" | synchOM == "obs",
-         prodOM == "ref")
-q2 <- ggplot(dum, aes(x = year, y = medCompCVRecBY, colour = sigmaOM)) +
-  labs(x = "Year", y = "Component CV", title = NULL) +
-  geom_line(size = 1) +
+         prodOM == "ref") %>% 
+  mutate(sigmaOM = recode(sigmaOM, "obs" = "Observed", 
+                         "lowSigma" = "Low", 
+                         "medSigma" = "Moderate",
+                         "highSigma" = "High"),
+  )
+colPal <- c("black", viridis(length(unique(dum$sigmaOM)) - 1, begin = 0, end = 1))
+names(colPal) <- levels(dum$sigmaOM)
+### Instead of plotting time series, make faceted box plot
+# q2 <- ggplot(dum, aes(x = year, y = medCompCVRecBY, colour = sigmaOM)) +
+#   labs(x = "Year", y = "Component CV", title = NULL) +
+#   geom_line(size = 1) +
+#   geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
+#   scale_colour_manual(name = "Operating Model", values = colPal,
+#                       labels = c("obs" = "Observed",
+#                                  "lowSigma" = expression(paste("0.75", sigma)),
+#                                  "medSigma" = expression(paste("1.0", sigma)),
+#                                  "highSigma" = expression(paste("1.25", sigma)))) +
+#   theme_sleekX(position = "top", legendSize = 0.9)
+q2 <- ggplot(dum, aes(x = sigmaOM, y = medCompCVRecBY, fill = sigmaOM)) +
+  labs(x = "Component Variability Scenario", y = "Median CVc of Returns", 
+       title = NULL) +
+  geom_boxplot(size = 1, alpha = 0.5) +
   geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
-  scale_colour_manual(name = "Operating Model", values = colPal,
-                      labels = c("obs" = "Observed",
-                                 "lowSigma" = expression(paste("0.75", sigma)),
-                                 "medSigma" = expression(paste("1.0", sigma)),
-                                 "highSigma" = expression(paste("1.25", sigma)))) +
-  theme_sleekX(position = "top", legendSize = 0.9)
-# +
-#   facet_wrap(~prodOM)
+  guides(fill = FALSE, color = FALSE) +
+  scale_fill_manual(name = "Operating Model", values = colPal) +
+  theme_sleekX(position = "standard", legendSize = 0.9, axisSize = 12)
 
-colPal2 <- c("black", viridis(length(unique(plotDat$synchOM)) - 1, begin = 0, end = 1))
-names(colPal2) <- levels(plotDat$synchOM)
+
 dum2 <- plotDat %>%
   dplyr::filter(sigmaOM == "medSigma" | sigmaOM == "obs",
-                prodOM == "ref")
-p2 <- ggplot(dum2, aes(x = year, y = medSynchRecBY, colour = synchOM)) +
-  labs(x = "Year", y = "Synchrony Index", title = NULL) +
-  geom_line(size = 1) +
+                prodOM == "ref") %>% 
+  mutate(synchOM = recode(synchOM, "obs" = "Observed", 
+                          "lowSynch" = "Low", 
+                          "medSynch" = "Moderate",
+                          "highSynch" = "High"),
+  )
+colPal2 <- c("black", viridis(length(unique(dum2$synchOM)) - 1, begin = 0, end = 1))
+names(colPal2) <- levels(dum2$synchOM)
+# p2 <- ggplot(dum2, aes(x = year, y = medSynchRecBY, colour = synchOM)) +
+#   labs(x = "Year", y = "Synchrony Index", title = NULL) +
+#   geom_line(size = 1) +
+#   geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
+#   scale_colour_manual(name = "Operating Model", values = colPal2,
+#                       labels = c("obs" = "Observed",
+#                                  "lowSynch" = expression(paste(rho, " = 0.05")),
+#                                  "medSynch" = expression(paste(rho, " = 0.50")),
+#                                  "highSynch" = expression(paste(rho, " = 0.75")))) +
+#   theme_sleekX(position = "bottom", legendSize = 0.9)
+p2 <- ggplot(dum2, aes(x = synchOM, y = medSynchRecBY, fill = synchOM)) +
+  labs(x = "Synchrony Scenario", y = "Median Synch of Returns", title = NULL) +
+  geom_boxplot(size = 1, alpha = 0.5) +
   geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
-  scale_colour_manual(name = "Operating Model", values = colPal2,
-                      labels = c("obs" = "Observed",
-                                 "lowSynch" = expression(paste(rho, " = 0.05")),
-                                 "medSynch" = expression(paste(rho, " = 0.50")),
-                                 "highSynch" = expression(paste(rho, " = 0.75")))) +
-  theme_sleekX(position = "bottom", legendSize = 0.9)
-# +
-#   facet_wrap(~prodOM)
+  guides(fill = FALSE, color = FALSE) +
+  scale_fill_manual(values = colPal2) +
+  theme_sleekX(position = "standard", legendSize = 0.9, axisSize = 12)
 
 
-# png(file = paste(here(),"/outputs/synchrony/synchTS_3om.png", sep = ""),
-#     height = 6.5, width = 7.5, units = "in", res = 300)
-# ggarrange(q, p, nrow = 2, ncol = 1)
-# dev.off()
-
-png(file = paste(here(),"/figs/Fig3_SynchCompCvTS.png", sep = ""),
-    height = 4.5, width = 4.5, units = "in", res = 300)
+png(file = paste(here(),"/figs/Fig3_SynchCompBoxPlots.png", sep = ""),
+    height = 5, width = 5, units = "in", res = 300)
 ggarrange(q2, p2, nrow = 2, ncol = 1, heights = c(1, 1.2))
 dev.off()
 

@@ -30,9 +30,11 @@ p <- ggplot() +
                   fill = dist),
                position = "identity", alpha = 0.2) +
   labs(x = "Standard Deviations", y = "Probability Density") +
-  geom_vline(xintercept = 0, color = "grey30", linetype = 2) +
+  geom_vline(xintercept = 0, color = "grey30", linetype = 2, size = 1.1) +
   scale_color_manual(name = "Distribution", values = colPal) +
   scale_fill_manual(name = "Distribution", values = colPal) +
+  geom_rect(aes(xmin = -4, xmax = -2, ymin = 0, ymax = 0.2), lty = 2,
+            fill = "transparent", color = "black") +
   guides(fill = FALSE, color = FALSE) +
   theme_sleekX(axisSize = 12)
 
@@ -53,7 +55,7 @@ q <- ggplot() +
                                "skewN" = "Skew\nNormal",
                                "skewT" = "Skew\nStudent t")) +
   guides(fill = FALSE, color = FALSE) +
-  theme_sleekX(axisSize = 14)
+  theme_sleekX(axisSize = 12)
 
 
 ### Generate simulated data for boxplots
@@ -110,7 +112,7 @@ r <- ggplot(recDat, aes(x = prodOM, y = recruits)) +
   scale_color_manual(name = "Distribution", values = colPal) +
   scale_fill_manual(name = "Distribution", values = colPal) +
   # guides(fill = FALSE, color = FALSE) +
-  theme_sleekX(legendSize = 0.95, axisSize = 12)
+  theme_sleekX(legendSize = 1.1, axisSize = 12)
 
 
 png(file = paste(here(),"/figs/SFig1_distPlots.png", sep = ""),

@@ -89,7 +89,7 @@ So for any given independent recruitment event there isn't a strong distribution
 Next step is to read in data from a simulation run w/ the four different prod regimes and see what the effects on PMs look like. Note that this particular run is light on trials (n = 25), resulting in some messy trends but the overall patterns are approximately the same when n is bumped up to 500 or 1000.
 
 ```{r retrieve data for PMs plot, echo = FALSE, warning = FALSE}
-simPar <- read.csv(here("data/simRunInputs/fraserOMInputs_varyCorr.csv"), stringsAsFactors = F)
+simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"), stringsAsFactors = F)
 simParTrim <- subset(simPar, 
                      scenario == "lowSig" | scenario == "medSig" | 
                        scenario == "highSig" | scenario == "lowSigLowA" | 

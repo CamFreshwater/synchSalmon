@@ -1,0 +1,88 @@
+---
+title: "Component Variability Scenarios"
+author: "Cam Freshwater"
+date: "November 30, 2018"
+output: html_document
+---
+
+```{r readLibraries, warning=FALSE, message=FALSE, echo = FALSE}
+library(sn); library(tidyverse); library(here); library(ggpubr); require(synchrony);
+library(zoo); library(reshape2); library(viridis); library(samSim)
+```
+
+Carrie used a simple simulation to determine that recruitment declines at high levels of component variability (i.e. sigma), but only when density dependence was included; otherwise only variability increases. Sean hypothesized that this might be due to a greater ppn of recruitment events occurring at far end of recruitment curve, pushing abundance down. Plot stock recruitment curves to interpret.
+
+```{r importData, warning=FALSE, echo = FALSE}
+simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"),
+                   stringsAsFactors = F)
+simParTrim <- subset(simPar, 
+                     scenario == "lowSig" | scenario == "medSig" | 
+                       scenario == "highSig"
+                     )
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+                                                sep = "_"))
+```
+
+```{r cleanData, warning=FALSE, echo = FALSE}
+arrayNames <- sapply(dirNames[1], function(x) { #matrix of array names to be passed
+  list.files(paste(here("outputs/simData"), x, sep="/"), 
+             pattern = "\\Arrays.RData$")
+})
+sigNames <- rep(c("lowSig", "medSig", "highSig"), length.out = 12)
+omNames <- rep(c("ref"), each = 3)
+
+srList <- lapply(seq_along(dirNames), function(h) { 
+  #medSynch treatment only
+  datList <- readRDS(paste(here("outputs/simData"), dirNames[h], arrayNames[3], 
+                           sep = "/"))
+  sDat <- datList$S %>% 
+    melt() %>% 
+    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+                  "spwn" = "value") %>% 
+    mutate(sig = sigNames[h], om = omNames[h])  
+  rDat <- datList$recBY %>% 
+    melt() %>% 
+    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+                  "rec" = "value") %>% 
+    mutate(sig = sigNames[h], om = omNames[h])
+  srDat <- merge(sDat, rDat, by = c("yr", "cu", "trial", "sig", "om"))
+  return(srDat)
+}) 
+```
+
+```{r plotSRCurves, warning=FALSE, echo = FALSE}
+#chilko SR parameters
+chlkA = 1.8315
+chlkB = 1.23182
+
+srFull <- do.call(rbind, srList) %>% 
+  filter(!yr < 60) %>% #focus on median sig treatment, sim period
+  mutate(sig = as.factor(sig)) %>% 
+  mutate(sig = factor(sig, levels(sig)[c(2,3,1)]))
+drawTrials <- sample.int(max(srFull$trial), size = 4, replace = FALSE)
+plotList <- lapply(seq_along(drawTrials), function(i) { 
+  dum <- srFull %>% 
+    #focus on Chilko data only
+    filter(trial == drawTrials[i] , cu == 7) 
+  r <- ggplot(dum, aes(x = log(spwn), y = log(rec), colour = sig)) +
+    labs(x = "Spawners", y = "Recruits", title = drawTrials[i]) +
+    geom_point(size = 1.25) +
+    geom_abline(intercept = chlkA, slope )
+    scale_colour_discrete(name = "Operating Model") +
+    theme_sleekX(position = "bottom") +
+    theme(axis.title.y=element_blank()) +
+    facet_wrap(~sig, nrow = length(unique(srFull$sig)), ncol = 1)
+  return(r)
+})
+
+srList <- ggarrange(plotList[[1]], plotList[[2]], plotList[[3]], plotList[[4]], 
+          ncol = 4, nrow = 1, common.legend = TRUE, legend = "right", 
+          align = "v", heights = c(1.1,1,1,1.2))
+annotate_figure(srList, 
+                left = text_grob("Recruits", rot = 90),
+                bottom = text_grob("Spawners"))
+
+
+```
+

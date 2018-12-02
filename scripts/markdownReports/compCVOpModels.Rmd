@@ -6,15 +6,33 @@ output: html_document
 ---
 
 ```{r readLibraries, warning=FALSE, message=FALSE, echo = FALSE}
-library(sn); library(tidyverse); library(here); library(ggpubr); require(synchrony);
-library(zoo); library(reshape2); library(viridis); library(samSim)
+listOfPackages <- c("plyr", "here", "parallel", "doParallel", "foreach", 
+                    "reshape2", "tidyverse", "gsl", "tictoc", "stringr", 
+                    "synchrony", "zoo", "Rcpp", "RcppArmadillo", "sn", 
+                    "sensitivity", "mvtnorm", "forcats", "ggpubr", "viridis", 
+                    "samSim")
+
+here <- here::here
+
+newPackages <- listOfPackages[!(listOfPackages %in% 
+                                  installed.packages()[ , "Package"])]
+if(length(newPackages)) install.packages(newPackages)
+lapply(listOfPackages, require, character.only = TRUE)
 ```
 
 Carrie used a simple simulation to determine that recruitment declines at high levels of component variability (i.e. sigma), but only when density dependence was included; otherwise only variability increases. Sean hypothesized that this might be due to a greater ppn of recruitment events occurring at far end of recruitment curve, pushing abundance down. Plot stock recruitment curves to interpret.
 
 ```{r importData, warning=FALSE, echo = FALSE}
-simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"),
+simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorrAdjustBeta.csv"),
                    stringsAsFactors = F)
+cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), stringsAsFactors = F)
+srDat <- read.csv(here("data/sox/fraserRecDatTrim.csv"), stringsAsFactors = F)
+catchDat <- read.csv(here("data/sox/fraserCatchDatTrim.csv"), 
+                     stringsAsFactors = F)
+ricPars <- read.csv(here("data/sox/rickerMCMCPars.csv"), stringsAsFactors = F)
+larkPars <- read.csv(here("data/sox/larkinMCMCPars.csv"), stringsAsFactors = F)
+tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
+
 simParTrim <- subset(simPar, 
                      scenario == "lowSig" | scenario == "medSig" | 
                        scenario == "highSig"
@@ -82,7 +100,251 @@ srList <- ggarrange(plotList[[1]], plotList[[2]], plotList[[3]], plotList[[4]],
 annotate_figure(srList, 
                 left = text_grob("Recruits", rot = 90),
                 bottom = text_grob("Spawners"))
+```
 
+Results clearly show an increase in scatter along the SR curve as sigma goes up (as expected). Large declines likely driven by synergistic negative impacts of density dependence and intermittent strong negative recruitment deviations. In theory these may be modified by autocorrelation and the size of beta. To explore first run a series of scenarios across different levels of sigma with reference settings, muted beta, or no autocorrelation.
+
+```{r runSimulations, eval = FALSE, echo = FALSE}
+## Define simulations to be run
+nTrials <- 75
+
+## General robustness runs
+simParTrim <- simPar
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+                                                sep = "_"))
+
+for (i in seq_along(dirNames)) {
+  dirName <- dirNames[i]
+  d <- subset(simParTrim, scenario == scenNames[i])
+  simsToRun <- split(d, seq(nrow(d)))
+  Ncores <- detectCores()
+  cl <- makeCluster(Ncores - 3) #save two cores
+  registerDoParallel(cl)
+  clusterEvalQ(cl, c(library(MASS),
+                  library(here),
+                  library(sensitivity),
+                  library(mvtnorm),
+                  library(scales), #shaded colors for figs
+                  library(viridis), #color blind gradient palette
+                  library(gsl), 
+                  library(dplyr),
+                  library(Rcpp),
+                  library(RcppArmadillo),
+                  library(sn),
+                  library(samSim)))
+  #export custom function and objects
+  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
+                      "catchDat", "srDat", "ricPars", "dirName", "larkPars", 
+                      "tamFRP"), envir = environment()) 
+  tic("run in parallel")
+  parLapply(cl, simsToRun, function(x) {
+    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
+                variableCU = FALSE, ricPars, larkPars = larkPars, 
+                tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName, 
+                nTrials = nTrials, multipleMPs = FALSE)
+  })
+  stopCluster(cl) #end cluster
+  toc()
+}
+```
+
+```{r plotConsPMTrends, echo = TRUE}
+## Reload data in case simulations aren't run
+simParTrim <- simPar
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+                                                sep = "_"))
+
+vars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant")
+omNames <- rep(c("ref", "lowB", "noAR"), each = 3)
+sigNames <- rep(c("low", "med", "high"), length.out = 12)
+
+plotDat = NULL
+for(h in seq_along(dirNames)) {
+  agList <- genOutputList(dirNames[h], agg = TRUE)
+  keyVar <- sapply(agList, function(x) unique(x$keyVar))
+  plotOrder <- sapply(agList, function(x) unique(x$plotOrder))
+  singleScen = NULL
+  for (i in seq_along(vars)) {
+    dum <- data.frame(sigma = rep(sigNames[h], length.out = length(agList)),
+                      om = rep(omNames[h], length.out = length(agList)),
+                      var = rep(vars[i], length.out = length(agList)),
+                      synch = as.factor(keyVar),
+                      cat = as.factor(plotOrder),
+                      avg = sapply(agList, function(x) median(x[,vars[i]])),
+                      lowQ = sapply(agList, function(x) qLow(x[,vars[i]])),
+                      highQ = sapply(agList, function(x) qHigh(x[,vars[i]])),
+                      row.names = NULL
+    )
+    singleScen <- rbind(singleScen, dum)
+  }
+  rownames(singleScen) <- c()
+  plotDat <- rbind(plotDat, singleScen) #merge multiple scenarios into one dataframe
+}
+plotDat <- plotDat %>% 
+  mutate(cat = recode(cat, "1" = "low", "2" = "med", "3" = "high", 
+                      .default = levels(cat)),
+         om = recode(om, "ref" = "Reference", "lowB" = "Low Beta", 
+                     "noAR" = "No AR",
+                     .default = levels(om))
+  ) 
+
+colPal <- viridis(length(levels(plotDat$sigma)), begin = 0, end = 1)
+names(colPal) <- levels(plotDat$sigma)
+axisSize = 14; dotSize = 3.5; lineSize = 0.8
+
+consVars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant") 
+consYLabs <- c("Recruit\nAbundance", "Prop. CUs Above\nUpper BM", 
+               "Prop. CUs\nExtant")
+consPlots <- lapply(seq_along(consVars), function(i) {
+  temp <- plotDat %>% 
+    filter(var == consVars[i])
+  q <- ggplot(temp, aes(x = sigma, y = avg, ymin = lowQ, ymax = highQ, 
+                        color = cat, shape = sigma)) +
+    labs(x = "Component Variance", y = consYLabs[i], 
+         color = "Sim.\nParameter\nValue") +
+    geom_pointrange(fatten = dotSize, size = lineSize, 
+                    position = position_dodge(width = 0.5)) +
+    scale_x_discrete(labels = c("low" = expression(paste("0.5", sigma)),
+                                "med" = expression(paste("1.0", sigma)),
+                                "high" = expression(paste("1.5", sigma)))) +
+    scale_colour_manual(name = "Synchrony", values = colPal,
+                        labels = c("low" = expression(paste(rho, " = 0.05")),
+                                   "med" = expression(paste(rho, " = 0.50")),
+                                   "high" = expression(paste(rho, " = 0.75")))) +
+    scale_shape_manual(name = "Sigma", breaks = c("low", "med", "high"), 
+                       values = c(16, 17, 18), guide = FALSE) +
+    facet_wrap(~om, scales = "fixed", ncol = 4)
+  if (i == 1) {
+    q <- q + theme_sleekX(position = "top", legendSize = 1.05)
+  } 
+  if (i == 2) {
+    q <- q + theme_sleekX(position = "mid", legendSize = 1.05)
+  }
+  if (i == 3) {
+    q <- q + theme_sleekX(position = "bottom", legendSize = 1.05)
+  }
+  return(q)
+})
+ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]], 
+          ncol = 1, nrow = 3, common.legend = TRUE, legend = "right", 
+          align = "v", heights = c(1.1,1,1.2))
+```
+
+
+Unsurprisingly decreasing beta increases recruit abundance but decreases BM status. Effect of component variance and synchrony appears to be similar. 
+
+Next examine CU-specific PMs.
+
+```{r cuSpecificPMs, echo = TRUE}
+selectedCUs <- c("Raft" , "Chlk")
+nCUs <- length(selectedCUs)
+colPal <- c("#7fc97f", "#beaed4", "#fdc086")
+#make DF to contain CU-specific benchmark estimates from sim run
+bmDat <- data.frame(cu = selectedCUs, 
+                    highBM = NA,
+                    lowBM  = NA)
+plotDat <- NULL
+for (i in seq_along(dirNames)) { #make dataframe
+  cuList <- genOutputList(dirNames[i], selectedCUs = selectedCUs, agg = FALSE)[["medSynch_TAM"]]
+  nTrials <- nrow(cuList[["medSpawners"]])
+  spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
+                        sigma = rep(sigNames[i], length.out = nTrials * nCUs)
+  )
+  spwn <- cuList[["medSpawners"]] %>%
+    as.data.frame() %>%
+    gather(key = cu, value = spawners)
+  spwn$cu <- plyr::revalue(as.factor(spwn$cu), c("V1" = selectedCUs[1],
+                                                 "V2" = selectedCUs[2]))
+  spwn$lowBM <- rep(cuList[["meanSGen"]], each = nTrials)
+  spwn$highBM <- rep(0.8*cuList[["meanSMSY"]], each = nTrials)
+  plotDat <- rbind(plotDat, cbind(spwnDat, spwn))
+  plotDat <- plotDat %>%
+    mutate(cu = recode(cu, "Bwrn" = "Bowron", "Chlk" = "Chilko",
+                       .default = levels(cu)))
+}
+
+axisSize = 15; dotSize = 3.5; lineSize = 0.8
+q <- ggplot(plotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
+  geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
+  geom_hline(plotDat, mapping = aes(yintercept = highBM), linetype = 2) +
+  scale_alpha_manual(name = "Sigma OM", values = c(1, 0.65, 0.3),
+                     labels = c("low" = expression(paste("0.75", sigma)),
+                                "med" = expression(paste("1.0", sigma)),
+                                "high" = expression(paste("1.25", sigma)))) +
+  scale_fill_manual(values = colPal, guide = FALSE) +
+  guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
+  labs(y = "Median Spawne\n Abundance (millions)",
+       x = "Productivity Scenario") +
+  theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
+  facet_wrap(~cu, scales = "free_y")
 
 ```
 
+Low beta appears to reduce impact of greater variability, but only for Bowron. Note that trend appears to be CU-specific. Re-evaluate at some point. Finally look at SR curves.
+
+```{r stockRecCurves, echo = FALSE}
+arrayNames <- sapply(dirNames[1], function(x) { #matrix of array names to be passed
+  list.files(paste(here("outputs/simData"), x, sep="/"), 
+             pattern = "\\Arrays.RData$")
+})
+
+srList <- lapply(seq_along(dirNames), function(h) { 
+  #medSynch treatment only
+  datList <- readRDS(paste(here("outputs/simData"), dirNames[h], arrayNames[3], 
+                           sep = "/"))
+  sDat <- datList$S %>% 
+    melt() %>% 
+    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+                  "spwn" = "value") %>% 
+    mutate(sig = sigNames[h], om = omNames[h])  
+  rDat <- datList$recBY %>% 
+    melt() %>% 
+    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+                  "rec" = "value") %>% 
+    mutate(sig = sigNames[h], om = omNames[h])
+  srDat <- merge(sDat, rDat, by = c("yr", "cu", "trial", "sig", "om"))
+  return(srDat)
+}) 
+
+#chilko SR parameters
+chlkA = 1.8315
+chlkB = 1.23182
+
+srFull <- do.call(rbind, srList) %>% 
+  filter(!yr < 60) %>% #focus on median sig treatment, sim period
+  mutate(sig = as.factor(sig), 
+         om = as.factor(om)) %>% 
+  mutate(sig = factor(sig, levels(sig)[c(2,3,1)]))
+drawTrials <- sample.int(max(srFull$trial), size = 4, replace = FALSE)
+omNames <- unique(srFull$om)
+plotList <- 
+  # lapply(seq_along(drawTrials), function(h) {
+    lapply(seq_along(omNames), function(i) { 
+      dum <- srFull %>% 
+        #focus on Chilko data only
+        filter(trial == drawTrials[3],
+               om == omNames[i],
+               cu == 7) 
+      r <- ggplot(dum, aes(x = log(spwn), y = log(rec), colour = sig)) +
+        labs(x = "Spawners", y = "Recruits", title = omNames[i]) +
+        geom_point(size = 1.25) +
+        scale_colour_discrete(name = "Operating Model") +
+        theme_sleekX(position = "bottom") +
+        theme(axis.title.y=element_blank()) +
+        facet_wrap(~sig, nrow = length(unique(srFull$sig)), ncol = 1)
+      return(r)
+    # })
+})
+
+srList <- ggarrange(plotList[[1]], plotList[[2]], plotList[[3]], 
+          ncol = 3, nrow = 1, common.legend = TRUE, legend = "right", 
+          align = "v", heights = c(1.1,1,1.2))
+annotate_figure(srList, 
+                left = text_grob("Recruits", rot = 90),
+                bottom = text_grob("Spawners"))
+
+```
+
+Looking at individual trials decreasing beta does appear to reduce the impacts of greater variability.

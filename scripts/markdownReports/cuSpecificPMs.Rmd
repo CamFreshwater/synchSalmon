@@ -131,12 +131,66 @@ q <- ggplot(plotDat, aes(x = sigma, y = spawners, alpha = sigma)) +
   facet_wrap(~cu, scales = "free_y")
 q
 ```
-The majority of CUs decline with increasing variability, but the strength of this effect varies. Notable exceptions are Gates/Nadina (medians stable even though variance increases) and Cultus (median increases along with variance).
 
-How are these related to beta values?
+The majority of CUs exhibit declines in abundance with increasing variability, but the strength of this effect varies. Notable exceptions are Gates, Harrison, Nadina (medians stable even though variance increases) and Raft/Cultus (median increases along with variance).
+
+Repeat previous analysis with trends in synchrony instead (should be much more consistent).
+
+```{r cuSpecificPMsSynch, echo = TRUE}
+omNames <- rep(c("ref"), each = 3)
+#Make sure order of synchrony names is correct based on contents of cuList
+synchNames <- rep(c("high", "low", "med"), length.out = length(omNames))
+stkNames <- genOutputList(dirNames[1], 
+                          agg = FALSE)[["medSynch_TAM"]][["stkName"]]
+nCUs <- length(stkNames)
+#make DF to contain CU-specific benchmark estimates from sim run
+bmDat <- data.frame(cu = stkNames, 
+                    highBM = NA,
+                    lowBM  = NA)
+
+#First generate data and plots for different sigma treatments
+plotDat <- NULL
+for (i in seq_along(synchNames)) { #make dataframe
+  #Focus on median sigma treatment (i.e. dirNames2)
+  cuList <- genOutputList(dirNames[2], agg = FALSE)[[i]]
+  nTrials <- nrow(cuList[["medSpawners"]])
+  spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
+                        synch = rep(synchNames[i], length.out = nTrials * nCUs)
+  )
+  spwn <- cuList[["medSpawners"]] %>%
+    as.data.frame() 
+  colnames(spwn) <- stkNames
+  spwnLong <- spwn %>% 
+    gather(key = cu, value = spawners) %>% 
+    mutate(cu = as.factor(cu))
+  spwnLong$lowBM <- rep(cuList[["meanSGen"]], each = nTrials)
+  spwnLong$highBM <- rep(0.8*cuList[["meanSMSY"]], each = nTrials)
+  plotDat <- rbind(plotDat, cbind(spwnDat, spwnLong))
+}
+
+q <- ggplot(plotDat, aes(x = synch, y = spawners, alpha = synch)) +
+  geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75),
+              fill = "grey30") +
+  geom_hline(plotDat, mapping = aes(yintercept = highBM), linetype = 2) +
+  scale_alpha_manual(name = "Synch OM", values = c(1, 0.65, 0.3)) +
+  guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
+  labs(y = "Median Spawner\n Abundance (millions)",
+       x = "Synch OM") +
+  theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
+  facet_wrap(~cu, scales = "free_y")
+q
+```
+
+As expected effects of synchrony are basically the same across CUs.
+
+How are these related to alpha and beta values?
 
 ```{r plotBeta, echo = FALSE}
-betaDat <- data.frame(cu <- cuList$stkName,
-                      medBeta <- cuList$medBeta[1,])
-plot(medBeta ~ as.factor(cu), data = betaDat)
+parDat <- data.frame(cu <- cuList$stkName,
+                      medBeta <- cuList$medBeta[1,],
+                      medAlpha <- cuList$medAlpha[1,])
+plot(medBeta ~ as.factor(cu), data = parDat, las = 2)
+plot(medAlpha ~ as.factor(cu), data = parDat, las = 2)
 ```
+
+Whether variance (i.e. component CV) increases or decreases abundance appears to be independent of beta parameter. E.g. Fennel has a large beta and Chilko a very small beta - both exhibit declines in abundance with greater sigma. Trends do appear to be linked to productivity parameter though. All populations that have stable or increasing trends also have low alpha values. Possible that greater variability jumpstarts their abundance?

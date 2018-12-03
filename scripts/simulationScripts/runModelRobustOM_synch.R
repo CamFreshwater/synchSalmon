@@ -452,7 +452,7 @@ q <- ggplot(plotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
                                 "high" = expression(paste("1.25", sigma)))) +
   scale_fill_manual(values = colPal, guide = FALSE) +
   guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
-  labs(y = "Median Spawne\n Abundance (millions)",
+  labs(y = "Median Spawner\n Abundance (millions)",
        x = "Productivity Scenario") +
   theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
   facet_wrap(~cu, scales = "free_y")
@@ -504,7 +504,7 @@ p <- ggplot(plotDat3, aes(x = om, y = spawners, fill = cu, alpha = synch)) +
                      ) +
   scale_fill_manual(values = colPal, guide = FALSE) +
   guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
-  labs(y = "Median Spawne\n Abundance (millions)",
+  labs(y = "Median Spawner\n Abundance (millions)",
        x = "Productivity Scenario") +
   theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
   facet_wrap(~cu, scales = "free_y")

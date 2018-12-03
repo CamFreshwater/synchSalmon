@@ -1,0 +1,181 @@
+---
+title: "Zero Fishing and En Route Mortality Scenarios"
+author: "Cam Freshwater"
+date: "December 3, 2018"
+output: html_document
+---
+
+```{r readLibraries, message=FALSE, warning=FALSE, include=FALSE}
+listOfPackages <- c("plyr", "here", "parallel", "doParallel", "foreach", 
+                    "reshape2", "tidyverse", "gsl", "tictoc", "stringr", 
+                    "synchrony", "zoo", "Rcpp", "RcppArmadillo", "sn", 
+                    "sensitivity", "mvtnorm", "forcats", "ggpubr", "viridis", 
+                    "samSim")
+
+here <- here::here
+
+newPackages <- listOfPackages[!(listOfPackages %in% 
+                                  installed.packages()[ , "Package"])]
+if(length(newPackages)) install.packages(newPackages)
+lapply(listOfPackages, require, character.only = TRUE)
+```
+
+
+```{r importData, message=FALSE, warning=FALSE, include=FALSE}
+simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorrNoMort.csv"),
+                   stringsAsFactors = F)
+cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), stringsAsFactors = F)
+srDat <- read.csv(here("data/sox/fraserRecDatTrim.csv"), stringsAsFactors = F)
+catchDat <- read.csv(here("data/sox/fraserCatchDatTrim.csv"), 
+                     stringsAsFactors = F)
+ricPars <- read.csv(here("data/sox/rickerMCMCPars.csv"), stringsAsFactors = F)
+larkPars <- read.csv(here("data/sox/larkinMCMCPars.csv"), stringsAsFactors = F)
+tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
+
+simParTrim <- simPar %>% 
+  filter(scenario %in% c("ref", "noExp", "noMM", "noBoth"))
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+                                                sep = "_"))
+```
+
+
+```{r runSimulations, eval=FALSE, include=FALSE}
+# Define simulations to be run
+nTrials <- 75
+
+for (i in seq_along(dirNames)) {
+  dirName <- dirNames[i]
+  d <- subset(simParTrim, scenario == scenNames[i])
+  simsToRun <- split(d, seq(nrow(d)))
+  Ncores <- detectCores()
+  cl <- makeCluster(Ncores - 3) #save two cores
+  registerDoParallel(cl)
+  clusterEvalQ(cl, c(library(MASS),
+                  library(here),
+                  library(sensitivity),
+                  library(mvtnorm),
+                  library(scales), #shaded colors for figs
+                  library(viridis), #color blind gradient palette
+                  library(gsl),
+                  library(dplyr),
+                  library(Rcpp),
+                  library(RcppArmadillo),
+                  library(sn),
+                  library(samSim)))
+  #export custom function and objects
+  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
+                      "catchDat", "srDat", "ricPars", "dirName", "larkPars",
+                      "tamFRP"), envir = environment())
+  tic("run in parallel")
+  parLapply(cl, simsToRun, function(x) {
+    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
+                variableCU = FALSE, ricPars, larkPars = larkPars,
+                tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName,
+                nTrials = nTrials, multipleMPs = FALSE)
+  })
+  stopCluster(cl) #end cluster
+  toc()
+}
+```
+
+
+```{r cuSpecificPMs, echo=TRUE}
+omNames <- scenNames
+stkNames <- genOutputList(dirNames[1], 
+                          agg = FALSE)[["medSynch_TAM"]][["stkName"]]
+nCUs <- length(stkNames)
+#make DF to contain CU-specific benchmark estimates from sim run
+bmDat <- data.frame(cu = stkNames, 
+                    highBM = NA,
+                    lowBM  = NA)
+
+#First generate data and plots for different sigma treatments
+fullPlotList <- list()
+for (i in seq_along(dirNames)) { #make dataframe
+  cuList <- genOutputList(dirNames[i], agg = FALSE)
+  plotList <- lapply(cuList, function(h) {
+    plotDat <- NULL
+    nTrials <- nrow(h[["medSpawners"]])
+    spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
+                          synch = rep(unique(h[["opMod"]]), 
+                                      length.out = nTrials * nCUs)
+    )
+    spwn <- h[["medSpawners"]] %>%
+      as.data.frame() 
+    colnames(spwn) <- stkNames
+    spwnLong <- spwn %>% 
+      gather(key = cu, value = spawners) %>% 
+      mutate(cu = as.factor(cu))
+    spwnLong$lowBM <- rep(h[["meanSGen"]], each = nTrials)
+    spwnLong$highBM <- rep(0.8*h[["meanSMSY"]], each = nTrials)
+    plotDat <- rbind(plotDat, cbind(spwnDat, spwnLong))
+    return(plotDat)
+  })
+  plotDat2 <- do.call(rbind, plotList)
+  fullPlotList[[paste0(omNames[i])]] <- plotDat2
+}
+plotDat3 <- do.call(rbind, fullPlotList) %>%
+  mutate(synch =  factor(synch, levels = c("lowSynch", "medSynch", "highSynch")))
+
+p <- ggplot(plotDat3, aes(x = om, y = spawners, alpha = synch)) +
+  geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75),
+              fill = "grey30") +
+  geom_hline(plotDat3, mapping = aes(yintercept = highBM), linetype = 2) +
+  scale_alpha_manual(name = "Synchrony OM", values = c(1, 0.65, 0.3)) +
+  guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
+  labs(y = "Median Spawner\n Abundance (millions)",
+       x = "Operating Model") +
+  theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
+  facet_wrap(~cu, scales = "free_y")
+p
+```
+
+
+No strong impact under reference operating model, but synchrony effects were stronger under skewed scenarios. Rerun simulations with same operating model treatments, but alternative productivity regime (i.e. skewed normal process deviations).
+
+
+```{r repeatWithSkew, echo=TRUE}
+simParTrim <- simPar %>% 
+  dplyr::filter(scenario %in% c("refSkewN", "noExpSkewN", "noMMSkewN",
+                                "noBothSkewN"))
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+                                                sep = "_"))
+
+nTrials <- 125
+for (i in seq_along(dirNames)) {
+  dirName <- dirNames[i]
+  d <- subset(simParTrim, scenario == scenNames[i])
+  simsToRun <- split(d, seq(nrow(d)))
+  Ncores <- detectCores()
+  cl <- makeCluster(Ncores - 3) #save two cores
+  registerDoParallel(cl)
+  clusterEvalQ(cl, c(library(MASS),
+                  library(here),
+                  library(sensitivity),
+                  library(mvtnorm),
+                  library(scales), #shaded colors for figs
+                  library(viridis), #color blind gradient palette
+                  library(gsl),
+                  library(dplyr),
+                  library(Rcpp),
+                  library(RcppArmadillo),
+                  library(sn),
+                  library(samSim)))
+  #export custom function and objects
+  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
+                      "catchDat", "srDat", "ricPars", "dirName", "larkPars",
+                      "tamFRP"), envir = environment())
+  tic("run in parallel")
+  parLapply(cl, simsToRun, function(x) {
+    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
+                variableCU = FALSE, ricPars, larkPars = larkPars,
+                tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName,
+                nTrials = nTrials, multipleMPs = FALSE)
+  })
+  stopCluster(cl) #end cluster
+  toc()
+}
+```
+

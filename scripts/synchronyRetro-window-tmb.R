@@ -1,135 +1,88 @@
 library(dplyr)
 library(ggplot2)
-library(rstan)
 library(here)
-rstan_options(auto_write = TRUE)
-
-X <- readRDS(here("data", "generated", "prodMat.rds"))
-X_raw <- X
-
-y_group <- colSums(X)
-y_ind <- X
-
-sm <- stan_model(here("scripts", "sync.stan"))
-
-m <- sampling(sm,
-  data = list(
-    N = nrow(X), y_group = y_group,
-    G = ncol(X), y_ind = t(y_ind)
-  )
-)
-
-# rstan::traceplot(m)
-
-sqrt_phi <- sqrt(extract(m)$phi)
-cv_s <- extract(m)$cv_s
-cv_c <- extract(m)$cv_c
-
-synchrony <- function (x) {
-  var(rowSums(x)) / (sum(apply(x, 2, sd)) ^ 2)
-}
-synchrony(X)
-
-# ------------------------------------------------------------------------------
-head(X)
-
 library(TMB)
-setwd("scripts")
-compile('sync.cpp')
-dyn.load(dynlib("sync"))
 
+X <- readRDS(here("outputs", "generatedData", "recMat.rds"))
+
+compile("scripts/sync.cpp")
+dyn.load(dynlib("scripts/sync"))
+
+# Test our model:
 obj <- TMB::MakeADFun(
-  data = list(y_group = y_group, y_ind = y_ind),
+  data = list(y_time = rowSums(X), y_ind = X),
   parameters = list(
-    log_group_sigma = 0, log_ind_sigma = rep(0, ncol(y_ind)), 
-    group_mean = 0, ind_mean = rep(0, ncol(y_ind))),
+    log_numerator_sigma = 0, log_denominator_sigma = rep(0, ncol(X)),
+    numerator_mean = 0, denominator_mean = rep(0, ncol(X))
+  ),
   DLL = "sync"
 )
 object <- stats::nlminb(start = obj$par, obj = obj$fn, gr = obj$gr)
 rep <- TMB::sdreport(obj)
 rep
 
+synchrony <- function(x) {
+  var(rowSums(x)) / (sum(apply(x, 2, sd))^2)
+}
+assertthat::are_equal(
+  synchrony(X),
+  obj$report()$phi,
+  tol = 0.00001
+)
+# TODO: Please check that I have CV_c and CV_s correct based on calculations in R!!
 obj$report()
 summary(rep)
 
-# ------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-add_label <- function(xfrac, yfrac, label, pos = 2, ...) {
-  u <- par("usr")
-  x <- u[2] - xfrac * (u[2] - u[1])
-  y <- u[4] - yfrac * (u[4] - u[3])
-  text(x, y, label, pos = pos, ...)
-}
-
-G <- ncol(X)
-pal <- rep(RColorBrewer::brewer.pal(8, "Dark2"), 999L)[seq_len(ncol(X))]
-# pdf("thibaut2013-eg4.pdf", width = 5, height = 7)
-par(mfrow = c(4, 1), mar = c(3.5, 3.5, 0, 0), oma = c(2, 1, 1, 1),
-  mgp = c(1.6, 0.4, 0), tck = -0.02, las = 1)
-matplot(X_raw, type = "l", col = pal, xlab = "Time", ylab = "Productivity",
-  lty = 1, xaxs = "i")
-plot(density(sqrt_phi), xlim = c(0, 1), xlab = "sqrt(phi)", main = "", xaxs = "i")
-add_label(0.01, 0.1, "Synchrony component")
-plot(density(cv_s), xlim = c(0, 2), xlab = "CV_s", main = "", xaxs = "i")
-add_label(0.01, 0.1, "Component variability")
-for (i in seq_len(G)) {
-  polygon(density(extract(m)$cv_s_ind[, i]), border = paste0(pal[i], "60"))
-}
-plot(density(cv_c), xlim = c(0, 1), xlab = "CV_c", main = "", xaxs = "i")
-add_label(0.01, 0.1, "Realized aggregate variability")
-# hist(extract(m)$cv_s * sqrt(extract(m)$phi))
-# dev.off()
-
-m <- list()
-X <- X / sd(as.matrix(X)) # scale
-y_group <- rowSums(X)
-y_ind <- X
-
-window <- 10
-
-for (i in seq(window, nrow(X))) {
-  y_group <- rowSums(X[(i - (window-1)):i, ])
-  y_ind <- X[(i - (window-1)):i, ]
-  m_temp <- sampling(sm,
-    data = list(
-      N = length(y_group), y_group = y_group,
-      G = ncol(X), y_ind = t(y_ind)
+# A little function to make it easy to fit the windows of years:
+fit_synch <- function(x) {
+  obj <- TMB::MakeADFun(
+    data = list(y_time = rowSums(x), y_ind = x),
+    parameters = list(
+      log_numerator_sigma = 0, log_denominator_sigma = rep(0, ncol(x)),
+      numerator_mean = 0, denominator_mean = rep(0, ncol(x))
     ),
-    iter = 1000, chains = 1
+    DLL = "sync"
   )
-  m[[i]] <- extract(m_temp)
+  object <- stats::nlminb(start = obj$par, obj = obj$fn, gr = obj$gr)
+  rep <- TMB::sdreport(obj)
+  d <- as.data.frame(summary(rep))
+  d$term <- row.names(d)
+  d <- d[d$term %in% c("logit_phi", "log_cv_s", "log_cv_c"),
+    c("Estimate", "Std. Error", "term")]
+  row.names(d) <- NULL
+  d
 }
 
-out_cv_s <- plyr::ldply(m, function(y)
-  quantile(y$cv_s, probs = c(0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9)))
+# test it:
+fit_synch(X)
 
-plot_ts <- function(dat, column, ylim = c(0, 1), ylab = column, xlab = "Year") {
-  out <- plyr::ldply(dat, function(y) quantile(y[[column]],
-    probs = c(0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9)))
-  xt <- rev(nrow(X) - seq_len(nrow(out)))
-  plot(xt, sqrt(out[, "50%"]), type = "l", ylim = ylim, ylab = ylab,
-    lwd = 1.5, yaxs = "i", xlab = xlab)
-  polygon(c(xt, rev(xt)), c(sqrt(out[, "40%"]), rev(sqrt(out[, "60%"]))),
-    border = NA, col = "#00000050")
-  polygon(c(xt, rev(xt)), c(sqrt(out[, "25%"]), rev(sqrt(out[, "75%"]))),
-    border = NA, col = "#00000040")
-  polygon(c(xt, rev(xt)), c(sqrt(out[, "10%"]), rev(sqrt(out[, "90%"]))),
-    border = NA, col = "#00000025")
-}
+# Now fitted to the year windows:
+out_list <- list()
+window <- 12 # just as desired
+for (i in seq(window, nrow(X)))
+  out_list[[i - (window - 1)]] <- fit_synch(X[(i - (window - 1)):i, , drop = FALSE])
+out <- purrr::map_df(out_list, as.data.frame)
+out$year <- rep(seq(window, nrow(X)), each = 3)
+out <- arrange(out, term, year) %>%
+  rename(se_link = `Std. Error`, est_link = Estimate) %>%
+  mutate(logit = grepl("logit", term))
 
-# pdf("fraser-synchrony-trends.pdf", width = 3.5, height = 7)
-par(mfrow = c(3, 1), mar = c(2, 3, 0, 0), oma = c(2, 1, 1, 1),
-  mgp = c(2.0, 0.5, 0), tck = -0.02, las = 1)
-plot_ts(m, "cv_s", ylim = c(0, 1.6), ylab = "Weighted stream-level CV", xlab = "")
-plot_ts(m, "phi", ylab = "Synchrony", xlab = "")
-plot_ts(m, "cv_c", ylim = c(0, 1.5), ylab = "Fraser CV")
-# dev.off()
+# The model returns estimates in logit/log space.
+# Add and subtract the standard errors in logit space and
+# inverse logit transform:
+out <- mutate(out,
+  est = ifelse(logit, plogis(est_link), exp(est_link)),
+  lwr = ifelse(logit, plogis(est_link + qnorm(0.05) * se_link),
+    exp(est_link + qnorm(0.05) * se_link)),
+  upr = ifelse(logit, plogis(est_link + qnorm(0.95) * se_link),
+    exp(est_link + qnorm(0.95) * se_link)),
+)
+# Note that those are 90% CIs. Adjust as desired.
+
+out %>%
+  mutate(term = gsub("logit_", "", term)) %>%
+  mutate(term = gsub("log_", "", term)) %>%
+  ggplot(aes(year, est, ymin = lwr, ymax = upr)) +
+  geom_ribbon(alpha = 0.4) +
+  geom_line() +
+  facet_wrap(~term, scales = "free_y")

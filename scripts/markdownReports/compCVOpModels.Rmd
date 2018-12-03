@@ -158,7 +158,7 @@ dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
 
 vars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant")
 omNames <- rep(c("ref", "lowB", "noAR"), each = 3)
-sigNames <- rep(c("low", "med", "high"), length.out = 12)
+sigNames <- rep(c("low", "med", "high"), length.out = length(omNames))
 
 plotDat = NULL
 for(h in seq_along(dirNames)) {
@@ -233,11 +233,13 @@ ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]],
 ```
 
 
-Unsurprisingly decreasing beta increases recruit abundance but decreases BM status. Effect of component variance and synchrony appears to be similar. 
+Unsurprisingly decreasing beta increases recruit abundance but decreases BM status. No AR has no impact on median recruit abundance, but increases proportion of CUs above upper BM and reduces the likelihood of CUs going extinct to nil. Effect of component variance and synchrony appears to be similar. 
 
 Next examine CU-specific PMs.
 
 ```{r cuSpecificPMs, echo = TRUE}
+omNames <- rep(c("ref", "lowB", "noAR"), each = 3)
+sigNames <- rep(c("low", "med", "high"), length.out = length(omNames))
 selectedCUs <- c("Raft" , "Chlk")
 nCUs <- length(selectedCUs)
 colPal <- c("#7fc97f", "#beaed4", "#fdc086")
@@ -247,7 +249,8 @@ bmDat <- data.frame(cu = selectedCUs,
                     lowBM  = NA)
 plotDat <- NULL
 for (i in seq_along(dirNames)) { #make dataframe
-  cuList <- genOutputList(dirNames[i], selectedCUs = selectedCUs, agg = FALSE)[["medSynch_TAM"]]
+  cuList <- genOutputList(dirNames[i], selectedCUs = selectedCUs, 
+                          agg = FALSE)[["medSynch_TAM"]]
   nTrials <- nrow(cuList[["medSpawners"]])
   spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
                         sigma = rep(sigNames[i], length.out = nTrials * nCUs)
@@ -279,7 +282,7 @@ q <- ggplot(plotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
        x = "Productivity Scenario") +
   theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
   facet_wrap(~cu, scales = "free_y")
-
+q
 ```
 
 Low beta appears to reduce impact of greater variability, but only for Bowron. Note that trend appears to be CU-specific. Re-evaluate at some point. Finally look at SR curves.

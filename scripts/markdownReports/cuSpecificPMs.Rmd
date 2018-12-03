@@ -1,0 +1,142 @@
+---
+title: "CU-specific performance metrics"
+author: "Cam Freshwater"
+date: "December 2, 2018"
+output: html_document
+---
+
+In compCVOpModels.Rmd I noticed that patterns in CU-specific PMs varied among CUs. Focusing on reference op model explore how CUs differ in effects of greater synchrony (under median sigma) and greater CVc (under median synch). Note that while the interaction between synch and CVc will also vary among CUs, it is going to be difficult to fully explore this and incorporate into the synchrony manuscript. Therefore the goal here is simply to get an understanding of variability among CUs.
+
+```{r readLibraries, warning=FALSE, message=FALSE, echo = FALSE}
+listOfPackages <- c("plyr", "here", "parallel", "doParallel", "foreach", 
+                    "reshape2", "tidyverse", "gsl", "tictoc", "stringr", 
+                    "synchrony", "zoo", "Rcpp", "RcppArmadillo", "sn", 
+                    "sensitivity", "mvtnorm", "forcats", "ggpubr", "viridis", 
+                    "samSim")
+
+here <- here::here
+
+newPackages <- listOfPackages[!(listOfPackages %in% 
+                                  installed.packages()[ , "Package"])]
+if(length(newPackages)) install.packages(newPackages)
+lapply(listOfPackages, require, character.only = TRUE)
+```
+
+
+```{r importData, warning=FALSE, echo = FALSE}
+simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"),
+                   stringsAsFactors = F)
+cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), stringsAsFactors = F)
+srDat <- read.csv(here("data/sox/fraserRecDatTrim.csv"), stringsAsFactors = F)
+catchDat <- read.csv(here("data/sox/fraserCatchDatTrim.csv"), 
+                     stringsAsFactors = F)
+ricPars <- read.csv(here("data/sox/rickerMCMCPars.csv"), stringsAsFactors = F)
+larkPars <- read.csv(here("data/sox/larkinMCMCPars.csv"), stringsAsFactors = F)
+tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
+
+simParTrim <- subset(simPar, 
+                     scenario == "lowSig" | scenario == "medSig" | 
+                       scenario == "highSig"
+                     )
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+                                                sep = "_"))
+```
+
+
+```{r runSimulations, eval = FALSE, echo = FALSE}
+## Code chunk coded out because generally these simulation runs will already be present.
+
+## Define simulations to be run
+# nTrials <- 75
+# 
+# for (i in seq_along(dirNames)) {
+#   dirName <- dirNames[i]
+#   d <- subset(simParTrim, scenario == scenNames[i])
+#   simsToRun <- split(d, seq(nrow(d)))
+#   Ncores <- detectCores()
+#   cl <- makeCluster(Ncores - 3) #save two cores
+#   registerDoParallel(cl)
+#   clusterEvalQ(cl, c(library(MASS),
+#                   library(here),
+#                   library(sensitivity),
+#                   library(mvtnorm),
+#                   library(scales), #shaded colors for figs
+#                   library(viridis), #color blind gradient palette
+#                   library(gsl), 
+#                   library(dplyr),
+#                   library(Rcpp),
+#                   library(RcppArmadillo),
+#                   library(sn),
+#                   library(samSim)))
+#   #export custom function and objects
+#   clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
+#                       "catchDat", "srDat", "ricPars", "dirName", "larkPars", 
+#                       "tamFRP"), envir = environment()) 
+#   tic("run in parallel")
+#   parLapply(cl, simsToRun, function(x) {
+#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
+#                 variableCU = FALSE, ricPars, larkPars = larkPars, 
+#                 tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName, 
+#                 nTrials = nTrials, multipleMPs = FALSE)
+#   })
+#   stopCluster(cl) #end cluster
+#   toc()
+# }
+```
+
+
+```{r cuSpecificPMs, echo = TRUE}
+omNames <- rep(c("ref"), each = 3)
+sigNames <- rep(c("low", "med", "high"), length.out = length(omNames))
+stkNames <- genOutputList(dirNames[1], 
+                          agg = FALSE)[["medSynch_TAM"]][["stkName"]]
+nCUs <- length(stkNames)
+#make DF to contain CU-specific benchmark estimates from sim run
+bmDat <- data.frame(cu = stkNames, 
+                    highBM = NA,
+                    lowBM  = NA)
+
+#First generate data and plots for different sigma treatments
+plotDat <- NULL
+for (i in seq_along(dirNames)) { #make dataframe
+  cuList <- genOutputList(dirNames[i], agg = FALSE)[["medSynch_TAM"]]
+  nTrials <- nrow(cuList[["medSpawners"]])
+  spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
+                        sigma = rep(sigNames[i], length.out = nTrials * nCUs)
+  )
+  spwn <- cuList[["medSpawners"]] %>%
+    as.data.frame() 
+  colnames(spwn) <- stkNames
+  spwnLong <- spwn %>% 
+    gather(key = cu, value = spawners) %>% 
+    mutate(cu = as.factor(cu))
+  spwnLong$lowBM <- rep(cuList[["meanSGen"]], each = nTrials)
+  spwnLong$highBM <- rep(0.8*cuList[["meanSMSY"]], each = nTrials)
+  plotDat <- rbind(plotDat, cbind(spwnDat, spwnLong))
+}
+
+axisSize = 15; dotSize = 3.5; lineSize = 0.8
+q <- ggplot(plotDat, aes(x = sigma, y = spawners, alpha = sigma)) +
+  geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75), fill = "grey30") +
+  geom_hline(plotDat, mapping = aes(yintercept = highBM), linetype = 2) +
+  scale_alpha_manual(name = "Sigma OM", values = c(1, 0.65, 0.3),
+                     labels = c("low" = expression(paste("0.75", sigma)),
+                                "med" = expression(paste("1.0", sigma)),
+                                "high" = expression(paste("1.25", sigma)))) +
+  guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
+  labs(y = "Median Spawner\n Abundance (millions)",
+       x = "Sigma OM") +
+  theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
+  facet_wrap(~cu, scales = "free_y")
+q
+```
+The majority of CUs decline with increasing variability, but the strength of this effect varies. Notable exceptions are Gates/Nadina (medians stable even though variance increases) and Cultus (median increases along with variance).
+
+How are these related to beta values?
+
+```{r plotBeta, echo = FALSE}
+betaDat <- data.frame(cu <- cuList$stkName,
+                      medBeta <- cuList$medBeta[1,])
+plot(medBeta ~ as.factor(cu), data = betaDat)
+```

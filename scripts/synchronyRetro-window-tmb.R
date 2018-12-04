@@ -75,8 +75,9 @@ out <- mutate(out,
   lwr = ifelse(logit, plogis(est_link + qnorm(0.05) * se_link),
     exp(est_link + qnorm(0.05) * se_link)),
   upr = ifelse(logit, plogis(est_link + qnorm(0.95) * se_link),
-    exp(est_link + qnorm(0.95) * se_link)),
+    exp(est_link + qnorm(0.95) * se_link))
 )
+saveRDS(out, here("outputs", "generatedData", "tmbSynchEst.rds"))
 # Note that those are 90% CIs. Adjust as desired.
 
 out %>%

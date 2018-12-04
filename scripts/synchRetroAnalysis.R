@@ -98,7 +98,7 @@ aggRec <- recDatTrim %>%
   summarize(aggRec = sum(rec)) %>% 
   mutate(ts = "long")
 
-saveRDS(recMat, file = here("data", "generated", "recMat.rds"))
+# saveRDS(recMat, file = here("data", "generated", "recMat.rds"))
 # saveRDS(recMatShort, file = here("data", "generated", "recMatShort.rds"))
 
 
@@ -116,18 +116,21 @@ rawDat <- recDatTrim1 %>%
   select(stk, yr, prodZ, logProd, modResid, logResid) %>% 
   mutate(stk = as.factor(stk))
 
-# Import stan model outputs
-m <- readRDS(here("data/generated/stanSynchModOut.rds")) #window size = 12
-varNames <- c("cv_s", "phi", "cv_c")
-parList <- lapply(seq_along(varNames), function(x) {
-  d <- plyr::ldply(m, function(y) 
-    quantile(y[[varNames[x]]], probs = c(0.1, 0.25, 0.5, 0.75, 0.9))) %>% 
-    dplyr::rename(low = "10%", med = "50%", high = "90%") %>% 
-    mutate(year = yrs)
-})
-names(parList) <- c("cvC", "synch", "cvA")
-parList[["synch"]]$high[parList[["synch"]]$high > 1] <- 1 
-#synchrony bounded by 1, replace values
+# Import TMB model outputs
+modOut <- readRDS(here("outputs", "generatedData", "tmbSynchEst.rds"))
+
+# Import stan model outputs - DEPRECATED in favor of tmb
+# m <- readRDS(here("data/generated/stanSynchModOut.rds")) #window size = 12
+# varNames <- c("cv_s", "phi", "cv_c")
+# parList <- lapply(seq_along(varNames), function(x) {
+#   d <- plyr::ldply(m, function(y) 
+#     quantile(y[[varNames[x]]], probs = c(0.1, 0.25, 0.5, 0.75, 0.9))) %>% 
+#     dplyr::rename(low = "10%", med = "50%", high = "90%") %>% 
+#     mutate(year = yrs)
+# })
+# names(parList) <- c("cvC", "synch", "cvA")
+# parList[["synch"]]$high[parList[["synch"]]$high > 1] <- 1 
+
 
 #_________________________________________________________________________
 ## Plot
@@ -227,7 +230,7 @@ prodDat <- data.frame(year = yrs,
                                         function(x) cvAgg(x, weightMat = recMat),
                                         fill = NA, by.column = FALSE)) %>% 
   gather(key = var, value = index, 2:4) %>% 
-  mutate(data = "prod", ts = "long", weight = "s") 
+  mutate(data = "prod", ts = "long") 
 residDat <- data.frame(year = yrs, #repeat w/ resid data
                        wtdCV = rollapplyr(residMat, width = 12, 
                                           function(x) wtdCV(x, weightMat = recMat),
@@ -239,25 +242,35 @@ residDat <- data.frame(year = yrs, #repeat w/ resid data
                                          function(x) cvAgg(x, weightMat = recMat),
                                          fill = NA, by.column = FALSE)) %>% 
   gather(key = var, value = index, 2:4) %>% 
-  mutate(data = "resid", ts = "long", weight = "s")
+  mutate(data = "resid", ts = "long")
 rDat <- data.frame(year = yrs,
                    wtdCV = rollapplyr(recMat, width = 12, 
                                       function(x) wtdCV(x),
                                       fill = NA, by.column = FALSE),
                    synch = rollapplyr(recMat, width = 12, 
                                       function(x) community.sync(x)$obs, 
-                                      fill = NA, by.column = FALSE),
-                   agCV = rollapplyr(recMat, width = 12, 
-                                     function(x) cvAgg(x),
-                                     fill = NA, by.column = FALSE)) %>% 
+                                      fill = NA, by.column = FALSE)) %>%
+  mutate(agCV = sqrt(synch) * wtdCV) %>% 
   gather(key = var, value = index, 2:4) %>% 
-  mutate(data = "rec", ts = "long", weight = "s")
+  mutate(data = "rec", ts = "long") %>% 
+  filter(!is.na(index))
 
+# Compare canned estimates to Sean's model's output
+cvC1 <- rDat %>% 
+  filter(var == "wtdCV")
+cvC2 <- modOut %>% 
+  filter(term == "log_cv_s")
+plot(cvC1$index ~ cvC2$est)
 
-# Combine data
-dat <- rbind(rDat, prodDat, residDat) %>%
-  mutate(var = as.factor(var), data = as.factor(data), ts = as.factor(ts),
-         weight = as.factor(weight)) %>%
-  mutate(var = recode(var, "agCV" ="Aggregate CV", "synch" = "Synchrony",
-                      "wtdCV" = "Component CV", .default = levels(var)))
+cvA1 <- rDat %>% 
+  filter(var == "agCV")
+cvA2 <- modOut %>% 
+  filter(term == "log_cv_c")
+plot(cvA1$index ~ cvA2$est)
 
+phi1 <- rDat %>% 
+  filter(var == "synch")
+phi2 <- modOut %>% 
+  filter(term == "logit_phi")
+plot(phi1$index ~ phi2$est)
+## Match up exactly

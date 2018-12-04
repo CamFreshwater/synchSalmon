@@ -42,43 +42,44 @@ dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
 
 ```{r runSimulations, eval=FALSE, include=FALSE}
 # Define simulations to be run
-nTrials <- 75
-
-for (i in seq_along(dirNames)) {
-  dirName <- dirNames[i]
-  d <- subset(simParTrim, scenario == scenNames[i])
-  simsToRun <- split(d, seq(nrow(d)))
-  Ncores <- detectCores()
-  cl <- makeCluster(Ncores - 3) #save two cores
-  registerDoParallel(cl)
-  clusterEvalQ(cl, c(library(MASS),
-                  library(here),
-                  library(sensitivity),
-                  library(mvtnorm),
-                  library(scales), #shaded colors for figs
-                  library(viridis), #color blind gradient palette
-                  library(gsl),
-                  library(dplyr),
-                  library(Rcpp),
-                  library(RcppArmadillo),
-                  library(sn),
-                  library(samSim)))
-  #export custom function and objects
-  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
-                      "catchDat", "srDat", "ricPars", "dirName", "larkPars",
-                      "tamFRP"), envir = environment())
-  tic("run in parallel")
-  parLapply(cl, simsToRun, function(x) {
-    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
-                variableCU = FALSE, ricPars, larkPars = larkPars,
-                tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName,
-                nTrials = nTrials, multipleMPs = FALSE)
-  })
-  stopCluster(cl) #end cluster
-  toc()
-}
+# nTrials <- 75
+# 
+# for (i in seq_along(dirNames)) {
+#   dirName <- dirNames[i]
+#   d <- subset(simParTrim, scenario == scenNames[i])
+#   simsToRun <- split(d, seq(nrow(d)))
+#   Ncores <- detectCores()
+#   cl <- makeCluster(Ncores - 3) #save two cores
+#   registerDoParallel(cl)
+#   clusterEvalQ(cl, c(library(MASS),
+#                   library(here),
+#                   library(sensitivity),
+#                   library(mvtnorm),
+#                   library(scales), #shaded colors for figs
+#                   library(viridis), #color blind gradient palette
+#                   library(gsl),
+#                   library(dplyr),
+#                   library(Rcpp),
+#                   library(RcppArmadillo),
+#                   library(sn),
+#                   library(samSim)))
+#   #export custom function and objects
+#   clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
+#                       "catchDat", "srDat", "ricPars", "dirName", "larkPars",
+#                       "tamFRP"), envir = environment())
+#   tic("run in parallel")
+#   parLapply(cl, simsToRun, function(x) {
+#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
+#                 variableCU = FALSE, ricPars, larkPars = larkPars,
+#                 tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName,
+#                 nTrials = nTrials, multipleMPs = FALSE)
+#   })
+#   stopCluster(cl) #end cluster
+#   toc()
+# }
 ```
 
+Now generate violin plots showing trends in spawner abundance across different synchrony treatments.
 
 ```{r cuSpecificPMs, echo=TRUE}
 omNames <- scenNames
@@ -90,7 +91,7 @@ bmDat <- data.frame(cu = stkNames,
                     highBM = NA,
                     lowBM  = NA)
 
-#First generate data and plots for different sigma treatments
+#First generate data and plots for different synch treatments
 fullPlotList <- list()
 for (i in seq_along(dirNames)) { #make dataframe
   cuList <- genOutputList(dirNames[i], agg = FALSE)
@@ -134,48 +135,235 @@ p
 
 No strong impact under reference operating model, but synchrony effects were stronger under skewed scenarios. Rerun simulations with same operating model treatments, but alternative productivity regime (i.e. skewed normal process deviations).
 
-
-```{r repeatWithSkew, echo=TRUE}
-simParTrim <- simPar %>% 
+###Repeat with skewed process variance
+```{r repeatWithSkew, include=FALSE}
+simParTrim <- simPar %>%
   dplyr::filter(scenario %in% c("refSkewN", "noExpSkewN", "noMMSkewN",
                                 "noBothSkewN"))
 scenNames <- unique(simParTrim$scenario)
-dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
                                                 sep = "_"))
 
-nTrials <- 125
-for (i in seq_along(dirNames)) {
-  dirName <- dirNames[i]
-  d <- subset(simParTrim, scenario == scenNames[i])
-  simsToRun <- split(d, seq(nrow(d)))
-  Ncores <- detectCores()
-  cl <- makeCluster(Ncores - 3) #save two cores
-  registerDoParallel(cl)
-  clusterEvalQ(cl, c(library(MASS),
-                  library(here),
-                  library(sensitivity),
-                  library(mvtnorm),
-                  library(scales), #shaded colors for figs
-                  library(viridis), #color blind gradient palette
-                  library(gsl),
-                  library(dplyr),
-                  library(Rcpp),
-                  library(RcppArmadillo),
-                  library(sn),
-                  library(samSim)))
-  #export custom function and objects
-  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
-                      "catchDat", "srDat", "ricPars", "dirName", "larkPars",
-                      "tamFRP"), envir = environment())
-  tic("run in parallel")
-  parLapply(cl, simsToRun, function(x) {
-    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
-                variableCU = FALSE, ricPars, larkPars = larkPars,
-                tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName,
-                nTrials = nTrials, multipleMPs = FALSE)
+# nTrials <- 125
+# for (i in seq_along(dirNames)) {
+#   dirName <- dirNames[i]
+#   d <- subset(simParTrim, scenario == scenNames[i])
+#   simsToRun <- split(d, seq(nrow(d)))
+#   Ncores <- detectCores()
+#   cl <- makeCluster(Ncores - 3) #save two cores
+#   registerDoParallel(cl)
+#   clusterEvalQ(cl, c(library(MASS),
+#                   library(here),
+#                   library(sensitivity),
+#                   library(mvtnorm),
+#                   library(scales), #shaded colors for figs
+#                   library(viridis), #color blind gradient palette
+#                   library(gsl),
+#                   library(dplyr),
+#                   library(Rcpp),
+#                   library(RcppArmadillo),
+#                   library(sn),
+#                   library(samSim)))
+#   #export custom function and objects
+#   clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
+#                       "catchDat", "srDat", "ricPars", "dirName", "larkPars",
+#                       "tamFRP"), envir = environment())
+#   tic("run in parallel")
+#   parLapply(cl, simsToRun, function(x) {
+#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
+#                 variableCU = FALSE, ricPars, larkPars = larkPars,
+#                 tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName,
+#                 nTrials = nTrials, multipleMPs = FALSE)
+#   })
+#   stopCluster(cl) #end cluster
+#   toc()
+# }
+```
+
+```{r plotSkewChunk, echo=TRUE}
+omNames <- factor(scenNames)
+
+#First generate data and plots for different synchrony treatments
+fullPlotList <- list()
+for (i in seq_along(dirNames)) { #make dataframe
+  cuList <- genOutputList(dirNames[i], agg = FALSE)
+  plotList <- lapply(cuList, function(h) {
+    plotDat <- NULL
+    nTrials <- nrow(h[["medSpawners"]])
+    spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
+                          synch = rep(unique(h[["opMod"]]), 
+                                      length.out = nTrials * nCUs)
+    )
+    spwn <- h[["medSpawners"]] %>%
+      as.data.frame() 
+    colnames(spwn) <- stkNames
+    spwnLong <- spwn %>% 
+      gather(key = cu, value = spawners) %>% 
+      mutate(cu = as.factor(cu))
+    spwnLong$lowBM <- rep(h[["meanSGen"]], each = nTrials)
+    spwnLong$highBM <- rep(0.8*h[["meanSMSY"]], each = nTrials)
+    plotDat <- rbind(plotDat, cbind(spwnDat, spwnLong))
+    return(plotDat)
   })
-  stopCluster(cl) #end cluster
-  toc()
+  plotDat2 <- do.call(rbind, plotList)
+  fullPlotList[[paste0(omNames[i])]] <- plotDat2
+}
+plotDat4 <- do.call(rbind, fullPlotList) %>%
+  mutate(synch =  factor(synch, levels = c("lowSynch", "medSynch", 
+                                           "highSynch")),
+         om = factor(om, levels = c("refSkewN", "noExpSkewN", "noMMSkewN",
+                                    "noBothSkewN")),
+         model = case_when(
+           cu %in% c("E.St", "L.St", "L.Sh", "Symr", "Qsnl") ~ "larkin",
+           TRUE ~ "ricker"
+         )) %>% 
+  filter(cu %in% c("Bwrn", "Chlk", "Clts", "E.St", "Hrrs", "L.Sh", "Nadn",
+                   "Qsnl", "Raft"))
+
+colPal <- c("#b2182b", "#2166ac")
+names(colPal) <- unique(plotDat4$model)
+p <- ggplot(plotDat4, aes(x = om, y = spawners, alpha = synch, 
+                          fill = as.factor(model))) +
+  geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
+  # geom_hline(plotDat3, mapping = aes(yintercept = highBM), linetype = 2) +
+  scale_alpha_manual(name = "Synchrony OM", values = c(1, 0.65, 0.3)) +
+  scale_fill_manual(name = "Stock Recruit Model", values = colPal) +
+  guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
+  labs(y = "Median Spawner\n Abundance (millions)",
+       x = "Operating Model") +
+  theme_sleekX(facetSize = 1.2, axisSize = 12, legendSize = 0.85) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  facet_wrap(~cu, scales = "free_y")
+p
+```
+
+Although removing migration mortality and exploitation does dampen the effect of synchrony on CU-specific PM, many still show declines at high levels of synchrony under skewed productivity. However these trends are now stock-specific with abundance increasing with synchrony in Larkin populations. Conversely Ricker stocks not only show a decline with greater synchrony, but also lower levels of variability.
+
+One possibility is that when stocks are highly correlated with one another, stocks that normally exhibit unusually high or low levels of variability, will have their variance dampened by being correlated with average CUs. This means that large positive recruitment deviations will be relatively less common in certain CUs and more common in others. 
+
+If this is the case then there should be greater variability in stock recruit relationships at low levels of synchrony in Ricker, but not Larkin stocks. 
+
+Seems clear that there is some linkage between interannual variability and synchrony so that recruit deviations become more constrained at high levels of synchrony. These effects appear to be strongest in cyclic stocks.
+
+###Plot stock-recruit relationships
+```{r stockRecCurves, echo = FALSE}
+#Focus on simplest scenario where both exploitation and en route mortality have been removed (i.e. dirNames[4])
+arrayNames <- sapply(dirNames[4], function(x) { #matrix of array names to be passed
+  list.files(paste(here("outputs/simData"), x, sep="/"), 
+             pattern = "\\Arrays.RData$")
+})
+synchNames <- c("high", "low", "med")
+
+srList <- lapply(seq_along(arrayNames), function(h) { 
+  #medSynch treatment only
+  datList <- readRDS(paste(here("outputs/simData"), dirNames[4], arrayNames[h], 
+                           sep = "/"))
+  sDat <- datList$S %>% 
+    melt() %>% 
+    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+                  "spwn" = "value") %>% 
+    mutate(synch = synchNames[h], om = "noBothSkewN")  
+  rDat <- datList$recBY %>% 
+    melt() %>% 
+    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+                  "rec" = "value") %>% 
+    mutate(synch = synchNames[h], om = "noBothSkewN")
+  srDat <- merge(sDat, rDat, by = c("yr", "cu", "trial", "synch", "om"))
+  return(srDat)
+}) 
+
+srFull <- do.call(rbind, srList) %>% 
+  filter(!yr < 60) %>% #focus on median sig treatment, sim period
+  mutate(synch = as.factor(synch), 
+         model = case_when(
+           cu %in% c(1, 2, 6, 8, 9) ~ "larkin",
+           TRUE ~ "ricker"
+         )) %>% 
+  mutate(synch = factor(synch, levels(synch)[c(2,3,1)]))
+omNames <- unique(srFull$om)
+
+drawTrials <- sample.int(max(srFull$trial), size = 1)
+plotList <- lapply(seq_along(stkNames), function(i) { 
+    dum <- srFull %>% 
+      filter(trial == drawTrials,
+             cu == i) 
+    r <- ggplot(dum, aes(x = spwn, y = rec, colour = model)) +
+      labs(x = "Spawners", y = "Recruits", title = stkNames[i]) +
+      geom_point(size = 1.25) +
+      scale_colour_manual(name = "Stock Recruit Model", values = colPal, 
+                          guide = FALSE) +
+      theme_sleekX() +
+      facet_wrap(~synch, nrow = 3, ncol = 1)
+    return(r)
+})
+
+for (i in c(1, 4, 7, 10, 13, 16)) {
+  srList <- ggarrange(plotList[[i]], plotList[[i+1]], plotList[[i+2]], 
+            ncol = 3, nrow = 1, common.legend = TRUE, legend = "right", 
+            align = "v", widths = c(1,1,1))
+  annotate_figure(srList, 
+                  left = text_grob("Recruits", rot = 90),
+                  bottom = text_grob("Spawners"))
+  print(srList)
 }
 ```
 
+As expected high levels of synchrony result in strong reductions in overall variability in the SR relationship. However, not quite sure _why_ this occurs.
+
+### Plot time series of SR deviations
+###Plot stock-recruit relationships
+```{r recDeviations, echo = FALSE}
+devList <- lapply(seq_along(arrayNames), function(h) { 
+  #medSynch treatment only
+  datList <- readRDS(paste(here("outputs/simData"), dirNames[4], arrayNames[h], 
+                           sep = "/"))
+  devDat <- datList$recDev %>% 
+    melt() %>% 
+    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+                  "dev" = "value") %>% 
+    mutate(synch = synchNames[h], om = "noBothSkewN")
+  return(devDat)
+}) 
+
+devFull <- do.call(rbind, devList) %>% 
+  filter(!yr < 60) %>% #focus on median sig treatment, sim period
+  mutate(synch = as.factor(synch), 
+         model = case_when(
+           cu %in% c(1, 2, 6, 8, 9) ~ "larkin",
+           TRUE ~ "ricker"
+         )) %>% 
+  mutate(synch = factor(synch, levels(synch)[c(2,3,1)]))
+omNames <- unique(devFull$om)
+
+drawTrials <- sample.int(max(devFull$trial), size = 1)
+plotList <- lapply(seq_along(stkNames), function(i) { 
+    dum <- devFull %>% 
+      filter(trial == drawTrials,
+             cu == i) %>% 
+      group_by(synch) %>% 
+      mutate(meanDev = mean(dev))
+    r <- ggplot(dum, aes(x = yr, y = dev, colour = model)) +
+      labs(x = "Spawners", y = "Recruits", title = stkNames[i]) +
+      geom_line(size = 1.25) +
+      geom_hline(dum, mapping = aes(yintercept = meanDev), linetype = 2) +
+      scale_colour_manual(name = "Stock Recruit Model", values = colPal, 
+                          guide = FALSE) +
+      theme_sleekX() +
+      facet_wrap(~synch, nrow = 3, ncol = 1)
+    return(r)
+})
+
+for (i in c(1, 4, 7, 10, 13, 16)) {
+  devPlotList <- ggarrange(plotList[[i]], plotList[[i+1]], plotList[[i+2]], 
+            ncol = 3, nrow = 1, common.legend = TRUE, legend = "right", 
+            align = "v", widths = c(1,1,1))
+  annotate_figure(devPlotList, 
+                  left = text_grob("Recruits", rot = 90),
+                  bottom = text_grob("Spawners"))
+  print(devPlotList)
+}
+```
+
+So on average deviations become more likely to be negative as synchrony increases, though this effect, again, varies by CU. What I believe is happening is that at high levels of synchrony and negative skewness, strong negative recruitment deviations that arise due to chance alone in single CUs spill over into the aggregate as a whole. Effectively this means that the aggregate isn't just behaving like a single stock, it's behaving like a single stock that repeatedly samples a risky distribution in a single year. The results of those repeated draws are then integrated over the entire aggregate via the variance-covariance matrix. 
+
+Thus even though the CUs aren't explicitly linked by dispersal or pred/prey dynamics, a fluky negative recruitment deviation that occurs in one CU will be absorbed by other CUs. Because under the reference scenario negative outcomes are no more likely than positive, the mean response there is 0.

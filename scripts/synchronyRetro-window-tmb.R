@@ -3,7 +3,8 @@ library(ggplot2)
 library(here)
 library(TMB)
 
-X <- readRDS(here("outputs", "generatedData", "recMat.rds"))
+# X <- readRDS(here("outputs", "generatedData", "recMat.rds"))
+X <- readRDS(here("outputs", "generatedData", "recMatShort.rds"))
 
 compile("scripts/sync.cpp")
 dyn.load(dynlib("scripts/sync"))
@@ -29,7 +30,6 @@ assertthat::are_equal(
   obj$report()$phi,
   tol = 0.00001
 )
-# TODO: Please check that I have CV_c and CV_s correct based on calculations in R!!
 obj$report()
 summary(rep)
 
@@ -77,7 +77,8 @@ out <- mutate(out,
   upr = ifelse(logit, plogis(est_link + qnorm(0.95) * se_link),
     exp(est_link + qnorm(0.95) * se_link))
 )
-saveRDS(out, here("outputs", "generatedData", "tmbSynchEst.rds"))
+# saveRDS(out, here("outputs", "generatedData", "tmbSynchEst.rds"))
+saveRDS(out, here("outputs", "generatedData", "tmbSynchEst_suppShort.rds"))
 # Note that those are 90% CIs. Adjust as desired.
 
 out %>%

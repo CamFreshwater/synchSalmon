@@ -94,7 +94,7 @@ residMat <- recDatTrim %>%
   select(-yr) %>% 
   as.matrix()
 aggRec <- recDatTrim %>% 
-  group_by(spwnRetYr) %>% 
+  group_by(yr) %>% 
   summarize(aggRec = sum(rec)) %>% 
   mutate(ts = "long")
 
@@ -118,6 +118,16 @@ rawDat <- recDatTrim1 %>%
 
 # Import TMB model outputs
 modOut <- readRDS(here("outputs", "generatedData", "tmbSynchEst.rds"))
+modOut$broodYr <- rep(yrs[12:61], times = 3)
+
+#note that in Sean's output cv_s is "species" and cv_c is "community" following
+#Thib and Connolly 2013
+retroCVc <- modOut %>% 
+  filter(term == "log_cv_s")  
+retroPhi <- modOut %>% 
+  filter(term == "logit_phi")
+retroCVa <- modOut %>% 
+  filter(term == "log_cv_c")
 
 # Import stan model outputs - DEPRECATED in favor of tmb
 # m <- readRDS(here("data/generated/stanSynchModOut.rds")) #window size = 12
@@ -134,87 +144,88 @@ modOut <- readRDS(here("outputs", "generatedData", "tmbSynchEst.rds"))
 
 #_________________________________________________________________________
 ## Plot
-axisSize = 12
 stkN <- length(unique(rawDat$stk))
 
 labDat <- data.frame(lab = c("a)", "b)", "c)", "d)", "e)", "f)"),
                      var = c("prod", "rec", "catch", "cv", "synch", "aggCV"))
+plotYrs <- c(min(aggRec$yr), max(catchDatLong$yr))
 
 rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, col = stk)) + 
   labs(x = "", y = "log(Recruits/Spawner)") + 
   ylim(min(rawDat$logProd), 5.3) +
   geom_line(size = 0.75) +
+  xlim(plotYrs) +
   scale_color_manual(values = rep("grey", length.out = stkN), guide = FALSE) +
   stat_summary(fun.y = mean, colour = "black", geom = "line", size = 1.25)  +
-  theme_sleekX() +
+  theme_sleekX(position = "top", axisSize = 12) +
+  theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "prod"),
-            mapping = aes(x = min(rawDat$yr), y = max(rawDat$logProd), label = lab, 
-                          hjust = 0.25, vjust = -0.25), show.legend = FALSE, 
-            inherit.aes = FALSE, size = 4) +
-  theme(axis.text = element_text(size = 0.9 * axisSize),
-        axis.title = element_text(size = axisSize))
-aggRecPlot <- ggplot(aggRec, aes(x = spwnRetYr, y = aggRec)) +
+            mapping = aes(x = min(plotYrs), y = max(rawDat$logProd), 
+                          label = lab, hjust = 0.25, vjust = -0.25), 
+            show.legend = FALSE, inherit.aes = FALSE, size = 4)
+aggRecPlot <- ggplot(aggRec, aes(x = yr, y = aggRec)) +
   geom_line(size = 1.25) +
-  theme_sleekX() +
+  xlim(plotYrs) +
+  theme_sleekX(position = "top", axisSize = 12) +
+  theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "rec"),
-            mapping = aes(x = min(aggRec$spwnRetYr), y = max(aggRec$aggRec), 
+            mapping = aes(x = min(plotYrs), y = max(aggRec$aggRec), 
                           label = lab, hjust = 0.25, vjust = 0.5), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
-  theme(axis.text = element_text(size = 0.9 * axisSize)) +
-  labs(x = "", y = "Aggregate Recruit Abundance")
+  labs(x = "", y = "Aggregate Recruitment")
 aggCatchPlot <- ggplot(catchDatLong, aes(x = yr, y = catch)) + 
   geom_line(size = 1.15) +
-  theme_sleekX() +
+  theme_sleekX(position = "top", axisSize = 12) +
+  theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
+  xlim(plotYrs) +
   geom_text(data = labDat %>% filter(var == "catch"),
-            mapping = aes(x = min(catchDatLong$yr), 
+            mapping = aes(x = min(plotYrs), 
                           y = max(catchDatLong$catch), 
                           label = lab, hjust = 0.25, vjust = 0.5), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
-  theme(axis.text = element_text(size = 0.9 * axisSize),
-        axis.title = element_text(size = axisSize)) +
   scale_x_continuous(breaks = round(seq(1960, 2000, by = 20), 1)) +
   labs(x = "", y = "Aggregate Catch") 
-compCVPlot <- ggplot(parList$cvC, aes(x = year, y = med)) + 
+compCVPlot <- ggplot(retroCVc, aes(x = broodYr, y = est)) + 
   geom_line(size = 1.15) +
-  geom_ribbon(aes(ymin = low, ymax = high), alpha=0.2) +
-  theme_sleekX() +
+  xlim(plotYrs) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), alpha=0.2) +
+  theme_sleekX(axisSize = 12) +
+  theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "cv"),
-            mapping = aes(x = min(parList$cvC$year), 
-                          y = max(parList$cvC$high, na.rm = TRUE), 
+            mapping = aes(x = min(plotYrs), 
+                          y = max(retroCVc$upr, na.rm = TRUE), 
                           label = lab, hjust = 0.25, vjust = 0.5), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
-  theme(axis.text = element_text(size = 0.9 * axisSize),
-        axis.title = element_text(size = axisSize)) +
   labs(x = "", y = "Component Variability") 
-synchPlot <- ggplot(parList$synch, aes(x = year, y = med)) + 
+synchPlot <- ggplot(retroPhi, aes(x = broodYr, y = est)) + 
   geom_line(size = 1.25) +
-  geom_ribbon(aes(ymin = low, ymax = high), alpha=0.2) +
-  theme_sleekX() +
+  xlim(plotYrs) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), alpha=0.2) +
+  theme_sleekX(axisSize = 12) +
+  theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "synch"),
-            mapping = aes(x = min(parList$synch$year), 
-                          y = max(parList$synch$high, na.rm = TRUE), 
+            mapping = aes(x = min(plotYrs), 
+                          y = max(retroPhi$upr, na.rm = TRUE), 
                           label = lab, hjust = 0.25, vjust = 0.5), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
-  theme(axis.text = element_text(size = 0.9 * axisSize),
-        axis.title = element_text(size = axisSize)) +
   labs(x = "", y = "Synchrony")
-agCVPlot <- ggplot(parList$cvA, aes(x = year, y = med)) + 
+agCVPlot <- ggplot(retroCVa, aes(x = broodYr, y = est)) + 
   geom_line(size = 1.25) +
-  geom_ribbon(aes(ymin = low, ymax = high), alpha=0.2) +
-  theme_sleekX() +
+  xlim(plotYrs) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), alpha=0.2) +
+  theme_sleekX(axisSize = 12) +
+  theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "aggCV"),
-            mapping = aes(x = min(parList$cvA$year), 
-                          y = max(parList$cvA$high, na.rm = TRUE), 
+            mapping = aes(x = min(plotYrs), 
+                          y = max(retroCVa$upr, na.rm = TRUE), 
                           label = lab, hjust = 0.25, vjust = 0.5), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
-  theme(axis.text = element_text(size = 0.9 * axisSize),
-        axis.title = element_text(size = axisSize)) +
   labs(x = "", y = "Aggregate Variability")
 
 png(here("figs/Fig1New_Retro.png"), height = 4.5, width = 6.5,
     units = "in", res = 300)
 ggarrange(rawProdPlot, aggRecPlot, aggCatchPlot, compCVPlot, synchPlot, 
-          agCVPlot, nrow = 2, ncol = 3)
+          agCVPlot, nrow = 2, ncol = 3, heights = c(1, 1.1))
 dev.off()
 
 

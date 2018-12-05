@@ -35,17 +35,17 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 25
+nTrials <- 50
 
 ## General robustness runs
 simParTrim <- subset(simPar,
-                     scenario == "lowSig" | scenario == "medSig" | 
-                       scenario == "highSig" | scenario == "lowSigSkew" | 
+                     scenario == "lowSig" | scenario == "medSig" |
+                       scenario == "highSig" | scenario == "lowSigSkew" |
                        scenario == "medSigSkew" | scenario == "highSigSkew" |
                      scenario == "lowSigSkewT" | scenario == "medSigSkewT" |
                      scenario == "highSigSkewT" 
-                     # | scenario == "lowSigLowA" | 
-                     # scenario == "medSigLowA" | scenario == "highSigLowA"
+                     | scenario == "lowSigLowA" |
+                     scenario == "medSigLowA" | scenario == "highSigLowA"
                      )
 
 scenNames <- unique(simParTrim$scenario)

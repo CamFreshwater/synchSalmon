@@ -133,7 +133,7 @@ q <- ggplot(plotDat, aes(x = sigma, y = spawners, alpha = sigma)) +
 q
 ```
 
-The majority of CUs exhibit declines in abundance with increasing variability, but the strength of this effect varies. Notable exceptions are Gates, Harrison, Nadina (medians stable even though variance increases) and Raft/Cultus (median increases along with variance).
+The majority of CUs exhibit declines in abundance with increasing variability, but the strength of this effect varies. Notable exceptions are Gates/Harrison/Nadina/Seymour (medians stable even though variance increases) and Raft/Cultus (median increases along with variance).
 
 Repeat previous analysis with trends in synchrony instead (should be much more consistent).
 

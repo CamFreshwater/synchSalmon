@@ -5,7 +5,7 @@ date: "November 30, 2018"
 output: html_document
 ---
 
-```{r readLibraries, warning=FALSE, message=FALSE, echo = FALSE}
+```{r readLibraries, message=FALSE, warning=FALSE, include=FALSE}
 listOfPackages <- c("plyr", "here", "parallel", "doParallel", "foreach", 
                     "reshape2", "tidyverse", "gsl", "tictoc", "stringr", 
                     "synchrony", "zoo", "Rcpp", "RcppArmadillo", "sn", 
@@ -70,10 +70,6 @@ srList <- lapply(seq_along(dirNames), function(h) {
 ```
 
 ```{r plotSRCurves, warning=FALSE, echo = FALSE}
-#chilko SR parameters
-chlkA = 1.8315
-chlkB = 1.23182
-
 srFull <- do.call(rbind, srList) %>% 
   filter(!yr < 60) %>% #focus on median sig treatment, sim period
   mutate(sig = as.factor(sig)) %>% 
@@ -86,7 +82,6 @@ plotList <- lapply(seq_along(drawTrials), function(i) {
   r <- ggplot(dum, aes(x = log(spwn), y = log(rec), colour = sig)) +
     labs(x = "Spawners", y = "Recruits", title = drawTrials[i]) +
     geom_point(size = 1.25) +
-    geom_abline(intercept = chlkA, slope )
     scale_colour_discrete(name = "Operating Model") +
     theme_sleekX(position = "bottom") +
     theme(axis.title.y=element_blank()) +
@@ -106,47 +101,47 @@ Results clearly show an increase in scatter along the SR curve as sigma goes up 
 
 ```{r runSimulations, eval = FALSE, echo = FALSE}
 ## Define simulations to be run
-nTrials <- 75
+# nTrials <- 75
 
 ## General robustness runs
-simParTrim <- simPar
-scenNames <- unique(simParTrim$scenario)
-dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
-                                                sep = "_"))
+# simParTrim <- simPar
+# scenNames <- unique(simParTrim$scenario)
+# dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+#                                                 sep = "_"))
 
-for (i in seq_along(dirNames)) {
-  dirName <- dirNames[i]
-  d <- subset(simParTrim, scenario == scenNames[i])
-  simsToRun <- split(d, seq(nrow(d)))
-  Ncores <- detectCores()
-  cl <- makeCluster(Ncores - 3) #save two cores
-  registerDoParallel(cl)
-  clusterEvalQ(cl, c(library(MASS),
-                  library(here),
-                  library(sensitivity),
-                  library(mvtnorm),
-                  library(scales), #shaded colors for figs
-                  library(viridis), #color blind gradient palette
-                  library(gsl), 
-                  library(dplyr),
-                  library(Rcpp),
-                  library(RcppArmadillo),
-                  library(sn),
-                  library(samSim)))
-  #export custom function and objects
-  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
-                      "catchDat", "srDat", "ricPars", "dirName", "larkPars", 
-                      "tamFRP"), envir = environment()) 
-  tic("run in parallel")
-  parLapply(cl, simsToRun, function(x) {
-    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
-                variableCU = FALSE, ricPars, larkPars = larkPars, 
-                tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName, 
-                nTrials = nTrials, multipleMPs = FALSE)
-  })
-  stopCluster(cl) #end cluster
-  toc()
-}
+# for (i in seq_along(dirNames)) {
+#   dirName <- dirNames[i]
+#   d <- subset(simParTrim, scenario == scenNames[i])
+#   simsToRun <- split(d, seq(nrow(d)))
+#   Ncores <- detectCores()
+#   cl <- makeCluster(Ncores - 3) #save two cores
+#   registerDoParallel(cl)
+#   clusterEvalQ(cl, c(library(MASS),
+#                   library(here),
+#                   library(sensitivity),
+#                   library(mvtnorm),
+#                   library(scales), #shaded colors for figs
+#                   library(viridis), #color blind gradient palette
+#                   library(gsl), 
+#                   library(dplyr),
+#                   library(Rcpp),
+#                   library(RcppArmadillo),
+#                   library(sn),
+#                   library(samSim)))
+#   #export custom function and objects
+#   clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
+#                       "catchDat", "srDat", "ricPars", "dirName", "larkPars", 
+#                       "tamFRP"), envir = environment()) 
+#   tic("run in parallel")
+#   parLapply(cl, simsToRun, function(x) {
+#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
+#                 variableCU = FALSE, ricPars, larkPars = larkPars, 
+#                 tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName, 
+#                 nTrials = nTrials, multipleMPs = FALSE)
+#   })
+#   stopCluster(cl) #end cluster
+#   toc()
+# }
 ```
 
 ```{r plotConsPMTrends, echo = TRUE}

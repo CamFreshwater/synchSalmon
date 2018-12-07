@@ -92,10 +92,6 @@ sigNames <- rep(c("low", "med", "high"), length.out = length(omNames))
 stkNames <- genOutputList(dirNames[1], 
                           agg = FALSE)[["medSynch_TAM"]][["stkName"]]
 nCUs <- length(stkNames)
-#make DF to contain CU-specific benchmark estimates from sim run
-bmDat <- data.frame(cu = stkNames, 
-                    highBM = NA,
-                    lowBM  = NA)
 
 #First generate data and plots for different sigma treatments
 plotDat <- NULL
@@ -111,8 +107,6 @@ for (i in seq_along(dirNames)) { #make dataframe
   spwnLong <- spwn %>% 
     gather(key = cu, value = spawners) %>% 
     mutate(cu = as.factor(cu))
-  spwnLong$lowBM <- rep(cuList[["meanSGen"]], each = nTrials)
-  spwnLong$highBM <- rep(0.8*cuList[["meanSMSY"]], each = nTrials)
   plotDat <- rbind(plotDat, cbind(spwnDat, spwnLong))
 }
 
@@ -120,7 +114,6 @@ axisSize = 15; dotSize = 3.5; lineSize = 0.8
 q <- ggplot(plotDat, aes(x = sigma, y = spawners, alpha = sigma)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75),
               fill = "grey30") +
-  geom_hline(plotDat, mapping = aes(yintercept = highBM), linetype = 2) +
   scale_alpha_manual(name = "Sigma OM", values = c(1, 0.65, 0.3),
                      labels = c("low" = expression(paste("0.75", sigma)),
                                 "med" = expression(paste("1.0", sigma)),
@@ -128,7 +121,7 @@ q <- ggplot(plotDat, aes(x = sigma, y = spawners, alpha = sigma)) +
   guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
   labs(y = "Median Spawner\n Abundance (millions)",
        x = "Sigma OM") +
-  theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
+  theme_sleekX(facetSize = 1.2, axisSize = 12, legendSize = 0.85) +
   facet_wrap(~cu, scales = "free_y")
 q
 ```
@@ -144,10 +137,6 @@ synchNames <- rep(c("high", "low", "med"), length.out = length(omNames))
 stkNames <- genOutputList(dirNames[1], 
                           agg = FALSE)[["medSynch_TAM"]][["stkName"]]
 nCUs <- length(stkNames)
-#make DF to contain CU-specific benchmark estimates from sim run
-bmDat <- data.frame(cu = stkNames, 
-                    highBM = NA,
-                    lowBM  = NA)
 
 #First generate data and plots for different sigma treatments
 plotDat <- NULL
@@ -164,34 +153,51 @@ for (i in seq_along(synchNames)) { #make dataframe
   spwnLong <- spwn %>% 
     gather(key = cu, value = spawners) %>% 
     mutate(cu = as.factor(cu))
-  spwnLong$lowBM <- rep(cuList[["meanSGen"]], each = nTrials)
-  spwnLong$highBM <- rep(0.8*cuList[["meanSMSY"]], each = nTrials)
   plotDat <- rbind(plotDat, cbind(spwnDat, spwnLong))
 }
 
 q <- ggplot(plotDat, aes(x = synch, y = spawners, alpha = synch)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75),
               fill = "grey30") +
-  geom_hline(plotDat, mapping = aes(yintercept = highBM), linetype = 2) +
   scale_alpha_manual(name = "Synch OM", values = c(1, 0.65, 0.3)) +
   guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
   labs(y = "Median Spawner\n Abundance (millions)",
        x = "Synch OM") +
-  theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
+  theme_sleekX(facetSize = 1.2, axisSize = 12, legendSize = 0.85) +
   facet_wrap(~cu, scales = "free_y")
 q
 ```
 
-As expected effects of synchrony are basically the same across CUs.
+As expected effects of synchrony are basically the same across CUs (note that this is only expected for the reference case; alternative OMs explored in cuSpecificPMs_synchAltOMs.Rmd).
 
 How are these related to alpha and beta values?
 
 ```{r plotBeta, echo=TRUE}
-parDat <- data.frame(cu <- cuList$stkName,
-                      medBeta <- cuList$medBeta[1,],
-                      medAlpha <- cuList$medAlpha[1,])
-plot(medBeta ~ as.factor(cu), data = parDat, las = 2)
-plot(medAlpha ~ as.factor(cu), data = parDat, las = 2)
+parDat <- data.frame(cu = cuList$stkName,
+                      medBeta = cuList$medBeta[1,],
+                      medAlpha = cuList$medAlpha[1,],
+                     sigma = cuPar$sigma
+                     ) %>% 
+  melt() %>% 
+  dplyr::rename("par" = "variable") %>% 
+  mutate(decline = case_when(
+           cu %in% c("Clts", "Gats", "Hrrs", "Nadn", "Raft", "Symr") ~ "no",
+           TRUE ~ "yes"
+         ),
+         model = case_when(
+           cu %in% c("E.St", "L.St", "Qsnl", "Symr", "L.Sh") ~ "larkin",
+           TRUE ~ "ricker"
+         ))
+
+colPal <- c("#b2182b", "#2166ac")
+ggplot(parDat, aes(x = cu, y = value, colour = decline, shape = model)) +
+  geom_point() +
+  scale_color_manual(name = "Decline", values = colPal) +
+  scale_shape_discrete(name = "SR Model") +
+  theme_sleekX() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  facet_wrap(~par, scales = "free_y")
+
 ```
 
-Whether variance (i.e. component CV) increases or decreases abundance appears to be independent of beta parameter. E.g. Fennel has a large beta and Chilko a very small beta - both exhibit declines in abundance with greater sigma. Trends do appear to be linked to productivity parameter though. All populations that have stable or increasing trends also have low alpha values. Possible that greater variability jumpstarts their abundance?
+Only patterns that I observe are that stocks that do not exhibit a decline with greater variability (red) typically have lower alpha values. Thus it seems as though the pattern must be driven by some interaction between multiple parameters? Again not sure if we've fully identified the drivers, but I'm unsure of where to go from here.

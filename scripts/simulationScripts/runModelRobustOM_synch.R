@@ -7,7 +7,6 @@
 # MP
 #*******************************************************************************
 
-
 # Check if required packages are installed and run
 listOfPackages <- c("plyr", "here", "parallel", "doParallel", "foreach", 
                     "reshape2", "tidyverse", "gsl", "tictoc", "stringr", 
@@ -32,10 +31,11 @@ ricPars <- read.csv(here("data/sox/rickerMCMCPars.csv"), stringsAsFactors = F)
 larkPars <- read.csv(here("data/sox/larkinMCMCPars.csv"), stringsAsFactors = F)
 tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 
+
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 50
+nTrials <- 25
 
 ## General robustness runs
 simParTrim <- subset(simPar,
@@ -44,8 +44,8 @@ simParTrim <- subset(simPar,
                        scenario == "medSigSkew" | scenario == "highSigSkew" |
                      scenario == "lowSigSkewT" | scenario == "medSigSkewT" |
                      scenario == "highSigSkewT" 
-                     | scenario == "lowSigLowA" |
-                     scenario == "medSigLowA" | scenario == "highSigLowA"
+                     # | scenario == "lowSigLowA" |
+                     # scenario == "medSigLowA" | scenario == "highSigLowA"
                      )
 
 scenNames <- unique(simParTrim$scenario)

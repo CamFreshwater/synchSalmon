@@ -20,7 +20,7 @@ plotDat <- plotDat %>%
          ) %>%
   gather(key = dist, value = probY, c(-x, -yMin)) %>%
   mutate(dist = as.factor(dist)) %>% 
-  mutate(dist = factor(dist, levels(dist)[c(3, 2, 1)]),)
+  mutate(dist = factor(dist, levels(dist)[c(3, 2, 1)]))
 
 
 colPal <- c("#bd0026", "#fd8d3c", "black")
@@ -97,13 +97,16 @@ recDat <- cbind(normRec, normLowARec, skewNormRec, skewTRec) %>%
            prodOM == "skewNormRec" ~ "Skew Normal",
            prodOM == "skewTRec" ~ "Skew Student t"
          )) %>%
-  mutate(prodOM = recode(prodOM, "normRec" = "Reference Alpha", 
+  mutate(dist = as.factor(dist),
+         prodOM = recode(prodOM, "normRec" = "Reference Alpha", 
                          "normLowARec" = "Low Alpha", 
                          "skewNormRec" = "Skew Normal",
-                         "skewTRec" = "Skew Student t"),
+                         "skewTRec" = "Skew Student t")
          ) %>% 
   filter(recruits < recCap) #remove absurdly large positive recruitment events
 
+colPal <- c("black", "#fd8d3c", "#bd0026")
+names(colPal) <- levels(recDat$dist)
 r <- ggplot(recDat, aes(x = prodOM, y = recruits)) + 
   geom_violin(trim = FALSE, aes(color = dist, fill = dist), alpha = 0.2) +
   stat_summary(fun.data = "mean_sd", geom = "pointrange", 
@@ -116,7 +119,7 @@ r <- ggplot(recDat, aes(x = prodOM, y = recruits)) +
 
 
 png(file = paste(here(),"/figs/SFig1_distPlots.png", sep = ""),
-    height = 6.5, width = 8.5, units = "in", res = 300)
+    height = 6, width = 7.5, units = "in", res = 300)
 ggarrange(
   ggarrange(p, q, ncol = 2, labels = c("a)", "b)"), widths = c(1,1),
             font.label = list(size = 13, face = "plain")),

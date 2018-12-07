@@ -153,7 +153,7 @@ plotYrs <- c(min(aggRec$yr), max(catchDatLong$yr))
 rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, col = stk)) + 
   labs(x = "", y = "log(Recruits/Spawner)") + 
   ylim(min(rawDat$logProd), 5.3) +
-  geom_line(size = 0.75) +
+  geom_line(size = 0.45) +
   xlim(plotYrs) +
   scale_color_manual(values = rep("grey", length.out = stkN), guide = FALSE) +
   stat_summary(fun.y = mean, colour = "black", geom = "line", size = 1.25)  +

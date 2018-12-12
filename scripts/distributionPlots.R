@@ -24,6 +24,7 @@ plotDat <- plotDat %>%
 
 
 colPal <- c("#bd0026", "#fd8d3c", "black")
+names(colPal) <- levels(plotDat$dist)
 p <- ggplot() +
   geom_ribbon(data = plotDat,
               aes(x = x, ymin = yMin, ymax = probY, group = dist, color = dist,

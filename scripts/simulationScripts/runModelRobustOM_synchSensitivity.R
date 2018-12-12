@@ -92,8 +92,8 @@ for (i in seq_along(dirNames)) {
 
 #_________________________________________________________________________
 ## Modified version of multi-OM grouped box plots
-vars <- c("medRecRY", "ppnCULower", "ppnCUUpper", "ppnCUExtant",
-          "medCatch", "ppnFisheriesOpen", "ppnYrsHighCatch", "stabilityCatch")
+vars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant",
+          "medCatch", "ppnYrsHighCatch", "stabilityCatch")
 plotDat = NULL
 for (h in seq_along(dirNames)) {
   agList <- genOutputList(dirNames[h], agg = TRUE)
@@ -117,9 +117,8 @@ names(colPal) <- levels(plotDat$om)
 
 # Plot
 dotSize = 3.5; lineSize = 0.8
-consVars <- c("medRecRY", "ppnCULower", "ppnCUUpper", "ppnCUExtant") 
-consYLabs <- c("Return\nAbundance", "Prop. CUs\nLower", "Prop. CUs\nUpper", 
-               "Prop. CUs\nExtant")
+consVars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant") 
+consYLabs <- c("Return\nAbundance", "Prop. CUs\nUpper", "Prop. CUs\nExtant")
 consPlots <- lapply(seq_along(consVars), function(i) {
   temp <- plotDat %>% 
     filter(var == consVars[i])
@@ -137,19 +136,18 @@ consPlots <- lapply(seq_along(consVars), function(i) {
   if (i == 1) {
     q <- q + theme_sleekX(position = "top", legendSize = 1.15, axisSize = 13) 
   } 
-  if (i == 2 | i == 3) {
+  if (i == 2) {
     q <- q + theme_sleekX(position = "mid", legendSize = 1.15, axisSize = 13)
   }
-  if (i == 4) {
+  if (i == 3) {
     q <- q + theme_sleekX(position = "bottom", legendSize = 1.15, axisSize = 13)
   }
   return(q)
 })
 
-catchVars <- c("medCatch", "stabilityCatch", "ppnFisheriesOpen", 
-               "ppnYrsHighCatch")
-catchYLabs <- c("Catch\nAbundance", "Catch Stability", "Prop.\nFisheries Open", 
-                "Prop. Years\nHigher Catch")
+catchVars <- c("medCatch", "ppnYrsHighCatch", "stabilityCatch")
+catchYLabs <- c("Catch\nAbundance", "Prop. Years\nHigher Catch",
+                "Catch Stability")
 catchPlots <- lapply(seq_along(catchVars), function(i) {
   temp <- plotDat %>% 
     filter(var == catchVars[i])
@@ -167,10 +165,10 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
   if (i == 1) {
     q <- q + theme_sleekX(position = "top", legendSize = 1.15, axisSize = 13)
   }
-  if (i == 2 | i == 3) {
+  if (i == 2) {
     q <- q + theme_sleekX(position = "mid", legendSize = 1.15, axisSize = 13)
   }
-  if (i == 4) {
+  if (i == 3) {
     q <- q + theme_sleekX(position = "bottom", legendSize = 1.15, axisSize = 13)
   }
   return(q)
@@ -179,15 +177,15 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
 png(file = paste(here("/figs/sensitivityConsPMs.png"),
                  sep = ""), 
     height = 6.5, width = 7, units = "in", res = 150)
-ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]], consPlots[[4]], 
-          ncol = 1, nrow = 4, common.legend = TRUE, legend = "right", 
-          align = "v", heights = c(1,1,1,1.3))
+ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]], 
+          ncol = 1, nrow = 3, common.legend = TRUE, legend = "right", 
+          align = "v", heights = c(1,1,1.25))
 dev.off()
 png(file = paste(here("/figs/sensitivityCatchPMs.png"),
                  sep = ""), 
     height = 6.5, width = 7, units = "in", res = 150)
-ggarrange(catchPlots[[1]], catchPlots[[2]], catchPlots[[3]], catchPlots[[4]],
-          ncol = 1, nrow = 4, common.legend = TRUE, legend = "right", 
-          align = "v", heights = c(1,1,1,1.3))
+ggarrange(catchPlots[[1]], catchPlots[[2]], catchPlots[[3]],
+          ncol = 1, nrow = 3, common.legend = TRUE, legend = "right", 
+          align = "v", heights = c(1,1,1.25))
 dev.off()
 

@@ -15,13 +15,8 @@ select <- dplyr::select
 
 ## Data clean
 # SR data
-recDat1 <- read.csv(here("/data/sox/fraserRecDatEFF.csv"), 
-                    stringsAsFactors = FALSE)
-recDat2 <- read.csv(here("/data/sox/fraserRecDatTrim.csv"), 
+recDat <- read.csv(here("/data/sox/fraserRecDat.csv"), 
                     stringsAsFactors = FALSE) 
-#combine ets and eff estimates
-recDat <- merge(recDat1, recDat2[, c("stk", "yr", "ets")], by = c("stk", "yr"))
-recDat <- with(recDat, recDat[order(stk, yr),])
 recDat <- recDat %>%
   mutate(prod = (rec/ets),
          logProd = log(rec/ets),
@@ -29,7 +24,7 @@ recDat <- recDat %>%
          spwnRetYr = yr + 4)
 for (i in 1:nrow(recDat)) { #add top-fitting SR model
   stkN <- recDat$stk[i]
-  if (stkN == 1 | stkN == 2 | stkN == 6 | stkN == 8 | stkN == 9) {
+  if (stkN == 1 | stkN == 2 | stkN == 6 | stkN == 815 | stkN == 9) {
     recDat$model[i] <- "larkin"
   }	else {
     recDat$model[i] <- "ricker"
@@ -72,10 +67,15 @@ recDatTrim1$logResid <- residVec
 recDatTrim1$modResid <- exp(residVec)
 
 # Trim and convert to matrix w/ stocks w/ time series from 1948
-selectedStks <- c(1, seq(from=3, to=10, by=1), 18, 19) 
+longStks <- recDatTrim1 %>% 
+  group_by(stk) %>% 
+  summarize(startDate = min(yr)) %>% 
+  filter(!(startDate > 1951 | stk == "11")) %>% 
+  select(stk) %>% 
+  as.vector()
 recDatTrim <- recDatTrim1 %>% 
-  dplyr::filter(stk %in% selectedStks)
-# dplyr::filter(yr > 1975, !stk == "11", !stk == "15") #more stocks, shorter TS
+  dplyr::filter(stk %in% longStks$stk)
+# dplyr::filter(yr > 1975, !stk == "11", !stk == "815") #more stocks, shorter TS
 
 yrs <- unique(recDatTrim$yr)
 recMat <- recDatTrim %>% 
@@ -98,22 +98,26 @@ aggRec <- recDatTrim %>%
   summarize(aggRec = sum(rec)) %>% 
   mutate(ts = "long")
 
-# saveRDS(recMat, file = here("data", "generated", "recMat.rds"))
-# saveRDS(recMatShort, file = here("data", "generated", "recMatShort.rds"))
+saveRDS(recMat, file = here("outputs", "generatedData", "recMat.rds"))
 
+recDatTrim %>% 
+  select(stk, yr, logProd) %>% 
+  filter(yr > 2005) %>% 
+  group_by(yr) %>% 
+  summarize(meanP = mean(logProd))
 
 # Trim catch data
 catchDat <- read.csv(here("/data/sox/fraserCatchDatTrim.csv"), 
                      stringsAsFactors = FALSE)
 catchDatLong <- catchDat %>% 
-  filter(stk %in% selectedStks) %>% 
+  filter(stk %in% longStks$stk) %>% 
   group_by(yr) %>% 
-  summarize(catch = sum(totalCatch)) %>% 
-  mutate(ts = as.factor("long"))
+  summarize(catch = sum(totalCatch))
 
 # Trim productivity residual data
 rawDat <- recDatTrim1 %>%
   select(stk, yr, prodZ, logProd, modResid, logResid) %>% 
+  filter(stk %in% longStks$stk) %>% 
   mutate(stk = as.factor(stk))
 
 # Import TMB model outputs
@@ -161,7 +165,7 @@ rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, col = stk)) +
   theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "prod"),
             mapping = aes(x = min(plotYrs), y = max(rawDat$logProd), 
-                          label = lab, hjust = 0.25, vjust = -0.25), 
+                          label = lab, hjust = 0.25, vjust = -1.3), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4)
 aggRecPlot <- ggplot(aggRec, aes(x = yr, y = aggRec)) +
   geom_line(size = 1.25) +
@@ -183,7 +187,6 @@ aggCatchPlot <- ggplot(catchDatLong, aes(x = yr, y = catch)) +
                           y = max(catchDatLong$catch), 
                           label = lab, hjust = 0.25, vjust = 0.5), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
-  scale_x_continuous(breaks = round(seq(1960, 2000, by = 20), 1)) +
   labs(x = "", y = "Aggregate Catch") 
 compCVPlot <- ggplot(retroCVc, aes(x = broodYr, y = est)) + 
   geom_line(size = 1.15) +

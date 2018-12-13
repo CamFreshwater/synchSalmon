@@ -3,8 +3,8 @@ library(ggplot2)
 library(here)
 library(TMB)
 
-# X <- readRDS(here("outputs", "generatedData", "recMat.rds"))
-X <- readRDS(here("outputs", "generatedData", "recMatShort.rds"))
+X <- readRDS(here("outputs", "generatedData", "recMat.rds"))
+# X <- readRDS(here("outputs", "generatedData", "recMatShort.rds"))
 
 compile("scripts/sync.cpp")
 dyn.load(dynlib("scripts/sync"))
@@ -77,8 +77,8 @@ out <- mutate(out,
   upr = ifelse(logit, plogis(est_link + qnorm(0.95) * se_link),
     exp(est_link + qnorm(0.95) * se_link))
 )
-# saveRDS(out, here("outputs", "generatedData", "tmbSynchEst.rds"))
-saveRDS(out, here("outputs", "generatedData", "tmbSynchEst_suppShort.rds"))
+saveRDS(out, here("outputs", "generatedData", "tmbSynchEst.rds"))
+# saveRDS(out, here("outputs", "generatedData", "tmbSynchEst_suppShort.rds"))
 # Note that those are 90% CIs. Adjust as desired.
 
 out %>%

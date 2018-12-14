@@ -27,34 +27,33 @@ cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), stringsAsFactors = F)
 srDat <- read.csv(here("data/sox/fraserRecDatTrim.csv"), stringsAsFactors = F)
 catchDat <- read.csv(here("data/sox/fraserCatchDatTrim.csv"), 
                      stringsAsFactors = F)
-ricPars <- read.csv(here("data/sox/rickerMCMCPars.csv"), stringsAsFactors = F)
-larkPars <- read.csv(here("data/sox/larkinMCMCPars.csv"), stringsAsFactors = F)
+ricPars <- read.csv(here("data/sox/pooledRickerMCMCPars.csv"), stringsAsFactors = F)
+larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"), stringsAsFactors = F)
 tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 
 
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 250
+nTrials <- 500
 
 ## General robustness runs
 simParTrim <- subset(simPar,
                      scenario == "lowSig" | scenario == "medSig" |
                        scenario == "highSig" | scenario == "lowSigSkew" |
                        scenario == "medSigSkew" | scenario == "highSigSkew" |
-                     scenario == "lowSigSkewT" | scenario == "medSigSkewT" |
-                     scenario == "highSigSkewT" 
-                     # | scenario == "lowSigLowA" |
-                     # scenario == "medSigLowA" | scenario == "highSigLowA"
+                     scenario == "lowSigSkewT" | scenario == "medSigSkewT" | 
+                       scenario == "highSigSkewT" | scenario == "lowSigLowA" |
+                     scenario == "medSigLowA" | scenario == "highSigLowA"
                      )
 
 scenNames <- unique(simParTrim$scenario)
-dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
                                                 sep = "_"))
 
 # recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat,
 #             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
-#             cuCustomCorrMat = NULL, dirName = "test", nTrials = 5,
+#             cuCustomCorrMat = NULL, dirName = "test", nTrials = 100,
 #             multipleMPs = FALSE)
 # for(i in seq_along(dirNames)) {
 # d <- subset(simParTrim, scenario == scenNames[i])

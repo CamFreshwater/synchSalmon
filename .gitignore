@@ -20,6 +20,7 @@ knitr-cache
 myNotes.*
 outputs/diagnostics
 outputs/simData
+data/generatedData/synchTS
 .Rproj.user
 scripts/lm-t-skew.rds
 scripts/lm-t.rds

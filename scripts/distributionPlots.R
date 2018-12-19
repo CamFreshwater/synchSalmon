@@ -37,7 +37,8 @@ p <- ggplot() +
   geom_rect(aes(xmin = -4, xmax = -2, ymin = 0, ymax = 0.2), lty = 2,
             fill = "transparent", color = "black") +
   guides(fill = FALSE, color = FALSE) +
-  theme_sleekX(axisSize = 12)
+  theme_sleekX(axisSize = 12) +
+  coord_cartesian(expand = FALSE, ylim = c(0, max(plotDat$probY) * 1.04))
 
 q <- ggplot() +
   geom_ribbon(data = plotDat,
@@ -56,7 +57,8 @@ q <- ggplot() +
                                "skewN" = "Skew\nNormal",
                                "skewT" = "Skew\nStudent t")) +
   guides(fill = FALSE, color = FALSE) +
-  theme_sleekX(axisSize = 12)
+  theme_sleekX(axisSize = 12) +
+  coord_cartesian(expand = FALSE, ylim = c(0, 0.1))
 
 
 ### Generate simulated data for boxplots

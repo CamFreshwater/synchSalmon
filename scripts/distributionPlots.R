@@ -11,11 +11,11 @@ require(tidyverse); require(samSim); require(ggpubr)
 plotDat <- data.frame(x = seq(from = -5, to = 5, length.out = 9999))
 plotDat <- plotDat %>% 
   mutate(norm = dst(plotDat$x, xi = 0, alpha = 0, nu = Inf,
-                     omega = 0.75),
+                     omega = 1),
          skewN = dst(plotDat$x, xi = 0, alpha = log(0.67), nu = Inf,
-                     omega = 0.75),
+                     omega = 1),
          skewT = dst(plotDat$x, xi = 0, alpha = log(0.67), nu = 2,
-                        omega = 0.75),
+                        omega = 1),
          yMin = 0
          ) %>%
   gather(key = dist, value = probY, c(-x, -yMin)) %>%

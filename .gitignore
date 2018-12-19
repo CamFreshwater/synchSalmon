@@ -31,4 +31,5 @@ scripts/*cache*
 scripts/sync.rds
 *.o
 *.so
+*.dll
 

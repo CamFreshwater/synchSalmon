@@ -34,7 +34,7 @@ p <- ggplot() +
   geom_vline(xintercept = 0, color = "grey30", linetype = 2, size = 1.1) +
   scale_color_manual(name = "Distribution", values = colPal) +
   scale_fill_manual(name = "Distribution", values = colPal) +
-  geom_rect(aes(xmin = -4, xmax = -2, ymin = 0, ymax = 0.2), lty = 2,
+  geom_rect(aes(xmin = -4, xmax = -2, ymin = 0.001, ymax = 0.1), lty = 2,
             fill = "transparent", color = "black") +
   guides(fill = FALSE, color = FALSE) +
   theme_sleekX(axisSize = 12) +
@@ -46,16 +46,9 @@ q <- ggplot() +
                   fill = dist),
               position = "identity", alpha = 0.2) +
   scale_x_continuous(limits = c(-4, -2)) +
-  scale_y_continuous(limits = c(0, 0.2)) +
   labs(x = "Standard Deviations", y = "Probabiliy Density") +
-  scale_color_manual(name = "Distribution", values = colPal,
-                     labels = c("norm" = "Normal",
-                                "skewN" = "Skew\nNormal",
-                                "skewT" = "Skew\nStudent t")) +
-  scale_fill_manual(name = "Distribution", values = colPal,
-                    labels = c("norm" = "Normal",
-                               "skewN" = "Skew\nNormal",
-                               "skewT" = "Skew\nStudent t")) +
+  scale_color_manual(name = "Distribution", values = colPal) +
+  scale_fill_manual(name = "Distribution", values = colPal) +
   guides(fill = FALSE, color = FALSE) +
   theme_sleekX(axisSize = 12) +
   coord_cartesian(expand = FALSE, ylim = c(0, 0.1))
@@ -117,7 +110,6 @@ r <- ggplot(recDat, aes(x = prodOM, y = recruits)) +
   labs(x = "Productivity OM", y = "Return Abundance") +
   scale_color_manual(name = "Distribution", values = colPal) +
   scale_fill_manual(name = "Distribution", values = colPal) +
-  # guides(fill = FALSE, color = FALSE) +
   theme_sleekX(legendSize = 1.1, axisSize = 12)
 
 

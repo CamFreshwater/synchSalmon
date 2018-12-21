@@ -125,14 +125,6 @@ dev.off()
     
 
 ### How often do extreme events occur?
-# nDist <- rst(n = 100000, xi = 0, alpha = 0, nu = Inf, omega = 1)
-# sNDist <- rst(n = 100000, xi = 0, alpha = log(0.67), nu = Inf, omega = 1)
-# sTDist <- rst(n = 100000, xi = 0, alpha = log(0.67), nu = 3, omega = 1)
-#
-# 1 / (length(nDist[nDist < -3]) / length(nDist))
-# 1 / (length(sNDist[sNDist < -3]) / length(sNDist))
-# 1 / (length(sTDist[sTDist < -3]) / length(sTDist))
-
 nDist <- pst(-3, xi = 0, alpha = 0, nu = Inf, omega = 1)
 sNDist <- pst(-3, xi = 0, alpha = log(0.67), nu = Inf, omega = 1)
 sTDist <- pst(-3, xi = 0, alpha = log(0.67), nu = 3, omega = 1)

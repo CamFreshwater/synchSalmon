@@ -1,0 +1,86 @@
+---
+title: "Realized Productivity Among OMs"
+author: "Cam Freshwater"
+date: "1/9/2019"
+output: html_document
+---
+
+```{r readLibraries, message=FALSE, warning=FALSE, include=FALSE}
+listOfPackages <- c("plyr", "here", "parallel", "doParallel", "foreach", 
+                    "reshape2", "tidyverse", "gsl", "tictoc", "stringr", 
+                    "synchrony", "zoo", "Rcpp", "RcppArmadillo", "sn", 
+                    "sensitivity", "mvtnorm", "forcats", "ggpubr", "viridis", 
+                    "samSim")
+
+here <- here::here
+
+newPackages <- listOfPackages[!(listOfPackages %in% 
+                                  installed.packages()[ , "Package"])]
+if(length(newPackages)) install.packages(newPackages)
+lapply(listOfPackages, require, character.only = TRUE)
+```
+
+Carrie wants to make sure that the skewed (and perhaps reference) productivity operating models accurately reflect recent low levels of R/S. Ideally this would  be done by fitting kalman filter stock-recruit models to data generated from skewed OMs and making sure that alpha values are similar. As a first pass however, simply compare average R/S during sim period for each CU to observed.
+
+```{r importAndCleanData, warning=FALSE, include=FALSE}
+#focus only on medium sigma treatments
+simParTrim <- subset(simPar,
+                     scenario == "medSig" | scenario == "medSigSkew" | 
+                       scenario == "medSigSkewT")
+
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
+                                                sep = "_"))
+
+arrayNames <- sapply(dirNames, function(x) {
+  list.files(paste(here("outputs/simData"), x, sep="/"), 
+             pattern = "\\Arrays.RData$")
+})
+clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo),
+                   library(parallel), library(doParallel), library(foreach),
+                   library(samSim)))
+bigCUList <- lapply(seq_along(dirNames), function (h) {
+  listSynchLists <- lapply(1:length(arrayNames[, h]), function (x) {
+    datList <- readRDS(paste(here("outputs/simData"), dirNames[h],
+                             arrayNames[x, h], sep = "/"))
+  }) #iterate across different OMs within a scenario
+  plotList[[h]] <- listSynchLists
+}) #iterate across different scenarios
+names(bigCUList) <- dirNames
+
+```
+
+```{r plotData, warning=FALSE, include=FALSE}
+omNames <- c("ref", "skew", "skewT")
+nPrime <- bigCUList[[1]][[1]]$nPrime
+plotDat <- NULL
+for (i in seq_along(dirNames)) {
+  dum <- bigCUList[[i]][[2]]$logRS %>% 
+    melt() %>% 
+    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+                  "logRS" = "value") %>% 
+    group_by(cu, yr) %>% 
+    summarise(meanLogRS = mean(logRS)) %>% 
+    mutate(#cu = as.factor(cu),
+           om = as.factor(ifelse(yr > nPrime, omNames[i], "obs"))) %>% 
+    #remove all years from priming period except last 2 generations
+    filter(yr > (nPrime - 7))
+  plotDat <- rbind(plotDat, dum)
+}  
+
+ggplot(plotDat, aes(x = om, y = meanLogRS)) +
+  geom_violin(draw_quantiles = c(0.5), 
+              position = position_dodge(width = 0.75)) +
+  # scale_alpha_manual(name = "Sigma OM", values = c(1, 0.65, 0.3),
+  #                    labels = c("low" = expression(paste("0.75", sigma)),
+  #                               "med" = expression(paste("1.0", sigma)),
+  #                               "high" = expression(paste("1.25", sigma)))) +
+  # scale_fill_manual(values = colPal, guide = FALSE) +
+  # guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
+  labs(y = "Realized Productivity",
+       x = "Operating Model") +
+  theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
+  facet_wrap(~cu, scales = "free_y")
+
+```
+

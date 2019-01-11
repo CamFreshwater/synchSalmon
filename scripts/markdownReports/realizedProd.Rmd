@@ -61,8 +61,8 @@ for (i in seq_along(dirNames)) {
                   "logRS" = "value") %>% 
     group_by(cu, yr) %>% 
     summarise(meanLogRS = mean(logRS)) %>% 
-    mutate(#cu = as.factor(cu),
-           om = as.factor(ifelse(yr > nPrime, omNames[i], "obs"))) %>% 
+    #use means AMONG TRIALS (i.e. violin plots show interannual variability)
+    mutate(om = as.factor(ifelse(yr > nPrime, omNames[i], "obs"))) %>% 
     #remove all years from priming period except last 2 generations
     filter(yr > (nPrime - 7))
   plotDat <- rbind(plotDat, dum)
@@ -71,12 +71,6 @@ for (i in seq_along(dirNames)) {
 ggplot(plotDat, aes(x = om, y = meanLogRS)) +
   geom_violin(draw_quantiles = c(0.5), 
               position = position_dodge(width = 0.75)) +
-  # scale_alpha_manual(name = "Sigma OM", values = c(1, 0.65, 0.3),
-  #                    labels = c("low" = expression(paste("0.75", sigma)),
-  #                               "med" = expression(paste("1.0", sigma)),
-  #                               "high" = expression(paste("1.25", sigma)))) +
-  # scale_fill_manual(values = colPal, guide = FALSE) +
-  # guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
   labs(y = "Realized Productivity",
        x = "Operating Model") +
   theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
@@ -84,3 +78,4 @@ ggplot(plotDat, aes(x = om, y = meanLogRS)) +
 
 ```
 
+Variability in productivity in recent years makes it difficult to interpret. May need to directly compare simulated R/S from alpha values equivalent to Sue's Kalman filter estimates and see how they compare rather than using observed alone. Unsure whether this should also imply shifting the reference values. 

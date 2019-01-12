@@ -155,7 +155,58 @@ clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo),
 bigCUList <- lapply(seq_along(arrayNames), function (h) {
   datList <- readRDS(paste(here("outputs/simData"), dirName, subDirNames[h],
                              arrayNames[h], sep = "/"))
-  plotList[[h]] <- listSynchLists
+  # plotList[[h]] <- listSynchLists
 }) #iterate across different scenarios
-names(bigCUList) <- dirNames
+names(bigCUList) <- subDirNames
+```
+
+```{r plotData, warning=FALSE, include=FALSE}
+omNames <- subDirNames
+nPrime <- bigCUList[[1]]$nPrime
+dumFull <- NULL
+for (i in seq_along(subDirNames)) {
+  dum1 <- bigCUList[[i]]$logRS %>% 
+    melt() %>% 
+    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+                  "logRS" = "value") %>% 
+    #remove non-simulation data
+    filter(yr > nPrime) %>% 
+    mutate(om = omNames[i])  
+  dumFull <- rbind(dumFull, dum1)
+}  
+
+dumFull <- dumFull %>% 
+  mutate(om = recode(om, "reference" = "ref", "lowKalmanA" = "low", 
+                .default = levels(om))) %>% 
+  mutate(om = factor(om, levels = c("ref", "low", "skew", "skewT")))
+
+# means among years
+annualMeans <- dumFull %>% 
+  group_by(cu, trial, om) %>%
+  #use means AMONG years (i.e. violin plots show intertrial variability)
+  summarise(meanLogRS = mean(logRS))  
+## means among trials
+trialMeans <- dumFull %>% 
+  group_by(cu, yr, om) %>%
+  #use means AMONG years (i.e. violin plots show intertrial variability)
+  summarise(meanLogRS = mean(logRS))
+
+#violin plots among years
+ggplot(trialMeans, aes(x = om, y = meanLogRS)) +
+  geom_violin(draw_quantiles = c(0.5), 
+              position = position_dodge(width = 0.75)) +
+  labs(y = "Realized Productivity",
+       x = "Operating Model") +
+  theme_sleekX(facetSize = 1.1, axisSize = 10, legendSize = 0.85) +
+  facet_wrap(~cu, scales = "free_y")
+
+#violin plots among trials
+ggplot(annualMeans, aes(x = om, y = meanLogRS)) +
+  geom_violin(draw_quantiles = c(0.5), 
+              position = position_dodge(width = 0.75)) +
+  labs(y = "Realized Productivity",
+       x = "Operating Model") +
+  theme_sleekX(facetSize = 1.1, axisSize = 10, legendSize = 0.85) +
+  facet_wrap(~cu, scales = "free_y")
+
 ```

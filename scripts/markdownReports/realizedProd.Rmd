@@ -81,8 +81,11 @@ ggplot(plotDat, aes(x = om, y = meanLogRS)) +
 ```
 
 Variability in productivity in recent years makes it difficult to interpret. Will need to directly compare simulated R/S from alpha values equivalent to Sue's Kalman filter estimates and see how they compare rather than using observed alone. 
+
 ##Update January 12##
-Carrie supplied alphas estimated using a Kalman filter for 11 Fraser CUs (all Ricker type stocks). Added these to a new fraserCUPars.csv which can be run by samSim without ricPars/larkPars to forward simulate dynamics if productivity remains depressed. 
+Carrie supplied alphas estimated using a Kalman filter for 11 Fraser CUs (all Ricker type stocks). Added these to a new fraserCUPars.csv which can be run by samSim without ricPars/larkPars to forward simulate dynamics if productivity remains depressed.
+
+Note that to avoid issues with overlap constraints (requires all MUs to be present), the MP is a fixed ER rather than TAM. This will obviously impact the long-term outcomes but shouldn't influence the comparison between different productivity OMs.
 
 ```{r importSimRunData, warning=FALSE, include=FALSE}
 simPar <- read.csv(here("data/sox/fraserOMInputs_kalmanA.csv"), 
@@ -105,6 +108,8 @@ dirNames <- sapply(scenNames, function(x) paste(x, unique(simPar$species),
 for(i in seq_along(dirNames)) {
   d <- subset(simPar, scenario == scenNames[i])
   if (d$nameOM == "lowKalmanA") {
+    # separate out lowKalmaA scenario so that specific alpha values are passed 
+    # rather than sampling from posterior distributions
     recoverySim(d, cuPar, catchDat = catchDat, srDat = srDat, 
                 variableCU = FALSE, ricPars = NULL, larkPars = NULL, 
                 tamFRP = tamFRP, dirName=dirNames[i], nTrials = 5,
@@ -112,7 +117,7 @@ for(i in seq_along(dirNames)) {
   } else {
     recoverySim(d, cuPar, catchDat = catchDat, srDat = srDat, 
                 variableCU = FALSE, ricPars = ricPars, larkPars = larkPars, 
-                tamFRP = tamFRP, dirName=dirNames[i], nTrials=5,
+                tamFRP = tamFRP, dirName=dirNames[i], nTrials = 5,
                 multipleMPs = TRUE)
   }
 }

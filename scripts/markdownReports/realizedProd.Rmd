@@ -129,12 +129,12 @@ parLapply(cl, simsToRun, function(x) {
     # rather than sampling from posterior distributions
     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
                 variableCU = FALSE, ricPars = NULL, larkPars = NULL, 
-                tamFRP = tamFRP, dirName=dirName, nTrials = 5,
+                tamFRP = tamFRP, dirName=dirName, nTrials = 150,
                 multipleMPs = TRUE)
   } else {
     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
                 variableCU = FALSE, ricPars = ricPars, larkPars = larkPars, 
-                tamFRP = tamFRP, dirName=dirName, nTrials = 5,
+                tamFRP = tamFRP, dirName=dirName, nTrials = 150,
                 multipleMPs = TRUE)
   }
 })
@@ -149,16 +149,13 @@ arrayNames <- sapply(subDirNames, function(x) {
   list.files(paste(here("outputs/simData"), dirName, x, sep="/"), 
              pattern = "\\Arrays.RData$")
 })
-clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo),
-                   library(parallel), library(doParallel), library(foreach),
-                   library(samSim)))
 bigCUList <- lapply(seq_along(arrayNames), function (h) {
   datList <- readRDS(paste(here("outputs/simData"), dirName, subDirNames[h],
                              arrayNames[h], sep = "/"))
-  # plotList[[h]] <- listSynchLists
 }) #iterate across different scenarios
 names(bigCUList) <- subDirNames
 ```
+
 
 ```{r plotData, warning=FALSE, include=FALSE}
 omNames <- subDirNames
@@ -210,3 +207,5 @@ ggplot(annualMeans, aes(x = om, y = meanLogRS)) +
   facet_wrap(~cu, scales = "free_y")
 
 ```
+
+Some variability among CUs, but on the whole Kalman smoothed a and skewed normal have similar realized productivity. 

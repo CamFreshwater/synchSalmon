@@ -87,7 +87,7 @@ Carrie supplied alphas estimated using a Kalman filter for 11 Fraser CUs (all Ri
 
 Note that to avoid issues with overlap constraints (requires all MUs to be present), the MP is a fixed ER rather than TAM. This will obviously impact the long-term outcomes but shouldn't influence the comparison between different productivity OMs.
 
-```{r importSimRunData, warning=FALSE, include=FALSE}
+```{r runSimulations, warning=FALSE, include=FALSE}
 simPar <- read.csv(here("data/sox/fraserOMInputs_kalmanA.csv"), 
                    stringsAsFactors = F)
 cuPar <- read.csv(here("data/sox/fraserCUpars_lowKalmanA.csv"), 
@@ -101,25 +101,61 @@ ricPars <- read.csv(here("data/sox/pooledRickerMCMCPars.csv"),
 larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"), 
                      stringsAsFactors = F)
 
-scenNames <- unique(simPar$scenario)
-dirNames <- sapply(scenNames, function(x) paste(x, unique(simPar$species),
-                                                sep = "_"))
-
-for(i in seq_along(dirNames)) {
-  d <- subset(simPar, scenario == scenNames[i])
-  if (d$nameOM == "lowKalmanA") {
+simsToRun <- split(simPar, seq(nrow(simPar)))
+dirName <- "kalmanA_sockeye"
+Ncores <- detectCores()
+cl <- makeCluster(Ncores - 3) #save two cores
+registerDoParallel(cl)
+clusterEvalQ(cl, c(library(MASS),
+                library(here),
+                library(sensitivity),
+                library(mvtnorm),
+                library(scales), #shaded colors for figs
+                library(viridis), #color blind gradient palette
+                library(gsl), 
+                library(dplyr),
+                library(Rcpp),
+                library(RcppArmadillo),
+                library(sn),
+                library(samSim)))
+#export custom function and objects
+clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "nTrials", "dirName",
+                    "catchDat", "srDat", "ricPars", "larkPars", 
+                    "tamFRP"), envir = environment()) 
+tic("run in parallel")
+parLapply(cl, simsToRun, function(x) {
+  if (x$nameOM == "lowKalmanA") {
     # separate out lowKalmaA scenario so that specific alpha values are passed 
     # rather than sampling from posterior distributions
-    recoverySim(d, cuPar, catchDat = catchDat, srDat = srDat, 
+    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
                 variableCU = FALSE, ricPars = NULL, larkPars = NULL, 
-                tamFRP = tamFRP, dirName=dirNames[i], nTrials = 5,
+                tamFRP = tamFRP, dirName=dirName, nTrials = 5,
                 multipleMPs = TRUE)
   } else {
-    recoverySim(d, cuPar, catchDat = catchDat, srDat = srDat, 
+    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
                 variableCU = FALSE, ricPars = ricPars, larkPars = larkPars, 
-                tamFRP = tamFRP, dirName=dirNames[i], nTrials = 5,
+                tamFRP = tamFRP, dirName=dirName, nTrials = 5,
                 multipleMPs = TRUE)
   }
-}
+})
+stopCluster(cl) #end cluster
+toc()
 ```
 
+
+```{r prepOutputData, warning=FALSE, include=FALSE}
+subDirNames <- list.files(paste(here("outputs/simData"), dirName, sep="/"))
+arrayNames <- sapply(subDirNames, function(x) {
+  list.files(paste(here("outputs/simData"), dirName, x, sep="/"), 
+             pattern = "\\Arrays.RData$")
+})
+clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo),
+                   library(parallel), library(doParallel), library(foreach),
+                   library(samSim)))
+bigCUList <- lapply(seq_along(arrayNames), function (h) {
+  datList <- readRDS(paste(here("outputs/simData"), dirName, subDirNames[h],
+                             arrayNames[h], sep = "/"))
+  plotList[[h]] <- listSynchLists
+}) #iterate across different scenarios
+names(bigCUList) <- dirNames
+```

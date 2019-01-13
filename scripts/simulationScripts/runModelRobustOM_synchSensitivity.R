@@ -37,21 +37,23 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 500
+nTrials <- 150
 
 ## General robustness runs
 simParTrim <- subset(simPar,
                      scenario == "refSensitivity" | scenario == "ageTau" |
-                       scenario == "ouSig" |  scenario == "forecastSig" |
+                       scenario == "ouSig" 
+                     |  scenario == "forecastSig" |
                        scenario == "enRouteSig"
 )
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
                                                 sep = "_"))
  
-# recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat, variableCU = FALSE,
-#                   ricPars, larkPars = larkPars, tamFRP = tamFRP, cuCustomCorrMat = cuCustomCorrMat,
-#                   dirName = "test", nTrials = 5, multipleMPs = FALSE)
+# recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat, 
+#             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP, 
+#             cuCustomCorrMat = cuCustomCorrMat, dirName = "test", nTrials = 5, 
+#             multipleMPs = FALSE)
 
 for (i in seq_along(dirNames)) {
   dirName <- dirNames[i]

@@ -20,74 +20,50 @@ if(length(newPackages)) install.packages(newPackages)
 lapply(listOfPackages, require, character.only = TRUE)
 ```
 
-Carrie wants to make sure that the skewed (and perhaps reference) productivity operating models accurately reflect recent low levels of R/S. Ideally this would  be done by fitting kalman filter stock-recruit models to data generated from skewed OMs and making sure that alpha values are similar. As a first pass however, simply compare average R/S during sim period for each CU to observed.
 
 ```{r importAndCleanData, warning=FALSE, include=FALSE}
-simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"), 
-                   stringsAsFactors = F)
-#focus only on medium sigma treatments
-simParTrim <- subset(simPar,
-                     scenario == "medSig" | scenario == "medSigSkew" | 
-                       scenario == "medSigSkewT")
+## PRELIMINARY ANALYSIS IGNORE ##
 
-scenNames <- unique(simParTrim$scenario)
-dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
-                                                sep = "_"))
+#Carrie wants to make sure that the skewed (and perhaps reference) productivity #operating models accurately reflect recent low levels of R/S. Ideally this would  be #done by fitting kalman filter stock-recruit models to data generated from skewed OMs #and making sure that alpha values are similar. As a first pass however, simply compare #average R/S during sim period for each CU to observed.
 
-arrayNames <- sapply(dirNames, function(x) {
-  list.files(paste(here("outputs/simData"), x, sep="/"), 
-             pattern = "\\Arrays.RData$")
-})
-clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo),
-                   library(parallel), library(doParallel), library(foreach),
-                   library(samSim)))
-bigCUList <- lapply(seq_along(dirNames), function (h) {
-  listSynchLists <- lapply(1:length(arrayNames[, h]), function (x) {
-    datList <- readRDS(paste(here("outputs/simData"), dirNames[h],
-                             arrayNames[x, h], sep = "/"))
-  }) #iterate across different OMs within a scenario
-  plotList[[h]] <- listSynchLists
-}) #iterate across different scenarios
-names(bigCUList) <- dirNames
+#
+```
+
+```{r plotDataPrelim, warning=FALSE, include=FALSE}
+# omNames <- c("ref", "skew", "skewT")
+# nPrime <- bigCUList[[1]][[1]]$nPrime
+# plotDat <- NULL
+# for (i in seq_along(dirNames)) {
+#   dum <- bigCUList[[i]][[2]]$logRS %>% 
+#     melt() %>% 
+#     dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+#                   "logRS" = "value") %>% 
+#     group_by(cu, yr) %>% 
+#     summarise(meanLogRS = mean(logRS)) %>% 
+#     #use means AMONG TRIALS (i.e. violin plots show interannual variability)
+#     mutate(om = as.factor(ifelse(yr > nPrime, omNames[i], "obs"))) %>% 
+#     #remove all years from priming period except last 2 generations
+#     filter(yr > (nPrime - 7))
+#   plotDat <- rbind(plotDat, dum)
+# }  
+# 
+# ggplot(plotDat, aes(x = om, y = meanLogRS)) +
+#   geom_violin(draw_quantiles = c(0.5), 
+#               position = position_dodge(width = 0.75)) +
+#   labs(y = "Realized Productivity",
+#        x = "Operating Model") +
+#   theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
+#   facet_wrap(~cu, scales = "free_y")
+
+# Variability in productivity in recent years makes it difficult to interpret. Will need to directly compare simulated R/S from alpha values equivalent to Sue's Kalman filter estimates and see how they compare rather than using observed alone. 
 
 ```
 
-```{r plotData, warning=FALSE, include=FALSE}
-omNames <- c("ref", "skew", "skewT")
-nPrime <- bigCUList[[1]][[1]]$nPrime
-plotDat <- NULL
-for (i in seq_along(dirNames)) {
-  dum <- bigCUList[[i]][[2]]$logRS %>% 
-    melt() %>% 
-    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
-                  "logRS" = "value") %>% 
-    group_by(cu, yr) %>% 
-    summarise(meanLogRS = mean(logRS)) %>% 
-    #use means AMONG TRIALS (i.e. violin plots show interannual variability)
-    mutate(om = as.factor(ifelse(yr > nPrime, omNames[i], "obs"))) %>% 
-    #remove all years from priming period except last 2 generations
-    filter(yr > (nPrime - 7))
-  plotDat <- rbind(plotDat, dum)
-}  
+Carrie supplied alphas estimated using a Kalman filter for 11 Fraser CUs (all Ricker type stocks). Added these to a new fraserCUPars.csv which can be run by samSim without ricPars/larkPars to forward simulate dynamics if productivity remains depressed (see `if` statement in following snippet that is currently commented out).
 
-ggplot(plotDat, aes(x = om, y = meanLogRS)) +
-  geom_violin(draw_quantiles = c(0.5), 
-              position = position_dodge(width = 0.75)) +
-  labs(y = "Realized Productivity",
-       x = "Operating Model") +
-  theme_sleekX(facetSize = 1.2, axisSize = 16, legendSize = 0.85) +
-  facet_wrap(~cu, scales = "free_y")
+Note that to avoid issues with overlap constraints (requires all MUs to be present), the MP is a fixed ER (0.40) rather than TAM. This will obviously impact the long-term outcomes but shouldn't influence the comparison between different productivity OMs.
 
-```
-
-Variability in productivity in recent years makes it difficult to interpret. Will need to directly compare simulated R/S from alpha values equivalent to Sue's Kalman filter estimates and see how they compare rather than using observed alone. 
-
-##Update January 12##
-Carrie supplied alphas estimated using a Kalman filter for 11 Fraser CUs (all Ricker type stocks). Added these to a new fraserCUPars.csv which can be run by samSim without ricPars/larkPars to forward simulate dynamics if productivity remains depressed.
-
-Note that to avoid issues with overlap constraints (requires all MUs to be present), the MP is a fixed ER rather than TAM. This will obviously impact the long-term outcomes but shouldn't influence the comparison between different productivity OMs.
-
-```{r runSimulations, warning=FALSE, include=FALSE}
+```{r runSimulations, echo=TRUE, warning=FALSE}
 simPar <- read.csv(here("data/sox/fraserOMInputs_kalmanA.csv"), 
                    stringsAsFactors = F)
 cuPar <- read.csv(here("data/sox/fraserCUpars_lowKalmanA.csv"), 
@@ -103,47 +79,49 @@ larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"),
 
 simsToRun <- split(simPar, seq(nrow(simPar)))
 dirName <- "kalmanA_sockeye"
-Ncores <- detectCores()
-cl <- makeCluster(Ncores - 3) #save two cores
-registerDoParallel(cl)
-clusterEvalQ(cl, c(library(MASS),
-                library(here),
-                library(sensitivity),
-                library(mvtnorm),
-                library(scales), #shaded colors for figs
-                library(viridis), #color blind gradient palette
-                library(gsl), 
-                library(dplyr),
-                library(Rcpp),
-                library(RcppArmadillo),
-                library(sn),
-                library(samSim)))
-#export custom function and objects
-clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "nTrials", "dirName",
-                    "catchDat", "srDat", "ricPars", "larkPars", 
-                    "tamFRP"), envir = environment()) 
-tic("run in parallel")
-parLapply(cl, simsToRun, function(x) {
-  if (x$nameOM == "lowKalmanA") {
-    # separate out lowKalmaA scenario so that specific alpha values are passed 
-    # rather than sampling from posterior distributions
-    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
-                variableCU = FALSE, ricPars = NULL, larkPars = NULL, 
-                tamFRP = tamFRP, dirName=dirName, nTrials = 150,
-                multipleMPs = TRUE)
-  } else {
-    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
-                variableCU = FALSE, ricPars = ricPars, larkPars = larkPars, 
-                tamFRP = tamFRP, dirName=dirName, nTrials = 150,
-                multipleMPs = TRUE)
-  }
-})
-stopCluster(cl) #end cluster
-toc()
+
+## CODED OUT UNLESS DATA UNAVAILABLE BECAUSE SIMULATIONS HAVEN'T BEEN RUN LOCALLY
+# Ncores <- detectCores()
+# cl <- makeCluster(Ncores - 3) #save two cores
+# registerDoParallel(cl)
+# clusterEvalQ(cl, c(library(MASS),
+#                 library(here),
+#                 library(sensitivity),
+#                 library(mvtnorm),
+#                 library(scales), #shaded colors for figs
+#                 library(viridis), #color blind gradient palette
+#                 library(gsl), 
+#                 library(dplyr),
+#                 library(Rcpp),
+#                 library(RcppArmadillo),
+#                 library(sn),
+#                 library(samSim)))
+# #export custom function and objects
+# clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "nTrials", "dirName",
+#                     "catchDat", "srDat", "ricPars", "larkPars", 
+#                     "tamFRP"), envir = environment()) 
+# tic("run in parallel")
+# parLapply(cl, simsToRun, function(x) {
+#   if (x$nameOM == "lowKalmanA") {
+#     # separate out lowKalmaA scenario so that specific alpha values are passed 
+#     # rather than sampling from posterior distributions
+#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
+#                 variableCU = FALSE, ricPars = NULL, larkPars = NULL, 
+#                 tamFRP = tamFRP, dirName=dirName, nTrials = 150,
+#                 multipleMPs = TRUE)
+#   } else {
+#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
+#                 variableCU = FALSE, ricPars = ricPars, larkPars = larkPars, 
+#                 tamFRP = tamFRP, dirName=dirName, nTrials = 150,
+#                 multipleMPs = TRUE)
+#   }
+# })
+# stopCluster(cl) #end cluster
+# toc()
 ```
 
 
-```{r prepOutputData, warning=FALSE, include=FALSE}
+```{r prepOutputData, echo=TRUE, warning=FALSE}
 subDirNames <- list.files(paste(here("outputs/simData"), dirName, sep="/"))
 arrayNames <- sapply(subDirNames, function(x) {
   list.files(paste(here("outputs/simData"), dirName, x, sep="/"), 
@@ -154,10 +132,7 @@ bigCUList <- lapply(seq_along(arrayNames), function (h) {
                              arrayNames[h], sep = "/"))
 }) #iterate across different scenarios
 names(bigCUList) <- subDirNames
-```
 
-
-```{r plotData, warning=FALSE, include=FALSE}
 omNames <- subDirNames
 nPrime <- bigCUList[[1]]$nPrime
 dumFull <- NULL
@@ -174,25 +149,29 @@ for (i in seq_along(subDirNames)) {
 
 dumFull <- dumFull %>% 
   mutate(om = recode(om, "reference" = "ref", "lowKalmanA" = "low", 
-                .default = levels(om))) %>% 
+                .default = levels(om)),
+         cu = recode(cu, "1" = "Stel",  "2" = "Bowr",  "3" = "Raft", 
+                    "4" = "Chlk", "5" = "Birk", "6" = "Cult", "7" = "Port",
+                    "8" = "Weav", "9" = "Fenn", "10" = "Nadi", "11" = "Pitt",
+                    "12" = "Harr")) %>% 
   mutate(om = factor(om, levels = c("ref", "low", "skew", "skewT")))
 
 # means among years
 annualMeans <- dumFull %>% 
   group_by(cu, trial, om) %>%
-  #use means AMONG years (i.e. violin plots show intertrial variability)
   summarise(meanLogRS = mean(logRS))  
 ## means among trials
 trialMeans <- dumFull %>% 
   group_by(cu, yr, om) %>%
-  #use means AMONG years (i.e. violin plots show intertrial variability)
   summarise(meanLogRS = mean(logRS))
+```
 
+```{r plotProd, echo=TRUE, warning=FALSE}
 #violin plots among years
 ggplot(trialMeans, aes(x = om, y = meanLogRS)) +
   geom_violin(draw_quantiles = c(0.5), 
               position = position_dodge(width = 0.75)) +
-  labs(y = "Realized Productivity",
+  labs(y = "Realized Mean Productivity By Year",
        x = "Operating Model") +
   theme_sleekX(facetSize = 1.1, axisSize = 10, legendSize = 0.85) +
   facet_wrap(~cu, scales = "free_y")
@@ -201,11 +180,13 @@ ggplot(trialMeans, aes(x = om, y = meanLogRS)) +
 ggplot(annualMeans, aes(x = om, y = meanLogRS)) +
   geom_violin(draw_quantiles = c(0.5), 
               position = position_dodge(width = 0.75)) +
-  labs(y = "Realized Productivity",
+  labs(y = "Realized Mean Productivity By Trial",
        x = "Operating Model") +
   theme_sleekX(facetSize = 1.1, axisSize = 10, legendSize = 0.85) +
   facet_wrap(~cu, scales = "free_y")
 
 ```
 
-Some variability among CUs, but on the whole Kalman smoothed a and skewed normal have similar realized productivity. 
+First plot shows realized mean productivity by year (i.e. violin plots show interannual variability), while the second shows means by trial (i.e. violin plots show intertrial variability). Non-summarized data have too much variability to interpret easily. Variability among CUs means that skewed normal drifts from low Kalman alpha estimates in certain cases, particularly when looking at interannual rather than intertrial medians. Overall though, both OMs have approximately similar realized productivity. As the model is currently set up, it's not really possible to provide individual skewness parameters for each CU so I'm not sure what the next course of action is for tuning. 
+
+One final thing to note is that we should definitely double check that nothing funky happens with the Larkin CUs. 

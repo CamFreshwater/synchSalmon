@@ -79,6 +79,7 @@ larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"),
 
 simsToRun <- split(simPar, seq(nrow(simPar)))
 dirName <- "kalmanA_sockeye"
+nTrials <- 150
 
 ## CODED OUT UNLESS DATA UNAVAILABLE BECAUSE SIMULATIONS HAVEN'T BEEN RUN LOCALLY
 # Ncores <- detectCores()
@@ -90,7 +91,7 @@ dirName <- "kalmanA_sockeye"
 #                 library(mvtnorm),
 #                 library(scales), #shaded colors for figs
 #                 library(viridis), #color blind gradient palette
-#                 library(gsl), 
+#                 library(gsl),
 #                 library(dplyr),
 #                 library(Rcpp),
 #                 library(RcppArmadillo),
@@ -98,20 +99,20 @@ dirName <- "kalmanA_sockeye"
 #                 library(samSim)))
 # #export custom function and objects
 # clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "nTrials", "dirName",
-#                     "catchDat", "srDat", "ricPars", "larkPars", 
-#                     "tamFRP"), envir = environment()) 
+#                     "catchDat", "srDat", "ricPars", "larkPars",
+#                     "tamFRP"), envir = environment())
 # tic("run in parallel")
 # parLapply(cl, simsToRun, function(x) {
 #   if (x$nameOM == "lowKalmanA") {
-#     # separate out lowKalmaA scenario so that specific alpha values are passed 
+#     # separate out lowKalmaA scenario so that specific alpha values are passed
 #     # rather than sampling from posterior distributions
-#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
-#                 variableCU = FALSE, ricPars = NULL, larkPars = NULL, 
+#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
+#                 variableCU = FALSE, ricPars = NULL, larkPars = NULL,
 #                 tamFRP = tamFRP, dirName=dirName, nTrials = 150,
 #                 multipleMPs = TRUE)
 #   } else {
-#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
-#                 variableCU = FALSE, ricPars = ricPars, larkPars = larkPars, 
+#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
+#                 variableCU = FALSE, ricPars = ricPars, larkPars = larkPars,
 #                 tamFRP = tamFRP, dirName=dirName, nTrials = 150,
 #                 multipleMPs = TRUE)
 #   }
@@ -124,8 +125,10 @@ dirName <- "kalmanA_sockeye"
 ```{r prepOutputData, echo=TRUE, warning=FALSE}
 subDirNames <- list.files(paste(here("outputs/simData"), dirName, sep="/"))
 arrayNames <- sapply(subDirNames, function(x) {
-  list.files(paste(here("outputs/simData"), dirName, x, sep="/"), 
-             pattern = "\\Arrays.RData$")
+  # list.files(paste(here("outputs/simData"), dirName, x, sep="/"), 
+  #            pattern = "\\Arrays.RData$")
+    list.files(paste(here("outputs/simData"), dirName, x, sep="/"), 
+             pattern = "\\cuDat.RData$")
 })
 bigCUList <- lapply(seq_along(arrayNames), function (h) {
   datList <- readRDS(paste(here("outputs/simData"), dirName, subDirNames[h],
@@ -137,13 +140,17 @@ omNames <- subDirNames
 nPrime <- bigCUList[[1]]$nPrime
 dumFull <- NULL
 for (i in seq_along(subDirNames)) {
-  dum1 <- bigCUList[[i]]$logRS %>% 
+  # dum1 <- bigCUList[[i]]$logRS %>% 
+  #   melt() %>% 
+  #   dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+  #                 "logRS" = "value") %>% 
+  #   #remove non-simulation data
+  #   filter(yr > nPrime) %>% 
+  #   mutate(om = omNames[i])  
+  dum1 <- bigCUList[[i]]$medEstAlpha %>% 
     melt() %>% 
-    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
-                  "logRS" = "value") %>% 
-    #remove non-simulation data
-    filter(yr > nPrime) %>% 
-    mutate(om = omNames[i])  
+    dplyr::rename("trial" = "Var1", "cu" =  "Var2", "estA" = "value") %>% 
+    mutate(om = omNames[i]) 
   dumFull <- rbind(dumFull, dum1)
 }  
 
@@ -156,37 +163,32 @@ dumFull <- dumFull %>%
                     "12" = "Harr")) %>% 
   mutate(om = factor(om, levels = c("ref", "low", "skew", "skewT")))
 
+## not necessary when using estimated alpha
 # means among years
-annualMeans <- dumFull %>% 
-  group_by(cu, trial, om) %>%
-  summarise(meanLogRS = mean(logRS))  
-## means among trials
-trialMeans <- dumFull %>% 
-  group_by(cu, yr, om) %>%
-  summarise(meanLogRS = mean(logRS))
+# annualMeans <- dumFull %>% 
+#   group_by(cu, trial, om) %>%
+#   summarise(meanLogRS = mean(logRS))  
+# ## means among trials
+# trialMeans <- dumFull %>% 
+#   group_by(cu, yr, om) %>%
+#   summarise(meanLogRS = mean(logRS))
 ```
 
 ```{r plotProd, echo=TRUE, warning=FALSE}
-#violin plots among years
-ggplot(trialMeans, aes(x = om, y = meanLogRS)) +
+ggplot(dumFull, aes(x = om, y = estA)) +
   geom_violin(draw_quantiles = c(0.5), 
               position = position_dodge(width = 0.75)) +
-  labs(y = "Realized Mean Productivity By Year",
-       x = "Operating Model") +
-  theme_sleekX(facetSize = 1.1, axisSize = 10, legendSize = 0.85) +
-  facet_wrap(~cu, scales = "free_y")
-
-#violin plots among trials
-ggplot(annualMeans, aes(x = om, y = meanLogRS)) +
-  geom_violin(draw_quantiles = c(0.5), 
-              position = position_dodge(width = 0.75)) +
-  labs(y = "Realized Mean Productivity By Trial",
+  labs(y = "Median Estimated Alpha During Simulation",
        x = "Operating Model") +
   theme_sleekX(facetSize = 1.1, axisSize = 10, legendSize = 0.85) +
   facet_wrap(~cu, scales = "free_y")
 
 ```
 
-First plot shows realized mean productivity by year (i.e. violin plots show interannual variability), while the second shows means by trial (i.e. violin plots show intertrial variability). Non-summarized data have too much variability to interpret easily. Variability among CUs means that skewed normal drifts from low Kalman alpha estimates in certain cases, particularly when looking at interannual rather than intertrial medians. Overall though, both OMs have approximately similar realized productivity. As the model is currently set up, it's not really possible to provide individual skewness parameters for each CU so I'm not sure what the next course of action is for tuning. 
+The plot now shows the median alpha estimated internally by the closed-loop model during the simulation period. The violin plots represent inter-trial variability. There seems to be even closer convergence between the low A and skewed normal estimates, likely due to Carrie's hypothesis that density dependent differences were introducing additional CU-specific variation in the original plots. 
 
-One final thing to note is that we should definitely double check that nothing funky happens with the Larkin CUs. 
+That being said there are a few exceptions, which are basically driven by the relative decline in productivity each CU has experienced (as estimated by a Kalman filter model). For example, Harrison, the largest outlier, has experienced a recent *increase* in productivity. In other words, the "low" OM  here is a misnomer and there is no reason to expect that a pessimistic OM should match the recent kalman filter estimates because the current outlook for Harrison is optimistic. Similarly, other CUs that don't show a consistent trend between the low and skewed N OMs have not exhibited a strong decline in productivity (e.g. Chilko, Nadina). As a result their "low" estimates are similar to the reference scenario because productivity has remained more or less stationary.
+
+In terms of how we move forward I think we need to decide whether the goal of the low productivity scenario is to generate reasonable estimates of a uniform decline within a hypothetical aggregate (with Fraser as a case study) or if its intended to realistically represent the most recent trends in productivity of each Fraser CU. If it's the former I think that the skewed normal estimates are defensible, if the latter I can look into tuning each CU's individual skewness parameter (it's straightforward to pass them as a vector within the model, but will be time consuming to estimate each parameter). 
+
+Personally I would lean towards the first option because I view the alternative OMs as a means of examining the interaction between aggregate variability and productivity rather than a way to predict future trends in the aggregate's dynamics, but I'd like to hear other thoughts too!

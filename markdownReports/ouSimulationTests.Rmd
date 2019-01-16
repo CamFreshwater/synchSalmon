@@ -1,0 +1,60 @@
+---
+title: "Outcome Uncertainty Sim"
+author: "Cam Freshwater"
+date: "1/15/2019"
+output: html_document
+---
+
+This is a simple simulation exercise to determine what the relative effects of applying outcome uncertainty to TAC vs. harvest rates may be.
+
+```{r prep parameters, echo=TRUE}
+N <- 10000
+mixErr <- rnorm(N, 0, 0.2)
+rec <- round(rnorm(N, 1000, 100), 0)
+targHR <- 0.2
+targTAC <- 200
+realHR <- targHR * (1 + mixErr)
+realTAC <- targTAC * (1 + mixErr)
+tacTargetHR <- realTAC / 1000
+realizedCatch <- realHR * rec
+```
+
+Realized harvest rates are equivalent to realized TAC over the assumed abundance of recruits (i.e. 1000 in this case).
+
+```{r plot1, echo=FALS}
+plot(realHR ~ tacTargetHR)
+```
+
+However catch based on the realized harvest rate does not equal realized TAC. 
+
+```{r plot2, echo=FALSE}
+plot(realTAC ~ realizedCatch)
+abline(1, 1, col = "red")
+
+mod1 <- lm(realTAC ~ realizedCatch)
+hist(resid(mod1))
+plot(mod1)
+```
+
+As a result applying outcome uncertainty to TAC, rather than HRs may result in OU being inflated. Check by increasing the number of draws and see if realized deviations are similar for each process (i.e. calculate deviations in realized HR for TAC based uncertainty and vice versa).
+
+```{r compare deviations, echo = TRUE}
+## First calculate realized ER based on TAC
+erDevs <- (realTAC / rec) / 0.2
+sd(erDevs)
+erDevs2 <- realHR / 0.2
+sd(erDevs2)
+
+catchDevs <- realTAC / 200
+sd(catchDevs)
+catchDevs2 <- (realHR * rec) / 200
+sd(catchDevs2)
+
+spwnTAC <- rec - realTAC
+spwnER <- rec - (realHR * rec)
+
+plot(spwnTAC ~ spwnER)
+```
+
+Both processes back-transform to reasonable values for deviations so it seems ok to use either. However important to recognize that back-transformations will inflate outcome uncertainty a little bit because there is uncertainty associated with `mixErr` as well as differences between forecasted and actual recruitment. In other words the catch that represents a 20% exploitation rate will differ from the target because of OU and because the actual number of recruits is different than predicted.
+

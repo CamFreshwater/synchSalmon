@@ -7,54 +7,85 @@ output: html_document
 
 This is a simple simulation exercise to determine what the relative effects of applying outcome uncertainty to TAC vs. harvest rates may be.
 
-```{r prep parameters, echo=TRUE}
-N <- 10000
-mixErr <- rnorm(N, 0, 0.2)
-rec <- round(rnorm(N, 1000, 100), 0)
-targHR <- 0.2
-targTAC <- 200
-realHR <- targHR * (1 + mixErr)
-realTAC <- targTAC * (1 + mixErr)
-tacTargetHR <- realTAC / 1000
-realizedCatch <- realHR * rec
+Simulate the harvest process under following constraints
+
+1.  Always start with a target ER
+2.  Target ER always has to be converted to TAC for TAM bookkeeping
+
+After that OU can either a) be applied to TAC and catches calculated directly or b) target TAC can be converted back to an ER that has OU added
+
+```{r compare deviations with N, echo = TRUE}
+N <- 1000
+ouSig <- 0.2
+set.seed(123); mixErr <- rnorm(N, 0, ouSig)
+# set.seed(123); mixErrL <- rlnorm(N, 0, ouSig)
+foreRec <- 1000 #assumed abundance necessary when converting ERs to TAC
+set.seed(777); rec <- round(rnorm(N, foreRec, 100), 0)
+targHR <- 0.4
+
+targTAC <- targHR * foreRec
+#simulate some simple TAC bookkeeping by splitting total TAC between two 
+#fisheries
+mixTAC <- 0.75 * targTAC
+singTAC <- 0.25 * targTAC
+
+## Two options
+mixCatch1 <- mixTAC * (1 + mixErr)
+# mixCatch1L <- exp(log(mixTAC) + mixErrL)
+singCatch1 <- singTAC * (1 + mixErr)
+
+mixHR <- mixTAC / rec #note that back-conversion uses true, not forecasted, rec
+singHR <- singTAC / rec
+mixCatch2 <- (mixHR * (1 + mixErr)) * rec
+singCatch2 <- (singHR * (1 + mixErr)) * rec
+
+# Double check to make sure that the two methods produce equivalent realized
+# catches
+plot(mixCatch1 ~ mixCatch2)
+abline(1, 1)
 ```
 
-Realized harvest rates are equivalent to realized TAC over the assumed abundance of recruits (i.e. 1000 in this case).
+Either method gives equivalent results, _but_ it's critical to backtransform TAC to HRs using true recruit abundance rather than forecasted, otherwise errors are inflated. 
 
-```{r plot1, echo=FALS}
-plot(realHR ~ tacTargetHR)
+Now check to see if there is a viable alternative using beta distribution.
+
+```{r compare deviations with beta, echo = TRUE}
+N <- 1000
+foreRec <- 1000 #assumed abundance necessary when converting ERs to TAC
+set.seed(777); rec <- round(rnorm(N, foreRec, 100), 0)
+targHR <- 0.4
+
+targTAC <- targHR * foreRec
+#simulate some simple TAC bookkeeping by splitting total TAC between two 
+#fisheries
+mixTAC <- 0.75 * targTAC
+singTAC <- 0.25 * targTAC
+
+targMixHR <- mixTAC/foreRec
+targSingHR <- singTAC/foreRec
+
+# outcome uncertainty
+betaOU <- function(targHR, ouSig, N) {
+  location <-  targHR^2 * (((1 - targHR)/ouSig^2) - 1/(targHR))
+  scale <- location * (1/targHR - 1)
+  rbeta(N, location, scale, ncp = 0)
+}
+
+ouSigB <- 0.07
+realMixHR <- betaOU(targMixHR, ouSigB, N)
+realSingHR <- betaOU(targSingHR, ouSigB, N)
+
+mixCatch2B <- realMixHR * rec
+singCatch2B <- realSingHR * rec
+
+# Compare realized catches with N vs. beta
+par(mfrow = c(2, 2))
+hist(mixCatch2)
+hist(mixCatch2B)
+hist(singCatch2)
+hist(singCatch2B)
 ```
 
-However catch based on the realized harvest rate does not equal realized TAC. 
+There's no real viable way to apply beta distribution directly to TAC, however it will be possible to adjust that calcTAC and recoverySim functions to incorporate it as an alternative. Effectively I think that using a normal distribution makes sense when applying to catch, however it does run the risk of producing negative catches (or catches that exceed abundance) at low (high) exploitation rates. Up until now I've just constrained them to be non-0. I don't think this will dramatically influence the results, but it is an inelegant hack. Additionally it's difficult to parameterize the uncertainty using observed TAC because of the abundance of 0s for target catch (i.e. deviations are strongly bimodal). 
 
-```{r plot2, echo=FALSE}
-plot(realTAC ~ realizedCatch)
-abline(1, 1, col = "red")
-
-mod1 <- lm(realTAC ~ realizedCatch)
-hist(resid(mod1))
-plot(mod1)
-```
-
-As a result applying outcome uncertainty to TAC, rather than HRs may result in OU being inflated. Check by increasing the number of draws and see if realized deviations are similar for each process (i.e. calculate deviations in realized HR for TAC based uncertainty and vice versa).
-
-```{r compare deviations, echo = TRUE}
-## First calculate realized ER based on TAC
-erDevs <- (realTAC / rec) / 0.2
-sd(erDevs)
-erDevs2 <- realHR / 0.2
-sd(erDevs2)
-
-catchDevs <- realTAC / 200
-sd(catchDevs)
-catchDevs2 <- (realHR * rec) / 200
-sd(catchDevs2)
-
-spwnTAC <- rec - realTAC
-spwnER <- rec - (realHR * rec)
-
-plot(spwnTAC ~ spwnER)
-```
-
-Both processes back-transform to reasonable values for deviations so it seems ok to use either. However important to recognize that back-transformations will inflate outcome uncertainty a little bit because there is uncertainty associated with `mixErr` as well as differences between forecasted and actual recruitment. In other words the catch that represents a 20% exploitation rate will differ from the target because of OU and because the actual number of recruits is different than predicted.
-
+On the other hand, using a beta distribution for exploitation rate seems to be more robust (assuming we avoid very high sigma values) and can be tuned using observed data. Again the disadvantage is that we have to back-calculate within the model which is simple, but one more complication. 

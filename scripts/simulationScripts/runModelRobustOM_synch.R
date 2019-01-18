@@ -144,12 +144,12 @@ names(colPal) <- levels(plotDat$sigma)
 dotSize = 3.5; lineSize = 0.8; legendSize = 14
 
 consVars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant")
-consYLabs <- c("Return\nAbundance", "Prop. CUs Above\nUpper BM", 
+consYLabs <- c("Return\nAbundance", "Prop. CUs Above Benchmark", 
                "Prop. CUs\nExtant")
 consLabs <- data.frame(om = rep(factor(unique(plotDat$om), 
                                        levels = unique(plotDat$om)),
                                 each = 3),
-                       lab = c("a)", "b)", "c)", "d)", "e)", "f)", "g)", "h)",
+                       lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)", 
                                "i)"),
                        var = rep(factor(consVars, levels = unique(vars)), 
                                  times = 3)
@@ -195,7 +195,7 @@ catchYLabs <- c("Catch\nAbundance", "Prop. Years Above\nCatch Threshold",
 catchLabs <- data.frame(om = rep(factor(unique(plotDat$om), 
                                         levels = unique(plotDat$om)),
                                  each = 3),
-                        lab = c("a)", "b)", "c)", "d)", "e)", "f)", "g)", "h)", 
+                        lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)", 
                                 "i)"),
                         var = rep(factor(catchVars, levels = unique(vars)), 
                                   times = 3)
@@ -237,8 +237,7 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
 
 png(file = paste(here(),"/figs/Fig4_consGroupedPlots_3OMs.png", sep = ""),
     height = 5.5, width = 8.5, units = "in", res = 300)
-ggarrange(consPlots[[1]], consPlots[[2]],
-          consPlots[[3]],
+ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]],
           ncol = 1, nrow = 3, common.legend = TRUE, legend = "right",
           align = "v", heights = c(1.1,1,1.2))
 dev.off()
@@ -454,10 +453,13 @@ for (i in seq_along(dirNames)) { #make dataframe
 q <- ggplot(plotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
   geom_hline(plotDat, mapping = aes(yintercept = highBM), linetype = 2) +
-  scale_alpha_manual(name = "Sigma OM", values = c(1, 0.65, 0.3),
-                     labels = c("low" = expression(paste("0.75", sigma)),
-                                "med" = expression(paste("1.0", sigma)),
-                                "high" = expression(paste("1.25", sigma)))) +
+  scale_alpha_manual(name = "Component CV", values = c(1, 0.65, 0.3),
+                     labels = c("low" = "Low",
+                                "med" = "Reference",
+                                "high" = "High")) +
+                     # labels = c("low" = expression(paste("0.75", sigma)),
+                     #            "med" = expression(paste("1.0", sigma)),
+                     #            "high" = expression(paste("1.25", sigma)))) +
   scale_fill_manual(values = colPal, guide = FALSE) +
   guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
   labs(y = "Median Spawner\n Abundance (millions)",
@@ -508,11 +510,14 @@ row.names(plotDat3) <- NULL
 p <- ggplot(plotDat3, aes(x = om, y = spawners, fill = cu, alpha = synch)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
   geom_hline(plotDat3, mapping = aes(yintercept = highBM), linetype = 2) +
-  scale_alpha_manual(name = "Synchrony OM", values = c(1, 0.65, 0.3),
-                     labels = c("lowSynch" = expression(paste(rho, " = 0.05")),
-                                "medSynch" = expression(paste(rho, " = 0.50")),
-                                "highSynch" = expression(paste(rho, " = 0.75")))
-                     ) +
+  scale_alpha_manual(name = "Synchrony", values = c(1, 0.65, 0.3),
+                     labels = c("low" = "Low",
+                                "med" = "Moderate",
+                                "high" = "High")) +
+                     # labels = c("lowSynch" = expression(paste(rho, " = 0.05")),
+                     #            "medSynch" = expression(paste(rho, " = 0.50")),
+                     #            "highSynch" = expression(paste(rho, " = 0.75")))
+                     # ) +
   scale_fill_manual(values = colPal, guide = FALSE) +
   guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
   labs(y = "Median Spawner\n Abundance (millions)",

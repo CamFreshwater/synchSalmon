@@ -72,10 +72,10 @@ out <- arrange(out, term, year) %>%
 # inverse logit transform:
 out <- mutate(out,
   est = ifelse(logit, plogis(est_link), exp(est_link)),
-  lwr = ifelse(logit, plogis(est_link + qnorm(0.05) * se_link),
-    exp(est_link + qnorm(0.05) * se_link)),
-  upr = ifelse(logit, plogis(est_link + qnorm(0.95) * se_link),
-    exp(est_link + qnorm(0.95) * se_link))
+  lwr = ifelse(logit, plogis(est_link + qnorm(0.025) * se_link),
+    exp(est_link + qnorm(0.025) * se_link)),
+  upr = ifelse(logit, plogis(est_link + qnorm(0.975) * se_link),
+    exp(est_link + qnorm(0.975) * se_link))
 )
 saveRDS(out, here("outputs", "generatedData", "tmbSynchEst.rds"))
 # saveRDS(out, here("outputs", "generatedData", "tmbSynchEst_suppShort.rds"))

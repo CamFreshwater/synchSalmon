@@ -56,7 +56,7 @@ q <- ggplot() +
 
 ### Generate simulated data for boxplots
 # Default pars for Chilko
-n = 1000
+n = 100000
 chlkA = 1.8315
 chlkLowA = 1.58795
 chlkB = 1.23182
@@ -112,6 +112,9 @@ r <- ggplot(recDat, aes(x = prodOM, y = recruits)) +
   scale_fill_manual(name = "Distribution", values = colPal) +
   theme_sleekX(legendSize = 1.1, axisSize = 12)
 
+recDat %>% 
+  group_by(prodOM) %>% 
+  summarize(median(recruits))
 
 png(file = paste(here(),"/figs/SFig1_distPlots.png", sep = ""),
     height = 6, width = 7.5, units = "in", res = 300)
@@ -127,7 +130,7 @@ dev.off()
 ### How often do extreme events occur?
 nDist <- pst(-3, xi = 0, alpha = 0, nu = Inf, omega = 1)
 sNDist <- pst(-3, xi = 0, alpha = log(0.67), nu = Inf, omega = 1)
-sTDist <- pst(-3, xi = 0, alpha = log(0.67), nu = 3, omega = 1)
+sTDist <- pst(-3, xi = 0, alpha = log(0.67), nu = 2, omega = 1)
 
 round(1/nDist)
 round(1/sNDist)

@@ -35,7 +35,7 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 50
+nTrials <- 25
 
 ## General robustness runs
 simParTrim <- subset(simPar,
@@ -251,13 +251,17 @@ dev.off()
 
 
 #_________________________________________________________________________
-# Generate box plots (originally time series) of component CV, synch and ag CV
+# Generate box plots (originally time series) of component CV, synch and ag CV;
+# Note that to make comparable to retrospective analysis only show 10 
 plotList = vector("list", length = length(dirNames))
 #matrix of array names to be passed
 arrayNames <- sapply(dirNames, function(x) {
   list.files(paste(here("outputs/simData"), x, sep="/"), 
              pattern = "\\Arrays.RData$")
 })
+#stocks that are included in retrospective analysis 
+#(note these are matrix positions not stock ID numbers)
+# longStks <- c(1, 3, 4, 5, 6, 7, 8, 9, 16, 17)
 
 tic("runParallel")
 Ncores <- detectCores()
@@ -269,14 +273,18 @@ clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo),
 newAgTSList <- lapply(seq_along(dirNames), function (h) {
   #export custom function and objects
   clusterExport(cl, c("dirNames", "arrayNames", "calcSynchMetrics", "wtdCV",
-                      "genOutputList", "h"), envir = environment())
+                      "genOutputList", "longStks", "h"), envir = environment())
   listSynchLists <- parLapply(cl, 1:length(arrayNames[, h]), function(x) {
     datList <- readRDS(paste(here("outputs/simData"), dirNames[h],
                              arrayNames[x, h], sep = "/"))
-    # Don't log productivity because creates nonsensical CV values
-    synchList <- calcSynchMetrics(datList, log = FALSE, corr = TRUE,
+    # Subset datList to only include longStks
+    trimDatList <- datList
+    # for (i in 4:length(datList)) {
+    #   trimDatList[[i]] <- datList[[i]][ , longStks, ]
+    # }
+    synchList <- calcSynchMetrics(trimDatList, log = FALSE, corr = FALSE,
                                   weight = TRUE, windowSize = 12)
-    synchList <- c(datList$nameOM, synchList)
+    synchList <- c(trimDatList$nameOM, synchList)
     names(synchList)[1] <- "opMod"
     return(synchList)
   }) #iterate across different OMs within a scenario
@@ -299,7 +307,20 @@ toc()
 
 ## Save 
 # saveRDS(newAgTSList, here("outputs/generatedData/synchTS/synchTSList.rdsa"))
-newAgTSList <- readRDS(here("outputs/generatedData/synchTS/synchTSList_500trialRun.rda"))
+newAgTSList <- readRDS(here("outputs/generatedData/synchTS/synchTSList.rda"))
+
+## Import tmb data to replace observed data with
+modOut <- readRDS(here("outputs", "generatedData", "tmbSynchEst.rds"))
+modCVc <- modOut %>% 
+  filter(term == "log_cv_c") %>% 
+  select(est) %>% 
+  unlist()
+modCVc <- modCVc[2:length(modCVc)]
+modSynch <- modOut %>% 
+  filter(term == "logit_phi") %>% 
+  select(est) %>% 
+  unlist()
+modSynch <- modSynch[2:length(modSynch)]
 
 ### Manipulate lists to create plottable data structure 
 ## In this case that is one median value per year per unique combo of OMs
@@ -334,18 +355,21 @@ fullList <- sapply(seq_along(dirNames), function(h) {
                                                           "medSynch", "highSynch"))
       ) %>%
       filter(!is.na(medSynchRecBY)) #remove yrs where obs synch couldn't be calc
+    # replace observed data with estimates from TMB fitting
+    dat2[dat2$sigmaOM == "obs" & dat2$synchOM == "obs", ]$medSynchRecBY <- modSynch
+    dat2[dat2$sigmaOM == "obs" & dat2$synchOM == "obs", ]$medCompCVRecBY <- modCVc
     return(dat2)
   })
 })
 plotDat <- do.call(rbind, fullList)
 
-# saveRDS(plotDat, file = here("outputs/generatedData/synchTS/fullSynchTS_3OMs.rda"))
-plotDat <- readRDS(file = here("outputs/generatedData/synchTS/fullSynchTS_3OMs.rda"))
+
+# saveRDS(plotDat, file = here("outputs/generatedData/synchTS/fullSynchTSDF_3OMs.rda"))
+plotDat <- readRDS(file = here("outputs/generatedData/synchTS/fullSynchTSDF_3OMs.rda"))
 start <- plotDat %>%
   filter(!sigmaOM == "obs") %>%
   summarise(min(year))
 start <- start[[1]]
-
 
 dum <- plotDat %>%
   filter(synchOM == "medSynch" | synchOM == "obs",
@@ -358,16 +382,6 @@ dum <- plotDat %>%
 colPal <- c("black", viridis(length(unique(dum$sigmaOM)) - 1, begin = 0, end = 1))
 names(colPal) <- levels(dum$sigmaOM)
 ### Instead of plotting time series, make faceted box plot
-# q2 <- ggplot(dum, aes(x = year, y = medCompCVRecBY, colour = sigmaOM)) +
-#   labs(x = "Year", y = "Component CV", title = NULL) +
-#   geom_line(size = 1) +
-#   geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
-#   scale_colour_manual(name = "Operating Model", values = colPal,
-#                       labels = c("obs" = "Observed",
-#                                  "lowSigma" = expression(paste("0.75", sigma)),
-#                                  "medSigma" = expression(paste("1.0", sigma)),
-#                                  "highSigma" = expression(paste("1.25", sigma)))) +
-#   theme_sleekX(position = "top", legendSize = 0.9)
 q2 <- ggplot(dum, aes(x = sigmaOM, y = medCompCVRecBY, fill = sigmaOM)) +
   labs(x = "Component Variability Scenario", y = "Median CVc of Returns", 
        title = NULL) +
@@ -388,16 +402,6 @@ dum2 <- plotDat %>%
 colPal2 <- c("black", viridis(length(unique(dum2$synchOM)) - 1, begin = 0, 
                               end = 1))
 names(colPal2) <- levels(dum2$synchOM)
-# p2 <- ggplot(dum2, aes(x = year, y = medSynchRecBY, colour = synchOM)) +
-#   labs(x = "Year", y = "Synchrony Index", title = NULL) +
-#   geom_line(size = 1) +
-#   geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
-#   scale_colour_manual(name = "Operating Model", values = colPal2,
-#                       labels = c("obs" = "Observed",
-#                                  "lowSynch" = expression(paste(rho, " = 0.05")),
-#                                  "medSynch" = expression(paste(rho, " = 0.50")),
-#                                  "highSynch" = expression(paste(rho, " = 0.75")))) +
-#   theme_sleekX(position = "bottom", legendSize = 0.9)
 p2 <- ggplot(dum2, aes(x = synchOM, y = medSynchRecBY, fill = synchOM)) +
   labs(x = "Synchrony Scenario",
        y = expression(paste("Median, ", phi, " of Returns")),

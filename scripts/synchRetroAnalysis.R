@@ -31,20 +31,24 @@ for (i in 1:nrow(recDat)) { #add top-fitting SR model
   } 
 }
 
-# Add lagged EFF abundances for larkin models
+# Add rolling estimates and lagged EFF abundances for larkin models
+recDat$rollProd <- NA
 recDat$ets1 <- NA
 recDat$ets2 <- NA
 recDat$ets3 <- NA
 stkIndex <- unique(recDat$stk)
 for(j in seq_along(stkIndex)) {
   d <- subset(recDat, stk == stkIndex[j])
+  d$rollProd <- rollmeanr(d$logProd, 4, fill = NA)
   for (i in 1:nrow(d)) { #add top-fitting SR model
     d$ets1[i] <- ifelse(i < 1, NA, d$ets[i - 1])
     d$ets2[i] <- ifelse(i < 2, NA, d$ets[i - 2])
     d$ets3[i] <- ifelse(i < 3, NA, d$ets[i - 3])
     d$prodZ <- as.numeric(scale(d$logProd, center = TRUE, scale = TRUE))
   }
-  recDat[recDat$stk == stkIndex[j], c("prodZ", "ets1", "ets2", "ets3")] <- d[, c("prodZ", "ets1", "ets2", "ets3")]
+  recDat[recDat$stk == stkIndex[j], c("rollProd", "prodZ", "ets1", "ets2", 
+                                      "ets3")] <- d[, c("rollProd", "prodZ", 
+                                                        "ets1", "ets2", "ets3")]
 }
 recDatTrim1 <- subset(recDat, !is.na(prod) & !is.na(ets3) & !yr == "2012")
 
@@ -62,6 +66,7 @@ for(j in seq_along(stkIndex)) {
     srMod <- lm(logProd ~ ets + ets1 + ets2 + ets3, data = d)
   }
   residVec <- c(residVec, resid(srMod))
+  rollPVec <- c(rollPVec, resid(srMod))
 }
 recDatTrim1$logResid <- residVec
 recDatTrim1$modResid <- exp(residVec)
@@ -83,28 +88,7 @@ recMat <- recDatTrim %>%
   spread(stk, rec) %>% 
   select(-yr) %>% 
   as.matrix()
-prodMat <- recDatTrim %>% 
-  select(stk, yr, prod) %>% 
-  spread(stk, prod) %>% 
-  select(-yr) %>% 
-  as.matrix()
-residMat <- recDatTrim %>% 
-  select(stk, yr, modResid) %>% 
-  spread(stk, modResid) %>% 
-  select(-yr) %>% 
-  as.matrix()
-aggRec <- recDatTrim %>% 
-  group_by(yr) %>% 
-  summarize(aggRec = sum(rec)) %>% 
-  mutate(ts = "long")
-
 saveRDS(recMat, file = here("outputs", "generatedData", "recMat.rds"))
-
-recDatTrim %>% 
-  select(stk, yr, logProd) %>% 
-  filter(yr > 2005) %>% 
-  group_by(yr) %>% 
-  summarize(meanP = mean(logProd))
 
 # Trim catch data
 catchDat <- read.csv(here("/data/sox/fraserCatchDatTrim.csv"), 
@@ -112,11 +96,14 @@ catchDat <- read.csv(here("/data/sox/fraserCatchDatTrim.csv"),
 catchDatLong <- catchDat %>% 
   filter(stk %in% longStks$stk) %>% 
   group_by(yr) %>% 
-  summarize(catch = sum(totalCatch))
+  summarize(catch = sum(totalCatch), 
+            ret = sum(totalRun)) %>% 
+  mutate(rollCatch = rollmeanr(catch, 4, fill = NA),
+         rollRet = rollmeanr(ret, 4, fill = NA))
 
 # Trim productivity residual data
 rawDat <- recDatTrim1 %>%
-  select(stk, yr, prodZ, logProd, modResid, logResid) %>% 
+  select(stk, yr, rollProd, prodZ, logProd, modResid, logResid) %>% 
   filter(stk %in% longStks$stk) %>% 
   mutate(stk = as.factor(stk))
 
@@ -152,11 +139,11 @@ stkN <- length(unique(rawDat$stk))
 
 labDat <- data.frame(lab = c("a)", "b)", "c)", "d)", "e)", "f)"),
                      var = c("prod", "rec", "catch", "cv", "synch", "aggCV"))
-plotYrs <- c(min(aggRec$yr), max(catchDatLong$yr))
+plotYrs <- c(min(rawDat$yr), max(catchDatLong$yr))
 
-rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, col = stk)) + 
+rawProdPlot <- ggplot(rawDat, aes(x = yr, y = rollProd, col = stk)) + 
   labs(x = "", y = "log(Recruits/Spawner)") + 
-  ylim(min(rawDat$logProd), 5.3) +
+  ylim(min(rawDat$rollProd),  max(rawDat$rollProd)) +
   geom_line(size = 0.45) +
   xlim(plotYrs) +
   scale_color_manual(values = rep("grey", length.out = stkN), guide = FALSE) +
@@ -164,27 +151,28 @@ rawProdPlot <- ggplot(rawDat, aes(x = yr, y = logProd, col = stk)) +
   theme_sleekX(position = "top", axisSize = 12) +
   theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "prod"),
-            mapping = aes(x = min(plotYrs), y = max(rawDat$logProd), 
-                          label = lab, hjust = 0.25, vjust = -1.3), 
+            mapping = aes(x = min(plotYrs), y = max(rawDat$rollProd), 
+                          label = lab, hjust = 0.25, vjust = 0.5), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4)
-aggRecPlot <- ggplot(aggRec, aes(x = yr, y = aggRec)) +
+aggRetPlot <- ggplot(catchDatLong, aes(x = yr, y = rollRet)) +
   geom_line(size = 1.25) +
   xlim(plotYrs) +
   theme_sleekX(position = "top", axisSize = 12) +
   theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "rec"),
-            mapping = aes(x = min(plotYrs), y = max(aggRec$aggRec), 
+            mapping = aes(x = min(plotYrs), 
+                          y = max(catchDatLong$rollRet, na.rm = TRUE), 
                           label = lab, hjust = 0.25, vjust = 0.5), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
-  labs(x = "", y = "Aggregate Recruitment")
-aggCatchPlot <- ggplot(catchDatLong, aes(x = yr, y = catch)) + 
+  labs(x = "", y = "Aggregate Return")
+aggCatchPlot <- ggplot(catchDatLong, aes(x = yr, y = rollCatch)) + 
   geom_line(size = 1.15) +
   theme_sleekX(position = "top", axisSize = 12) +
   theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
   xlim(plotYrs) +
   geom_text(data = labDat %>% filter(var == "catch"),
             mapping = aes(x = min(plotYrs), 
-                          y = max(catchDatLong$catch), 
+                          y = max(catchDatLong$rollCatch, na.rm = TRUE), 
                           label = lab, hjust = 0.25, vjust = 0.5), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
   labs(x = "", y = "Aggregate Catch") 
@@ -227,7 +215,7 @@ agCVPlot <- ggplot(retroCVa, aes(x = broodYr, y = est)) +
 
 png(here("figs/Fig1New_Retro.png"), height = 4.5, width = 6.5,
     units = "in", res = 300)
-ggarrange(rawProdPlot, aggRecPlot, aggCatchPlot, compCVPlot, synchPlot, 
+ggarrange(rawProdPlot, aggRetPlot, aggCatchPlot, compCVPlot, synchPlot, 
           agCVPlot, nrow = 2, ncol = 3, heights = c(1, 1.1))
 dev.off()
 

@@ -306,21 +306,22 @@ stopCluster(cl)
 toc()
 
 ## Save 
-# saveRDS(newAgTSList, here("outputs/generatedData/synchTS/synchTSList.rdsa"))
+#saveRDS(newAgTSList, here("outputs/generatedData/synchTS/synchTSList.rda"))
 newAgTSList <- readRDS(here("outputs/generatedData/synchTS/synchTSList.rda"))
 
 ## Import tmb data to replace observed data with
 modOut <- readRDS(here("outputs", "generatedData", "tmbSynchEst.rds"))
 modCVc <- modOut %>% 
-  filter(term == "log_cv_c") %>% 
+  filter(term == "log_cv_s") %>% 
   select(est) %>% 
   unlist()
-modCVc <- modCVc[2:length(modCVc)]
 modSynch <- modOut %>% 
   filter(term == "logit_phi") %>% 
   select(est) %>% 
   unlist()
-modSynch <- modSynch[2:length(modSynch)]
+#add NAs to front end to match length of sim time series
+modCVc <- c(rep(NA, length.out = 10), modCVc) 
+modSynch <- c(rep(NA, length.out = 10), modSynch)
 
 ### Manipulate lists to create plottable data structure 
 ## In this case that is one median value per year per unique combo of OMs
@@ -353,8 +354,9 @@ fullList <- sapply(seq_along(dirNames), function(h) {
                                                           "medSigma", "highSigma")),
              synchOM = factor(factor(synchOM), levels = c("obs", "lowSynch",
                                                           "medSynch", "highSynch"))
-      ) %>%
-      filter(!is.na(medSynchRecBY)) #remove yrs where obs synch couldn't be calc
+      ) 
+    # %>%
+    #   filter(!is.na(medSynchRecBY)) #remove yrs where obs synch couldn't be calc
     # replace observed data with estimates from TMB fitting
     dat2[dat2$sigmaOM == "obs" & dat2$synchOM == "obs", ]$medSynchRecBY <- modSynch
     dat2[dat2$sigmaOM == "obs" & dat2$synchOM == "obs", ]$medCompCVRecBY <- modCVc
@@ -418,6 +420,7 @@ png(file = paste(here(),"/figs/Fig3_SynchCompBoxPlots.png", sep = ""),
 ggarrange(q2, p2, nrow = 2, ncol = 1, heights = c(1, 1.2))
 dev.off()
 
+boxplot(modOut$est ~ modOut$term)
 
 #_________________________________________________________________________
 # Generate CU-specific spawner abundance violin plots for Bowron and Chilko

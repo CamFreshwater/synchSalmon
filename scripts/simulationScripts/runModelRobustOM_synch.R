@@ -261,7 +261,7 @@ arrayNames <- sapply(dirNames, function(x) {
 })
 #stocks that are included in retrospective analysis 
 #(note these are matrix positions not stock ID numbers)
-# longStks <- c(1, 3, 4, 5, 6, 7, 8, 9, 16, 17)
+longStks <- c(1, 3, 4, 5, 6, 7, 8, 9, 16, 17)
 
 tic("runParallel")
 Ncores <- detectCores()

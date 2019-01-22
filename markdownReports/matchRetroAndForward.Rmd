@@ -1,0 +1,16 @@
+---
+title: "Observed Variability Patterns"
+author: "Cam Freshwater"
+date: "1/22/2019"
+output: html_document
+---
+
+3 options for observed data
+
+1.  Trimmed to time series that are full (~20 years with all 18 CUs)
+2.  Model outputs from Sean's TMB analysis
+3.  Calculated values with subset of CUs using `calcSynchMetrics` function
+
+Option 1 will inflate synchrony relative to retro because only high period is being sampled; similar pattern with CVc but less dramatic. Option 2 and 3 should provide equivalent results to retrospective unless uncertainty can be incorporated. 
+
+More fundamental question is why CVc in particular is so depressed relative to forward simulated reference values. Double check and confirm

@@ -32,6 +32,21 @@ larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"), stringsAsFactors
 tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 
 
+## Check SD among CU-specific uncertainty parameters to ensure that proposed
+# sensitivity values are reasonable
+sdER <- sd(cuPar$meanDBE)
+par(mfrow = c(2, 2))
+hist(cuPar$sdDBE * 1.25)
+hist(cuPar$sdDBE * 0.75)
+hist(cuPar$sdDBE + sdER)
+hist(cuPar$sdDBE - sdER) #lines up well
+
+sdTau <- sd(cuPar$tauCycAge)
+hist(cuPar$tauCycAge * 1.25)
+hist(cuPar$tauCycAge * 0.5)
+hist(cuPar$tauCycAge + sdTau)
+hist(cuPar$tauCycAge - sdTau) #lines up well
+
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
@@ -259,9 +274,6 @@ arrayNames <- sapply(dirNames, function(x) {
   list.files(paste(here("outputs/simData"), x, sep="/"), 
              pattern = "\\Arrays.RData$")
 })
-#stocks that are included in retrospective analysis 
-#(note these are matrix positions not stock ID numbers)
-longStks <- c(1, 3, 4, 5, 6, 7, 8, 9, 16, 17)
 
 tic("runParallel")
 Ncores <- detectCores()
@@ -278,13 +290,9 @@ newAgTSList <- lapply(seq_along(dirNames), function (h) {
     datList <- readRDS(paste(here("outputs/simData"), dirNames[h],
                              arrayNames[x, h], sep = "/"))
     # Subset datList to only include longStks
-    trimDatList <- datList
-    # for (i in 4:length(datList)) {
-    #   trimDatList[[i]] <- datList[[i]][ , longStks, ]
-    # }
-    synchList <- calcSynchMetrics(trimDatList, log = FALSE, corr = FALSE,
+    synchList <- calcSynchMetrics(datList, corr = FALSE,
                                   weight = TRUE, windowSize = 12)
-    synchList <- c(trimDatList$nameOM, synchList)
+    synchList <- c(datList$nameOM, synchList)
     names(synchList)[1] <- "opMod"
     return(synchList)
   }) #iterate across different OMs within a scenario
@@ -309,20 +317,6 @@ toc()
 #saveRDS(newAgTSList, here("outputs/generatedData/synchTS/synchTSList.rda"))
 newAgTSList <- readRDS(here("outputs/generatedData/synchTS/synchTSList.rda"))
 
-## Import tmb data to replace observed data with
-modOut <- readRDS(here("outputs", "generatedData", "tmbSynchEst.rds"))
-modCVc <- modOut %>% 
-  filter(term == "log_cv_s") %>% 
-  select(est) %>% 
-  unlist()
-modSynch <- modOut %>% 
-  filter(term == "logit_phi") %>% 
-  select(est) %>% 
-  unlist()
-#add NAs to front end to match length of sim time series
-modCVc <- c(rep(NA, length.out = 10), modCVc) 
-modSynch <- c(rep(NA, length.out = 10), modSynch)
-
 ### Manipulate lists to create plottable data structure 
 ## In this case that is one median value per year per unique combo of OMs
 omNames <- rep(c("ref", "skewN", "skewT"), each = 3)
@@ -340,26 +334,23 @@ fullList <- sapply(seq_along(dirNames), function(h) {
     dat1 <- data.frame(sigmaOM = rep(sigNames[h], length.out = nYears),
                       synchOM = rep(x[["opMod"]], length.out = nYears),
                       prodOM = rep(prodNames, length.out = nYears),
-                      year = seq(from = firstYear, to = (firstYear + nYears - 1))
+                      year = seq(from = firstYear, 
+                                 to = (firstYear + nYears - 1))
                       ) %>%
       mutate(sigmaOM = as.character(sigmaOM),
              synchOM = as.character(synchOM),
              medSynchRecBY = apply(x[["synchRecBY"]], 1, median),
-             medCompCVRecBY = apply(x[["compCVRecBY"]], 1, median),
-             medCorrRecBY = apply(x[["corrRecBY"]], 1, median)
+             medCompCVRecBY = apply(x[["compCVRecBY"]], 1, median)
       )
     dat1[dat1$year < start, c("sigmaOM", "synchOM")] <- "obs"
     dat2 <- dat1 %>%
-      mutate(sigmaOM = factor(factor(sigmaOM), levels = c("obs", "lowSigma",
-                                                          "medSigma", "highSigma")),
-             synchOM = factor(factor(synchOM), levels = c("obs", "lowSynch",
-                                                          "medSynch", "highSynch"))
+      mutate(sigmaOM = factor(factor(sigmaOM), 
+                              levels = c("obs", "lowSigma", "medSigma", 
+                                         "highSigma")),
+             synchOM = factor(factor(synchOM), 
+                              levels = c("obs", "lowSynch", "medSynch", 
+                                         "highSynch"))
       ) 
-    # %>%
-    #   filter(!is.na(medSynchRecBY)) #remove yrs where obs synch couldn't be calc
-    # replace observed data with estimates from TMB fitting
-    dat2[dat2$sigmaOM == "obs" & dat2$synchOM == "obs", ]$medSynchRecBY <- modSynch
-    dat2[dat2$sigmaOM == "obs" & dat2$synchOM == "obs", ]$medCompCVRecBY <- modCVc
     return(dat2)
   })
 })
@@ -375,12 +366,7 @@ start <- start[[1]]
 
 dum <- plotDat %>%
   filter(synchOM == "medSynch" | synchOM == "obs",
-         prodOM == "ref") %>% 
-  mutate(sigmaOM = recode(sigmaOM, "obs" = "Observed", 
-                         "lowSigma" = "Low", 
-                         "medSigma" = "Moderate",
-                         "highSigma" = "High")
-  )
+         prodOM == "ref")
 colPal <- c("black", viridis(length(unique(dum$sigmaOM)) - 1, begin = 0, end = 1))
 names(colPal) <- levels(dum$sigmaOM)
 ### Instead of plotting time series, make faceted box plot
@@ -391,16 +377,19 @@ q2 <- ggplot(dum, aes(x = sigmaOM, y = medCompCVRecBY, fill = sigmaOM)) +
   geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
   guides(fill = FALSE, color = FALSE) +
   scale_fill_manual(name = "Operating Model", values = colPal) +
+  scale_x_discrete(breaks = waiver(), labels = c("Observed", 
+                                                 expression(paste("Low (0.75", 
+                                                                  sigma, ")")),
+                                                 expression(paste("Mod. (", 
+                                                                  sigma, ")")),
+                                                 expression(paste("High (1.25", 
+                                                                  sigma, ")"))
+  )) +
   theme_sleekX(position = "standard", legendSize = 0.9, axisSize = 12)
 
 dum2 <- plotDat %>%
   dplyr::filter(sigmaOM == "medSigma" | sigmaOM == "obs",
-                prodOM == "ref") %>% 
-  mutate(synchOM = recode(synchOM, "obs" = "Observed", 
-                          "lowSynch" = "Low", 
-                          "medSynch" = "Moderate",
-                          "highSynch" = "High")
-  )
+                prodOM == "ref")
 colPal2 <- c("black", viridis(length(unique(dum2$synchOM)) - 1, begin = 0, 
                               end = 1))
 names(colPal2) <- levels(dum2$synchOM)
@@ -412,6 +401,14 @@ p2 <- ggplot(dum2, aes(x = synchOM, y = medSynchRecBY, fill = synchOM)) +
   geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
   guides(fill = FALSE, color = FALSE) +
   scale_fill_manual(values = colPal2) +
+  scale_x_discrete(breaks = waiver(), labels = c("Observed", 
+                                                 expression(paste("Low (", rho, 
+                                                                  " = 0.05)")),
+                                                 expression(paste("Mod (", rho, 
+                                                                  " = 0.50)")),
+                                                 expression(paste("High (", rho, 
+                                                                  " = 0.75)"))
+  )) +
   theme_sleekX(position = "standard", legendSize = 0.9, axisSize = 12)
 
 
@@ -419,8 +416,6 @@ png(file = paste(here(),"/figs/Fig3_SynchCompBoxPlots.png", sep = ""),
     height = 6, width = 4, units = "in", res = 300)
 ggarrange(q2, p2, nrow = 2, ncol = 1, heights = c(1, 1.2))
 dev.off()
-
-boxplot(modOut$est ~ modOut$term)
 
 #_________________________________________________________________________
 # Generate CU-specific spawner abundance violin plots for Bowron and Chilko

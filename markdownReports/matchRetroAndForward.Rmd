@@ -69,109 +69,98 @@ arrayNames <- sapply(dirNames, function(x) {
 #             dirName = "test", nTrials = 5, multipleMPs = FALSE)
 
 ## Run simulation if appropriate data aren't local
-for (i in seq_along(dirNames)) {
-  dirName <- dirNames[i]
-  d <- subset(simParTrim, scenario == scenNames[i])
-  simsToRun <- split(d, seq(nrow(d)))
-  Ncores <- detectCores()
-  cl <- makeCluster(Ncores - 3) #save two cores
-  registerDoParallel(cl)
-  clusterEvalQ(cl, c(library(MASS),
-                  library(here),
-                  library(sensitivity),
-                  library(mvtnorm),
-                  library(scales), #shaded colors for figs
-                  library(viridis), #color blind gradient palette
-                  library(gsl),
-                  library(dplyr),
-                  library(Rcpp),
-                  library(RcppArmadillo),
-                  library(sn),
-                  library(samSim)))
-  #export custom function and objects
-  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
-                      "catchDat", "srDat", "ricPars", "dirName", "larkPars",
-                      "tamFRP"), envir = environment())
-  tic("run in parallel")
-  parLapply(cl, simsToRun, function(x) {
-    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
-                variableCU = FALSE, ricPars, larkPars = larkPars,
-                tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName,
-                nTrials = nTrials, multipleMPs = FALSE)
-  })
-  stopCluster(cl) #end cluster
-  toc()
-}
+# for (i in seq_along(dirNames)) {
+#   dirName <- dirNames[i]
+#   d <- subset(simParTrim, scenario == scenNames[i])
+#   simsToRun <- split(d, seq(nrow(d)))
+#   Ncores <- detectCores()
+#   cl <- makeCluster(Ncores - 3) #save two cores
+#   registerDoParallel(cl)
+#   clusterEvalQ(cl, c(library(MASS),
+#                   library(here),
+#                   library(sensitivity),
+#                   library(mvtnorm),
+#                   library(scales), #shaded colors for figs
+#                   library(viridis), #color blind gradient palette
+#                   library(gsl),
+#                   library(dplyr),
+#                   library(Rcpp),
+#                   library(RcppArmadillo),
+#                   library(sn),
+#                   library(samSim)))
+#   #export custom function and objects
+#   clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
+#                       "catchDat", "srDat", "ricPars", "dirName", "larkPars",
+#                       "tamFRP"), envir = environment())
+#   tic("run in parallel")
+#   parLapply(cl, simsToRun, function(x) {
+#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
+#                 variableCU = FALSE, ricPars, larkPars = larkPars,
+#                 tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName,
+#                 nTrials = nTrials, multipleMPs = FALSE)
+#   })
+#   stopCluster(cl) #end cluster
+#   toc()
+# }
 
 
 ## Calculate synchrony indices if data aren't available
-plotList = vector("list", length = length(dirNames))
-# #stocks that are included in retrospective analysis 
-# #(note these are matrix positions not stock ID numbers)
-longStks <- c(1, 3, 4, 5, 6, 7, 8, 9, 16, 17)
-
-tic("runParallel")
-Ncores <- detectCores()
-cl <- makeCluster(Ncores - 2) #save two cores
-registerDoParallel(cl)
-clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo),
-                   library(parallel), library(doParallel), library(foreach),
-                   library(samSim)))
-newAgTSList <- lapply(seq_along(dirNames), function (h) {
-  #export custom function and objects
-  clusterExport(cl, c("dirNames", "arrayNames", "calcSynchMetrics", "wtdCV",
-                      "genOutputList", "longStks", "h"), envir = environment())
-  listSynchLists <- parLapply(cl, 1:length(arrayNames[, h]), function(x) {
-    datList <- readRDS(paste(here("outputs/simData"), dirNames[h],
-                             arrayNames[x, h], sep = "/"))
-    # Subset datList to only include longStks
-    trimDatList <- datList
-    # for (i in 4:length(datList)) {
-    #   trimDatList[[i]] <- datList[[i]][ , longStks, ]
-    # }
-    synchList <- calcSynchMetrics(trimDatList, log = FALSE, corr = FALSE,
-                                  weight = TRUE, windowSize = 12)
-    synchList <- c(trimDatList$nameOM, synchList)
-    names(synchList)[1] <- "opMod"
-    return(synchList)
-  }) #iterate across different OMs within a scenario
-  # pull list of time series metrics estimated internally, then merge with
-  # synch list generated above based on common op model
-  agTSList <- genOutputList(dirNames[h], agg = TRUE, aggTS = TRUE)
-  for(j in seq_along(agTSList)) {
-    for(k in seq_along(listSynchLists)) {
-      om <- agTSList[[j]]$opMod
-      if (listSynchLists[[k]]$opMod == om) {
-        agTSList[[j]] <- c(agTSList[[j]], listSynchLists[[k]][-1])
-      }
-    }
-  }
-  plotList[[h]] <- agTSList
-}) #iterate across different scenarios
-names(newAgTSList) <- dirNames
-stopCluster(cl)
-toc()
+# plotList = vector("list", length = length(dirNames))
+# # #stocks that are included in retrospective analysis 
+# # #(note these are matrix positions not stock ID numbers)
+# longStks <- c(1, 3, 4, 5, 6, 7, 8, 9, 16, 17)
+# 
+# tic("runParallel")
+# Ncores <- detectCores()
+# cl <- makeCluster(Ncores - 2) #save two cores
+# registerDoParallel(cl)
+# clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo),
+#                    library(parallel), library(doParallel), library(foreach),
+#                    library(samSim)))
+# newAgTSList <- lapply(seq_along(dirNames), function (h) {
+#   #export custom function and objects
+#   clusterExport(cl, c("dirNames", "arrayNames", "calcSynchMetrics", "wtdCV",
+#                       "genOutputList", "longStks", "h"), envir = environment())
+#   listSynchLists <- parLapply(cl, 1:length(arrayNames[, h]), function(x) {
+#     datList <- readRDS(paste(here("outputs/simData"), dirNames[h],
+#                              arrayNames[x, h], sep = "/"))
+#     # Subset datList to only include longStks
+#     trimDatList <- datList
+#     # for (i in 4:length(datList)) {
+#     #   trimDatList[[i]] <- datList[[i]][ , longStks, ]
+#     # }
+#     synchList <- calcSynchMetrics(trimDatList, corr = FALSE, weight = TRUE,
+#                                   windowSize = 12)
+#     synchList <- c(trimDatList$nameOM, synchList)
+#     names(synchList)[1] <- "opMod"
+#     return(synchList)
+#   }) #iterate across different OMs within a scenario
+#   # pull list of time series metrics estimated internally, then merge with
+#   # synch list generated above based on common op model
+#   agTSList <- genOutputList(dirNames[h], agg = TRUE, aggTS = TRUE)
+#   for(j in seq_along(agTSList)) {
+#     for(k in seq_along(listSynchLists)) {
+#       om <- agTSList[[j]]$opMod
+#       if (listSynchLists[[k]]$opMod == om) {
+#         agTSList[[j]] <- c(agTSList[[j]], listSynchLists[[k]][-1])
+#       }
+#     }
+#   }
+#   plotList[[h]] <- agTSList
+# }) #iterate across different scenarios
+# names(newAgTSList) <- dirNames
+# stopCluster(cl)
+# toc()
 
 # saveRDS(newAgTSList, here("outputs/generatedData/synchTS",
 #                           "retroForward_synchTSList.rda"))
 ```
 
 ```{r prep and clean interannual data, include=FALSE}
-newAgTSList <- readRDS(here("outputs/generatedData/synchTS/synchTSList.rds"))
+newAgTSList <- readRDS(here("outputs/generatedData/synchTS",
+                          "retroForward_synchTSList.rda"))
 
-## Import tmb data to replace observed data with model outputs 
-# Note: longPlotDat only
-modOut <- readRDS(here("outputs", "generatedData", "tmbSynchEst.rds"))
-modCVc <- modOut %>% 
-  filter(term == "log_cv_s") %>% 
-  select(est) %>% 
-  unlist()
-modSynch <- modOut %>% 
-  filter(term == "logit_phi") %>% 
-  select(est) %>% 
-  unlist()
-
-
+# First make dataset that includes observed data collected within the simulation
 omNames <- rep(c("ref", "skewN", "skewT"), each = 3)
 sigNames <- rep(c("lowSigma", "medSigma", "highSigma"), length.out = 9)
 fullList <- sapply(seq_along(dirNames), function(h) {
@@ -193,8 +182,7 @@ fullList <- sapply(seq_along(dirNames), function(h) {
       mutate(sigmaOM = as.character(sigmaOM),
              synchOM = as.character(synchOM),
              medSynchRecBY = apply(x[["synchRecBY"]], 1, median),
-             medCompCVRecBY = apply(x[["compCVRecBY"]], 1, median),
-             medCorrRecBY = apply(x[["corrRecBY"]], 1, median)
+             medCompCVRecBY = apply(x[["compCVRecBY"]], 1, median)
       )
     dat1[dat1$year < start, c("sigmaOM", "synchOM")] <- "obsShort"
     dat2 <- dat1 %>%
@@ -211,7 +199,17 @@ fullList <- sapply(seq_along(dirNames), function(h) {
 shortPlotDat <- do.call(rbind, fullList) %>% 
   filter(sigmaOM == "obsShort" | synchOM == "obsShort")
 
-
+# Next make identical dataframe but replacing observed data with outputs from TMB
+## Import tmb data to replace observed data with model outputs 
+modOut <- readRDS(here("outputs", "generatedData", "tmbSynchEst.rds"))
+modCVc <- modOut %>% 
+  filter(term == "log_cv_s") %>% 
+  select(est) %>% 
+  unlist()
+modSynch <- modOut %>% 
+  filter(term == "logit_phi") %>% 
+  select(est) %>% 
+  unlist()
 fullList <- sapply(seq_along(dirNames), function(h) {
   d <- newAgTSList[[h]]
   nYears <- d[[1]]$`nYears`
@@ -231,8 +229,7 @@ fullList <- sapply(seq_along(dirNames), function(h) {
       mutate(sigmaOM = as.character(sigmaOM),
              synchOM = as.character(synchOM),
              medSynchRecBY = apply(x[["synchRecBY"]], 1, median),
-             medCompCVRecBY = apply(x[["compCVRecBY"]], 1, median),
-             medCorrRecBY = apply(x[["corrRecBY"]], 1, median)
+             medCompCVRecBY = apply(x[["compCVRecBY"]], 1, median)
       )
     dat1[dat1$year < start, c("sigmaOM", "synchOM")] <- "obsLong"
     dat2 <- dat1 %>%
@@ -264,10 +261,10 @@ plotDat <- do.call(rbind, fullList) %>%
   mutate(sigmaOM = factor(sigmaOM, levels = c("obsShort", "obsLong", "lowSigma",
                                               "medSigma", "highSigma")),
          synchOM = factor(synchOM, levels = c("obsShort", "obsLong", "lowSynch",
-                                              "medSynch", "highSynch")))
+                                              "medSynch", "highSynch"))) 
 ```
 
-First look at observed CVc and phi for short and long periods relative to sim values using medians among trials (i.e. interannual variability).
+First look at observed CVc and phi for short (all CUs within simulation) and long periods (equivalent to retro analysis) relative to sim values using medians among trials (i.e. interannual variability).
 
 ```{r generate plots interannual}
 start <- plotDat %>%
@@ -276,20 +273,14 @@ start <- plotDat %>%
 start <- start[[1]]
 
 dum <- plotDat %>%
-  filter(synchOM == "medSynch" | synchOM == "obsLong" | synchOM == "obsShort",
-         prodOM == "ref",
-         !is.na(medCompCVRecBY)) %>% 
-  mutate(sigmaOM = recode(sigmaOM, "obsShort" = "Obs Short",
-                          "obsLong" = "Obs Long",
-                         "lowSigma" = "Low", 
-                         "medSigma" = "Moderate",
-                         "highSigma" = "High")
-  )
+  filter(!synchOM %in% c("lowSynch", "highSynch"),
+         !is.na(medCompCVRecBY))
+
 colPal <- c("black", "grey", viridis(length(unique(dum$sigmaOM)) - 2, begin = 0, 
                              end = 1))
 names(colPal) <- levels(dum$sigmaOM)
 ### Instead of plotting time series, make faceted box plot
-q2 <- ggplot(dum, aes(x = sigmaOM, y = medCompCVRecBY, fill = sigmaOM)) +
+q1 <- ggplot(dum, aes(x = sigmaOM, y = medCompCVRecBY, fill = sigmaOM)) +
   labs(x = "Component Variability Scenario", y = "Median CVc of Returns", 
        title = NULL) +
   geom_boxplot(size = 1, alpha = 0.5) +
@@ -299,18 +290,12 @@ q2 <- ggplot(dum, aes(x = sigmaOM, y = medCompCVRecBY, fill = sigmaOM)) +
   theme_sleekX(position = "standard", legendSize = 0.9, axisSize = 12)
 
 dum2 <- plotDat %>%
-  filter(sigmaOM == "medSigma" | synchOM == "obsLong" | synchOM == "obsShort",
-         prodOM == "ref", !is.na(medSynchRecBY)) %>% 
-  mutate(synchOM = recode(synchOM, "obsShort" = "Obs Short",
-                          "obsLong" = "Obs Long", 
-                          "lowSynch" = "Low", 
-                          "medSynch" = "Moderate",
-                          "highSynch" = "High")
-  )
+  filter(!sigmaOM %in% c("lowSigma", "highSigma"),
+         !is.na(medSynchRecBY))
 colPal2 <- c("black", "grey", viridis(length(unique(dum$sigmaOM)) - 2, 
                                       begin = 0, end = 1))
 names(colPal2) <- levels(dum2$synchOM)
-p2 <- ggplot(dum2, aes(x = synchOM, y = medSynchRecBY, fill = synchOM)) +
+p1 <- ggplot(dum2, aes(x = synchOM, y = medSynchRecBY, fill = synchOM)) +
   labs(x = "Synchrony Scenario",
        y = expression(paste("Median ", phi, " of Returns")),
        title = NULL) +
@@ -320,10 +305,10 @@ p2 <- ggplot(dum2, aes(x = synchOM, y = medSynchRecBY, fill = synchOM)) +
   scale_fill_manual(values = colPal2) +
   theme_sleekX(position = "standard", legendSize = 0.9, axisSize = 12)
 
-ggarrange(q2, p2, nrow = 2, ncol = 1, heights = c(1, 1.2))
+ggarrange(q1, p1, nrow = 2, ncol = 1, heights = c(1, 1.2))
 ```
 
-As expected, longer TS result in greater interannual variability and lower medians (i.e. fewer years during high aggregate variability phase). While it's reasonable that observed values encompass plotted, I'm concerned that the medians draw criticism because they're so much lower than expected.
+As expected, longer TS result in greater interannual variability and lower medians (i.e. fewer years during high aggregate variability phase). While it's reasonable that observed values encompass plotted, I'm concerned that the medians draw criticism because they're so much lower than expected. I think that they're defensible though because we're including so many more populations in the forward simulation (18 vs. 10).
 
 Alternative possibility is to divide observed data into early and late periods.
 
@@ -350,7 +335,7 @@ dum <- twoPeriodDat %>%
          synchOM = as.factor(synchOM)) %>% 
   mutate(sigmaOM = recode(sigmaOM, "obsEarly" = "Obs Early",
                           "obsLate" = "Obs Late",
-                         "lowSigma" = "Low", 
+                         "lowSigma" = "Low",
                          "medSigma" = "Moderate",
                          "highSigma" = "High")
   )
@@ -390,7 +375,17 @@ p2 <- ggplot(dum2, aes(x = synchOM, y = medSynchRecBY, fill = synchOM)) +
   geom_vline(xintercept = start, color = "black", linetype = 3, size = 1) +
   guides(fill = FALSE, color = FALSE) +
   scale_fill_manual(values = colPal2) +
+  scale_x_discrete(breaks = waiver(), labels = c("Obs E", "Obs L", 
+                                            expression(paste("Low (", rho, 
+                                                             " = 0.05)")),
+                                            expression(paste("Mod (", rho, 
+                                                             " = 0.50)")),
+                                            expression(paste("High (", rho, 
+                                                             " = 0.75)"))
+                                            )) +
   theme_sleekX(position = "standard", legendSize = 0.9, axisSize = 12)
 
 ggarrange(q2, p2, nrow = 2, ncol = 1, heights = c(1, 1.2))
 ```
+
+This looks even messier and is sort of the worst of both worlds. It shows a subset of CUs (same apples and oranges argument as above), plus the decision of where to split into early and late is arbitrary. For now stick with simulated data from short time series but with all CUs included.

@@ -32,25 +32,10 @@ larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"), stringsAsFactors
 tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 
 
-## Check SD among CU-specific uncertainty parameters to ensure that proposed
-# sensitivity values are reasonable
-sdER <- sd(cuPar$meanDBE)
-par(mfrow = c(2, 2))
-hist(cuPar$sdDBE * 1.25)
-hist(cuPar$sdDBE * 0.75)
-hist(cuPar$sdDBE + sdER)
-hist(cuPar$sdDBE - sdER) #lines up well
-
-sdTau <- sd(cuPar$tauCycAge)
-hist(cuPar$tauCycAge * 1.25)
-hist(cuPar$tauCycAge * 0.5)
-hist(cuPar$tauCycAge + sdTau)
-hist(cuPar$tauCycAge - sdTau) #lines up well
-
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 25
+nTrials <- 200
 
 ## General robustness runs
 simParTrim <- subset(simPar,

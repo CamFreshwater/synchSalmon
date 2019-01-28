@@ -131,14 +131,17 @@ for (h in seq_along(dirNames)) {
     singleScen <- rbind(singleScen, dum)
   }
   #merge multiple scenarios into one dataframe
-  plotDat <- rbind(plotDat, singleScen) %>% 
-    mutate(om =  factor(om, levels = c("reference", "low", "high")))
+  plotDat <- rbind(plotDat, singleScen)
 }
+plotDat <- plotDat  %>% 
+  mutate(om =  factor(om, levels = c("reference", "low", "high")),
+         scen = factor(scen, levels = c("rho", "ageTau", "enRouteSig", "ouSig", 
+                                        "refSensitivity")))
+
 colPal <- c("black", "blue", "orange")
 names(colPal) <- levels(plotDat$om)
 
-# Plot
-dotSize = 3.5; lineSize = 0.8
+dotSize = 3; lineSize = 0.8; legSize = 0.8; axSize = 10
 consVars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant") 
 consYLabs <- c("Return\nAbundance", "Prop. CUs\nAbove Benchmark", 
                "Prop. CUs\nExtant")
@@ -153,7 +156,7 @@ consPlots <- lapply(seq_along(consVars), function(i) {
                         color = om)) +
     labs(x = "Scenario", y = consYLabs[i], color = "Operating\nModel") +
     geom_pointrange(fatten = dotSize, size = lineSize, position = 
-                      position_dodge(width = 0.5)) +
+                      position_dodge(width = 0.65)) +
     scale_x_discrete(labels = c("refSensitivity" = "Reference",
                                 "ageTau" = "Maturation\nAge", "ouSig" = 
                                   "Outcome\nUncertainty", "rho" = 
@@ -166,13 +169,16 @@ consPlots <- lapply(seq_along(consVars), function(i) {
     geom_hline(refDat, mapping = aes(yintercept = highQ), linetype = 2, 
                size = 0.5) 
   if (i == 1) {
-    q <- q + theme_sleekX(position = "top", legendSize = 1.15, axisSize = 13) 
+    q <- q + theme_sleekX(position = "top", legendSize = legSize,
+                          axisSize = axSize) 
   } 
   if (i == 2) {
-    q <- q + theme_sleekX(position = "mid", legendSize = 1.15, axisSize = 13)
+    q <- q + theme_sleekX(position = "mid", legendSize = legSize,
+                          axisSize = axSize)
   }
   if (i == 3) {
-    q <- q + theme_sleekX(position = "bottom", legendSize = 1.15, axisSize = 13)
+    q <- q + theme_sleekX(position = "bottom", legendSize = legSize,
+                          axisSize = axSize)
   }
   return(q)
 })
@@ -191,7 +197,7 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
                         color = om)) +
     labs(x = "Scenario", y = catchYLabs[i], color = "Operating\nModel") +
     geom_pointrange(fatten = dotSize, size = lineSize, position = 
-                      position_dodge(width = 0.5)) +
+                      position_dodge(width = 0.65)) +
     scale_x_discrete(labels = c("refSensitivity" = "Reference",
                                 "ageTau" = "Maturation\nAge", "ouSig" = 
                                   "Outcome\nUncertainty", "rho" = 
@@ -204,27 +210,30 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
     geom_hline(refDat, mapping = aes(yintercept = highQ), linetype = 2, 
                size = 0.5)
   if (i == 1) {
-    q <- q + theme_sleekX(position = "top", legendSize = 1.15, axisSize = 13)
+    q <- q + theme_sleekX(position = "top", legendSize = legSize, 
+                          axisSize = axSize)
   }
   if (i == 2) {
-    q <- q + theme_sleekX(position = "mid", legendSize = 1.15, axisSize = 13)
+    q <- q + theme_sleekX(position = "mid", legendSize = legSize, 
+                          axisSize = axSize)
   }
   if (i == 3) {
-    q <- q + theme_sleekX(position = "bottom", legendSize = 1.15, axisSize = 13)
+    q <- q + theme_sleekX(position = "bottom", legendSize = legSize, 
+                          axisSize = axSize)
   }
   return(q)
 })
 
 png(file = paste(here("/figs/SFig_ConsPMs.png"),
                  sep = ""), 
-    height = 6.5, width = 7, units = "in", res = 150)
+    height = 4.5, width = 6, units = "in", res = 600)
 ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]], 
           ncol = 1, nrow = 3, common.legend = TRUE, legend = "right", 
           align = "v", heights = c(1,1,1.25))
 dev.off()
 png(file = paste(here("/figs/SFig_CatchPMs.png"),
                  sep = ""), 
-    height = 6.5, width = 7, units = "in", res = 150)
+    height = 4.5, width = 6, units = "in", res = 600)
 ggarrange(catchPlots[[1]], catchPlots[[2]], catchPlots[[3]],
           ncol = 1, nrow = 3, common.legend = TRUE, legend = "right", 
           align = "v", heights = c(1,1,1.25))

@@ -120,19 +120,6 @@ retroPhi <- modOut %>%
 retroCVa <- modOut %>% 
   filter(term == "log_cv_c")
 
-# Import stan model outputs - DEPRECATED in favor of tmb
-# m <- readRDS(here("data/generated/stanSynchModOut.rds")) #window size = 12
-# varNames <- c("cv_s", "phi", "cv_c")
-# parList <- lapply(seq_along(varNames), function(x) {
-#   d <- plyr::ldply(m, function(y) 
-#     quantile(y[[varNames[x]]], probs = c(0.1, 0.25, 0.5, 0.75, 0.9))) %>% 
-#     dplyr::rename(low = "10%", med = "50%", high = "90%") %>% 
-#     mutate(year = yrs)
-# })
-# names(parList) <- c("cvC", "synch", "cvA")
-# parList[["synch"]]$high[parList[["synch"]]$high > 1] <- 1 
-
-
 #_________________________________________________________________________
 ## Plot
 stkN <- length(unique(rawDat$stk))

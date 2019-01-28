@@ -52,22 +52,25 @@ hist(cuPar$tauCycAge - sdTau) #lines up well
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 150
+nTrials <- 500
 
 ## General robustness runs
-simParTrim <- subset(simPar,
-                     scenario == "refSensitivity" | scenario == "ageTau" |
-                       scenario == "ouSig" 
-                     |  scenario == "forecastSig" |
-                       scenario == "enRouteSig"
+simParTrim <- subset(simPar
+                     # ,
+                     # scenario == "refSensitivity" | scenario == "ageTau" |
+                     #   scenario == "rho" 
+                     # |  
+                     # scenario == "ouSig"
+                     #|
+                     #   scenario == "enRouteSig"
 )
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
                                                 sep = "_"))
  
-# recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat, 
-#             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP, 
-#             cuCustomCorrMat = cuCustomCorrMat, dirName = "test", nTrials = 5, 
+# recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat,
+#             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
+#             cuCustomCorrMat = cuCustomCorrMat, dirName = "test", nTrials = 5,
 #             multipleMPs = FALSE)
 
 for (i in seq_along(dirNames)) {
@@ -127,18 +130,25 @@ for (h in seq_along(dirNames)) {
     )
     singleScen <- rbind(singleScen, dum)
   }
-  plotDat <- rbind(plotDat, singleScen) #merge multiple scenarios into one dataframe
+  #merge multiple scenarios into one dataframe
+  plotDat <- rbind(plotDat, singleScen) %>% 
+    mutate(om =  factor(om, levels = c("reference", "low", "high")))
 }
-colPal <- c("black", "orange", "blue")
+colPal <- c("black", "blue", "orange")
 names(colPal) <- levels(plotDat$om)
 
 # Plot
 dotSize = 3.5; lineSize = 0.8
 consVars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant") 
-consYLabs <- c("Return\nAbundance", "Prop. CUs\nUpper", "Prop. CUs\nExtant")
+consYLabs <- c("Return\nAbundance", "Prop. CUs\nAbove Benchmark", 
+               "Prop. CUs\nExtant")
 consPlots <- lapply(seq_along(consVars), function(i) {
   temp <- plotDat %>% 
-    filter(var == consVars[i])
+    filter(var == consVars[i],
+           !scen == "refSensitivity")
+  refDat <- plotDat %>% 
+    filter(var == consVars[i],
+           scen == "refSensitivity")
   q <- ggplot(temp, aes(x = scen, y = avg, ymin = lowQ, ymax = highQ, 
                         color = om)) +
     labs(x = "Scenario", y = consYLabs[i], color = "Operating\nModel") +
@@ -146,10 +156,15 @@ consPlots <- lapply(seq_along(consVars), function(i) {
                       position_dodge(width = 0.5)) +
     scale_x_discrete(labels = c("refSensitivity" = "Reference",
                                 "ageTau" = "Maturation\nAge", "ouSig" = 
-                                  "Outcome\nUncertainty", "forecastSig" = 
-                                  "Forecast\nError", 
+                                  "Outcome\nUncertainty", "rho" = 
+                                  "Temporal\nAutocorrelation", 
                                 "enRouteSig" = "En Route\nMortality")) +
-    scale_colour_manual(values = colPal) 
+    scale_colour_manual(values = colPal) +
+    geom_hline(refDat, mapping = aes(yintercept = avg), linetype = 1) +
+    geom_hline(refDat, mapping = aes(yintercept = lowQ), linetype = 2, 
+               size = 0.5) +
+    geom_hline(refDat, mapping = aes(yintercept = highQ), linetype = 2, 
+               size = 0.5) 
   if (i == 1) {
     q <- q + theme_sleekX(position = "top", legendSize = 1.15, axisSize = 13) 
   } 
@@ -167,7 +182,11 @@ catchYLabs <- c("Catch\nAbundance", "Prop. Years\nHigher Catch",
                 "Catch Stability")
 catchPlots <- lapply(seq_along(catchVars), function(i) {
   temp <- plotDat %>% 
-    filter(var == catchVars[i])
+    filter(var == catchVars[i],
+           !scen == "refSensitivity")
+  refDat <- plotDat %>% 
+    filter(var == catchVars[i],
+           scen == "refSensitivity")
   q <- ggplot(temp, aes(x = scen, y = avg, ymin = lowQ, ymax = highQ, 
                         color = om)) +
     labs(x = "Scenario", y = catchYLabs[i], color = "Operating\nModel") +
@@ -175,10 +194,15 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
                       position_dodge(width = 0.5)) +
     scale_x_discrete(labels = c("refSensitivity" = "Reference",
                                 "ageTau" = "Maturation\nAge", "ouSig" = 
-                                  "Outcome\nUncertainty", "forecastSig" = 
-                                  "Forecast\nError", "enRouteSig" = 
+                                  "Outcome\nUncertainty", "rho" = 
+                                  "Temporal\nAutocorrelation", "enRouteSig" = 
                                   "En Route\nMortality")) +
-    scale_colour_manual(values = colPal) 
+    scale_colour_manual(values = colPal) +
+    geom_hline(refDat, mapping = aes(yintercept = avg), linetype = 1) +
+    geom_hline(refDat, mapping = aes(yintercept = lowQ), linetype = 2, 
+               size = 0.5) +
+    geom_hline(refDat, mapping = aes(yintercept = highQ), linetype = 2, 
+               size = 0.5)
   if (i == 1) {
     q <- q + theme_sleekX(position = "top", legendSize = 1.15, axisSize = 13)
   }
@@ -191,14 +215,14 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
   return(q)
 })
 
-png(file = paste(here("/figs/sensitivityConsPMs.png"),
+png(file = paste(here("/figs/SFig_ConsPMs.png"),
                  sep = ""), 
     height = 6.5, width = 7, units = "in", res = 150)
 ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]], 
           ncol = 1, nrow = 3, common.legend = TRUE, legend = "right", 
           align = "v", heights = c(1,1,1.25))
 dev.off()
-png(file = paste(here("/figs/sensitivityCatchPMs.png"),
+png(file = paste(here("/figs/SFig_CatchPMs.png"),
                  sep = ""), 
     height = 6.5, width = 7, units = "in", res = 150)
 ggarrange(catchPlots[[1]], catchPlots[[2]], catchPlots[[3]],

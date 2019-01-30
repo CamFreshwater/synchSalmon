@@ -1,0 +1,66 @@
+---
+title: "RickerAR1 code"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Ricker AR(1) code
+
+I have extracted the original AR(1) code from 2015 here:
+
+```{r originalCode}
+RickerAR1<-function(S,utminus1,a,b,cv,rho,error){			# where a,b,cv are in lognormal space 	
+	#cv<-sqrt(log(1+cv^2))
+	#err<-rnorm(1,-cv^2/2,cv)
+	err.1<-qnorm(error,0,cv)
+	err<-utminus1*rho+err.1
+	if(a>=0) {
+		if(b!=0) {
+			R<-S*exp(a*(1-S/b))*exp(err)*exp(-cv^2/2)
+			err.next<-log(R/S)-(a*(1-S/b))+cv^2/2
+			}
+		if(b==0) {
+			R<-S*exp(err)
+			err.next<-log(R/S)-0
+			}
+		}
+	if(a<0){
+		R<-S*exp(a)*exp(err)*exp(-cv^2/2)
+		err.next<-log(R/S)-0+cv^2/2
+		}
+	if(R=="Inf")print(c("Error in RickerAR1, err.1=",err.1))
+	return(list(R,err.next))
+	}
+
+```
+
+## Including Plots
+
+If we removed the unnecessary bits and the -cv2/2 correction, then it simplifies to this.
+
+```{r simpleCode, echo=TRUE}
+RickerAR1<-function(S,utminus1,a,b,cv,rho,error){			# where a,b,cv are in lognormal space 	
+	err.1<-qnorm(error,0,cv)
+	err<-utminus1*rho+err.1
+	
+	R<-S*exp(a*(1-S/b))*exp(err)
+	err.next<-log(R/S)-(a*(1-S/b))
+			
+	return(list(R,err.next))
+	}
+
+```
+
+In the version on run-reconst-sim_PSF (and presumably salmon-sim, synchSalmon, samSim), there is an additional term "err" or "dev" in the equation for next year's error, err.next. I'm not sure where it comes from. I think it can be deleted.
+
+
+```{r camsCode, echo=TRUE}
+rickerModel <- function(S, a, b, error, rho = NULL, utminus1 = NULL) {
+  err <- utminus1 * rho + error
+  R <- S * exp(a - b * S) * exp(err)
+  err.next <- log(R / S) - (a - b * S) + err
+  return(list(R, err.next))
+}

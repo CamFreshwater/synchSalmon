@@ -1,0 +1,112 @@
+---
+title: "Calculate differences between scenarios"
+author: "Cam Freshwater"
+date: "January 30, 2019"
+output: html_document
+---
+
+This is a quick script that reads in summary data from the main synchrony salmon run and calculates summary statistics (princiaplly % differences in PMs between scenarios) to insert into the main manuscript.
+
+```{r loadData}
+require(here); require(tidyverse)
+
+summDat <- read.csv("summaryTable.csv") %>% 
+  select(-X, -cat)
+
+
+# Quick helper functions to calc relative difference
+relDiff <- function(max, min) {
+  (max - min) / max
+}
+
+trimDat <- function(oms, vars, synchs = NULL, sigmas = NULL, data) {
+  dum <- data %>% 
+      filter(om %in% oms, var %in% vars)
+  if (!is.null(synchs)) {
+    dum <- data %>% 
+      filter(om %in% oms, var %in% vars, synch %in% synchs)
+  }
+  if (!is.null(sigmas)) {
+    dum <- data %>% 
+      filter(om %in% oms, var %in% vars, sigma %in% sigmas)
+  }
+  dum %>% 
+    select(om, var, sigma, synch, avg)
+}
+
+extractVal <- function(data, group){
+  if (group == "sigma") {
+    dum <- data %>% 
+      group_by(om, var, sigma) %>% 
+      summarize(max = max(avg),
+             min = min(avg))
+  }
+  if (group == "synch") {
+    dum <- data %>% 
+      group_by(om, var, synch) %>%
+      summarize(max = max(avg),
+             min = min(avg))
+  }
+  dum
+}
+```
+
+
+```{r calcDiffs}
+# Declines in agg rec across each sigma treatment
+t <- trimDat(oms = "Reference Prod.", vars = "medRecRY", data = summDat)
+t2 <- extractVal(t, group = "sigma")
+relDiff(t2$max, t2$min)
+
+# Increases in agg rec across sig when synch low
+t2 <- extractVal(t, group = "synch") %>% 
+  filter(synch == "0.05")
+relDiff(t2$max, t2$min)
+
+# Returns in low vs. ref prod OMs
+t <- trimDat(oms = c("Reference Prod.", "Low Prod."), vars = "medRecRY", 
+             data = summDat)
+t2 <- t %>% 
+  filter(sigma == "low", synch == "0.05")
+relDiff(max(t2$avg), min(t2$avg))
+t2 <- t %>% 
+  filter(om == "Low Prod.", sigma == "low", !synch == "0.75")
+relDiff(max(t2$avg), min(t2$avg))
+
+# Extirpation risk
+trimDat(oms = c("Reference Prod.", "Low Prod."), vars = "ppnCUExtant", 
+             data = summDat)
+trimDat(oms = c("Reference Prod.", "Very Low Prod."), vars = "ppnCUExtant", 
+             data = summDat)
+
+# Declines in agg catch across each sigma treatment
+t <- trimDat(oms = "Reference Prod.", vars = "medCatch", data = summDat)
+t2 <- extractVal(t, group = "sigma")
+relDiff(t2$max, t2$min)
+
+# Increases in agg catch across sig when synch low
+t2 <- extractVal(t, group = "synch") %>% 
+  filter(synch == "0.05")
+relDiff(t2$max, t2$min)
+
+# Declines in other catch PMs across each sigma treatment
+t <- trimDat(oms = "Reference Prod.", vars = "ppnYrsHighCatch", data = summDat)
+relDiff(max(t$avg), min(t$avg))
+t <- trimDat(oms = "Reference Prod.", vars = "stabilityCatch", data = summDat)
+relDiff(max(t$avg), min(t$avg))
+
+# Increases in agg rec across sig when synch low
+t2 <- extractVal(t, group = "synch") %>% 
+  filter(synch == "0.05")
+relDiff(t2$max, t2$min)
+
+# Returns in low vs. ref prod OMs
+t <- trimDat(oms = c("Low Prod."), vars = "medCatch", 
+             data = summDat)
+relDiff(max(t$avg), min(t$avg))
+
+t <- trimDat(oms = c("Low Prod."), vars = "ppnYrsHighCatch", 
+             data = summDat)
+relDiff(max(t$avg), min(t$avg))
+
+```

@@ -79,7 +79,7 @@ out <- mutate(out,
 )
 saveRDS(out, here("outputs", "generatedData", "tmbSynchEst.rds"))
 # saveRDS(out, here("outputs", "generatedData", "tmbSynchEst_suppShort.rds"))
-# Note that those are 90% CIs. Adjust as desired.
+# Note that those are 95% CIs. Adjust as desired.
 
 out %>%
   mutate(term = gsub("logit_", "", term)) %>%

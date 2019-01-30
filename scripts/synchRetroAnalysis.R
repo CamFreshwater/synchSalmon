@@ -89,7 +89,7 @@ recMat <- recDatTrim %>%
   spread(stk, rec) %>% 
   select(-yr) %>% 
   as.matrix()
-saveRDS(recMat, file = here("outputs", "generatedData", "recMat.rds"))
+# saveRDS(recMat, file = here("outputs", "generatedData", "recMat.rds"))
 
 # Trim catch data
 catchDat <- read.csv(here("/data/sox/fraserCatchDatTrim.csv"), 

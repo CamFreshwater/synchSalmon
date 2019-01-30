@@ -139,6 +139,10 @@ plotDat <- plotDat %>%
                        .default = levels(om))
   )
 
+#Save summary data to pass to Rmd
+write.csv(plotDat, here("outputs/generatedData", "summaryTable.csv"))
+
+
 colPal <- viridis(length(levels(plotDat$cat)), begin = 0, end = 1)
 names(colPal) <- levels(plotDat$cat)
 dotSize = 3; lineSize = 0.8; legSize = 0.8; axSize = 10
@@ -260,7 +264,7 @@ dev.off()
 # Note that to make comparable to retrospective analysis only show 10 
 # plotList = vector("list", length = length(dirNames))
 # arrayNames <- sapply(dirNames, function(x) {
-#   list.files(paste(here("outputs/simData"), x, sep="/"), 
+#   list.files(paste(here("outputs/simData"), x, sep="/"),
 #              pattern = "\\Arrays.RData$")
 # })
 # 
@@ -274,11 +278,10 @@ dev.off()
 # newAgTSList <- lapply(seq_along(dirNames), function (h) {
 #   #export custom function and objects
 #   clusterExport(cl, c("dirNames", "arrayNames", "calcSynchMetrics", "wtdCV",
-#                       "genOutputList", "longStks", "h"), envir = environment())
+#                       "genOutputList", "h"), envir = environment())
 #   listSynchLists <- parLapply(cl, 1:length(arrayNames[, h]), function(x) {
 #     datList <- readRDS(paste(here("outputs/simData"), dirNames[h],
 #                              arrayNames[x, h], sep = "/"))
-#     # Subset datList to only include longStks
 #     synchList <- calcSynchMetrics(datList, corr = FALSE,
 #                                   weight = TRUE, windowSize = 12)
 #     synchList <- c(datList$nameOM, synchList)
@@ -302,7 +305,7 @@ dev.off()
 # stopCluster(cl)
 # toc()
 
-## Save 
+## Save
 # saveRDS(newAgTSList, here("outputs/generatedData/synchTS/synchTSList.rda"))
 # newAgTSList <- readRDS(here("outputs/generatedData/synchTS/synchTSList.rda"))
 
@@ -323,7 +326,7 @@ dev.off()
 #     dat1 <- data.frame(sigmaOM = rep(sigNames[h], length.out = nYears),
 #                       synchOM = rep(x[["opMod"]], length.out = nYears),
 #                       prodOM = rep(prodNames, length.out = nYears),
-#                       year = seq(from = firstYear, 
+#                       year = seq(from = firstYear,
 #                                  to = (firstYear + nYears - 1))
 #                       ) %>%
 #       mutate(sigmaOM = as.character(sigmaOM),
@@ -333,13 +336,13 @@ dev.off()
 #       )
 #     dat1[dat1$year < start, c("sigmaOM", "synchOM")] <- "obs"
 #     dat2 <- dat1 %>%
-#       mutate(sigmaOM = factor(factor(sigmaOM), 
-#                               levels = c("obs", "lowSigma", "medSigma", 
+#       mutate(sigmaOM = factor(factor(sigmaOM),
+#                               levels = c("obs", "lowSigma", "medSigma",
 #                                          "highSigma")),
-#              synchOM = factor(factor(synchOM), 
-#                               levels = c("obs", "lowSynch", "medSynch", 
+#              synchOM = factor(factor(synchOM),
+#                               levels = c("obs", "lowSynch", "medSynch",
 #                                          "highSynch"))
-#       ) 
+#       )
 #     return(dat2)
 #   })
 # })
@@ -359,7 +362,8 @@ dum <- plotDat %>%
 colPal <- c("black", viridis(length(unique(dum$sigmaOM)) - 1, begin = 0, 
                              end = 1))
 names(colPal) <- levels(dum$sigmaOM)
-### Instead of plotting time series, make faceted box plot
+
+## Faceted boxplot
 q2 <- ggplot(dum, aes(x = sigmaOM, y = medCompCVRecBY, fill = sigmaOM)) +
   labs(x = "Component Variability Scenario", y = "Median CVc of Returns", 
        title = NULL) +

@@ -5,7 +5,7 @@ date: "January 31, 2019"
 output: html_document
 ---
 
-Simulation to determine at what point performance metric outputs stabilize. Run using reference scenario 4 different times with up to 3000 simulations then plot running medians.
+Simulation to determine at what point performance metric outputs stabilize. Run using reference scenario with 4 different chains (`random = TRUE`) and up to 4000 simulations then plot running medians for PMs of interest.
 
 ```{r importData, echo=TRUE, warning=FALSE}
 listOfPackages <- c("here", "parallel", "doParallel", "foreach", 
@@ -17,8 +17,8 @@ if (length(newPackages)) {
 }
 lapply(listOfPackages, require, character.only = TRUE)
 
-simParF <- read.csv(here("data", "sox",
-                         "fraserOMInputs_referenceTest2.csv"),
+simParTrim <- read.csv(here("data", "sox",
+                         "fraserOMInputs_referenceTest.csv"),
                     stringsAsFactors = F)
 cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), stringsAsFactors=F)
 srDat <- read.csv(here("data/sox/fraserRecDatTrim.csv"), stringsAsFactors=F)
@@ -27,9 +27,6 @@ ricPars <- read.csv(here("data/sox/pooledRickerMCMCPars.csv"), stringsAsFactors=
 larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"), stringsAsFactors=F)
 tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors=F)
 
-simParTrim <- simParF 
-# # %>% 
-#   # filter(scenario %in% c("lowSig", "medSig", "highSig"))
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
                                                 sep = "_"))
@@ -37,56 +34,44 @@ dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
 
 ```{r runSim, echo=TRUE, warning=FALSE}
 ## Define simulations to be run
-nTrials <- 20
+# nTrials <- 40
+# 
+# simsToRun <- split(simParTrim, seq(nrow(simParTrim)))
+# dirName <- "simNumber"
+# Ncores <- detectCores()
+# cl <- makeCluster(Ncores - 1) #save one core
+# registerDoParallel(cl)
+# clusterEvalQ(cl, c(library(samSim)))
+# clusterExport(cl, c("simsToRun","cuPar","nTrials","dirName",
+#                     "catchDat","srDat","ricPars","larkPars",
+#                     "tamFRP"), envir=environment())
+# tic("run in parallel")
+# parLapply(cl, simsToRun, function(x) {
+#   recoverySim(x, cuPar, catchDat=catchDat, srDat=srDat, variableCU=FALSE,
+#               ricPars, larkPars=larkPars, tamFRP=tamFRP, dirName=dirName,
+#               nTrials=nTrials, makeSubDirs=FALSE, random=TRUE)
+#   })
+# stopCluster(cl) #end cluster
+# toc()
 
-tic()
-for(i in seq_along(dirNames)) {
-d <- subset(simParTrim, scenario == scenNames[i])
-simsToRun <- split(d, seq(nrow(d)))
-lapply(simsToRun, function(x) {
-  recoverySim(x, cuPar, catchDat=catchDat, srDat=srDat, variableCU=FALSE,
-              ricPars, larkPars=larkPars, tamFRP=tamFRP, dirName=dirNames[i],
-              nTrials=nTrials, multipleMPs=TRUE)
-})
-}
-toc()
-
-# for (i in seq_along(dirNames)) {
-#   dirName <- dirNames[i]
-  # d <- subset(simParTrim, scenario == scenNames[i])
-  # simsToRun <- split(d, seq(nrow(d)))
-  simsToRun <- split(simParTrim, seq(nrow(simParTrim)))
-  dirName <- "simNumber"
-  Ncores <- detectCores()
-  cl <- makeCluster(Ncores - 1) #save one core
-  registerDoParallel(cl)
-  clusterEvalQ(cl, c(library(samSim)))
-  clusterExport(cl, c("simsToRun","cuPar","nTrials","dirName",
-                      "catchDat","srDat","ricPars","larkPars",
-                      "tamFRP"), envir=environment())
-  tic("run in parallel")
-  parLapply(cl, simsToRun, function(x) {
-    recoverySim(x, cuPar, catchDat=catchDat, srDat=srDat, variableCU=FALSE,
-                ricPars, larkPars=larkPars, tamFRP=tamFRP, dirName=dirName,
-                nTrials=nTrials, multipleMPs=FALSE)
-    })
-  stopCluster(cl) #end cluster
-  toc()
-# }
 ```
 
 
 ```{r loadCleanAggTS, echo=TRUE}
-fullList <- lapply(dirNames, function (h) {
-  dum <- genOutputList(h, agg = TRUE, aggTS = TRUE)[[1]]
-  simRange <- (dum[["nPrime"]] + 1):dum[["nYears"]]
-  y <- dum[["Ag Recruits RY"]][simRange, ]
-  x <- dum[["Prop Above Upper BM"]][simRange, ]
-  out <- list(y, x)
-  names(out) <- c("aggRec", "ppnCU")
+dum <- genOutputList(dirName, agg = TRUE, aggTS = TRUE)
+simRange <- (dum[[1]][["nPrime"]] + 1):dum[[1]][["nYears"]]
+nTrials <- ncol(dum[[1]][["Ag Recruits RY"]])
+nChains <- length(dum)
+fullList <- lapply(dum, function (h) {
+  rec <- h[["Ag Recruits RY"]][simRange, ]
+  catch <- h[["Ag Catch"]][simRange, ]
+  up <- h[["Prop Above Upper BM"]][simRange, ]
+  low <- h[["Prop Above Lower BM"]][simRange, ]
+  out <- list(rec, catch, up, low)
+  names(out) <- c("aggRec", "aggCatch", "ppnUp", "ppnLow")
   return(out)
 })
-
+  
 # Calculate the median for each trial
 medPerTrial <- lapply(fullList, function (h) {
   lapply(h, function (i) {
@@ -104,9 +89,41 @@ rollMedians <- function(dat, start = 3) {
   out
 }
 
-lapply(medPerTrial, function (h) {
+rollMedOut <- lapply(medPerTrial, function (h) {
   lapply(h, function (i) {
     rollMedians(i, start = 5)
   })
 })
+
+recDat <- data.frame(aggRec = NA,
+                     trial = rep(seq(1, nTrials, by = 1), times = nChains),
+                     chain = rep(seq_along(1:nChains), each = nTrials))
+pmDat <- NULL                    
+for (h in 1:nChains) {
+  temp <- data.frame(aggRec = rollMedOut[[h]]$aggRec,
+                     aggCatch = rollMedOut[[h]]$aggCatch,
+                     ppnUp = rollMedOut[[h]]$ppnUp,
+                     ppnLow = rollMedOut[[h]]$ppnLow,
+                     trial = seq(1, nTrials, by = 1),
+                     chain = as.factor(rep(h, each = nTrials)))
+  pmDat <- rbind(pmDat, temp)
+}
+
+pmDat <- pmDat %>% 
+  gather(key = pm, value = val, aggRec, aggCatch, ppnUp, ppnLow,
+         factor_key = TRUE) %>% 
+  filter(!is.na(val))
+saveRDS(pmDat, here("outputs", "generatedData", "optimalSimNumberDat.rds"))
 ```
+
+All cleaned up data, now generate plots.
+
+```{r plotPMData, echo=TRUE}
+ggplot(pmDat, aes(x = trial, y = val, colour = chain)) +
+  geom_line() +
+  theme_sleekX() +
+  facet_wrap(~pm, scales = "free_y")
+
+```
+
+Quite a lot of variability among PMs but for aggregate benchmarks stability appears to occur around 1000 trials. 

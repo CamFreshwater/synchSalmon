@@ -54,14 +54,14 @@ dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
 
 # recoverySim(simParTrim[1, ], cuPar, catchDat = catchDat, srDat = srDat,
 #             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
-#             dirName = "test", nTrials = 5, multipleMPs = FALSE)
+#             dirName = "test", nTrials = 5, makeSubDirs = FALSE)
 # for(i in seq_along(dirNames)) {
 # d <- subset(simParTrim, scenario == scenNames[i])
 # simsToRun <- split(d, seq(nrow(d)))
 # lapply(simsToRun, function(x) {
 #   recoverySim(x, cuPar, catchDat=catchDat, srDat=srDat, variableCU=FALSE,
 #               ricPars, larkPars=larkPars, tamFRP=tamFRP, dirName=dirNames[i],
-#               nTrials=125, multipleMPs=TRUE)
+#               nTrials=125, makeSubDirs=TRUE)
 # })
 # }
 
@@ -70,7 +70,7 @@ for (i in seq_along(dirNames)) {
   d <- subset(simParTrim, scenario == scenNames[i])
   simsToRun <- split(d, seq(nrow(d)))
   Ncores <- detectCores()
-  cl <- makeCluster(Ncores - 3) #save two cores
+  cl <- makeCluster(Ncores - 1) #save two cores
   registerDoParallel(cl)
   clusterEvalQ(cl, c(library(MASS),
                   library(here),
@@ -93,7 +93,7 @@ for (i in seq_along(dirNames)) {
     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
                 variableCU = FALSE, ricPars, larkPars = larkPars, 
                 tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName, 
-                nTrials = nTrials, multipleMPs = FALSE)
+                nTrials = nTrials, makeSubDirs = FALSE)
   })
   stopCluster(cl) #end cluster
   toc()

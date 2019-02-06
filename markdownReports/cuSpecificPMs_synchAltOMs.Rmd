@@ -35,8 +35,8 @@ cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), stringsAsFactors = F)
 srDat <- read.csv(here("data/sox/fraserRecDatTrim.csv"), stringsAsFactors = F)
 catchDat <- read.csv(here("data/sox/fraserCatchDatTrim.csv"), 
                      stringsAsFactors = F)
-ricPars <- read.csv(here("data/sox/rickerMCMCPars.csv"), stringsAsFactors = F)
-larkPars <- read.csv(here("data/sox/larkinMCMCPars.csv"), stringsAsFactors = F)
+ricPars <- read.csv(here("data/sox/pooledRickerMCMCPars.csv"), stringsAsFactors = F)
+larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"), stringsAsFactors = F)
 tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 
 simParTrim <- simPar %>% 
@@ -239,11 +239,11 @@ p <- ggplot(plotDat4, aes(x = om, y = spawners, alpha = synch,
 p
 ```
 
-Although removing migration mortality and exploitation does dampen the effect of synchrony on CU-specific PM, many still show declines at high levels of synchrony under skewed productivity. However these trends are now stock-specific with abundance stable/increasing with synchrony in Larkin populations (took me a while to figure out this was the shared trait initially). Conversely Ricker stocks consistnely show a decline with greater synchrony. So the lagged beta parameters appear to weaken the effect of synchrony. Although we think of Larkin stocks as more variable (they're cyclic after all), I guess this makes sense because delayed density dependence will cause a given year's dynamics to be regulated by more than just that years abundance and stochastic effects.
+Although removing migration mortality and exploitation does dampen the effect of synchrony on CU-specific PM, many still show declines at high levels of synchrony under skewed productivity. However these trends are now stock-specific with abundance stable/increasing with synchrony in Larkin populations (took me a while to figure out this was the shared trait initially). Conversely Ricker stocks consistently show a decline with greater synchrony. So the lagged beta parameters appear to weaken the effect of synchrony. Although we think of Larkin stocks as more variable (they're cyclic after all), I guess this makes sense because delayed density dependence will cause a given year's dynamics to be regulated by more than just that years abundance and stochastic effects (which are strongly correlated among CUs in the high synchrony treatment).
 
 One possibility is that when stocks are highly correlated with one another, stocks that normally exhibit intermittent high returns, will have their normal variance dampened by being correlated with "average" CUs. This means that large positive recruitment deviations will be relatively less common as synchrony increases. 
 
-If this is the case then there should be greater variability in stock recruit relationships at low levels of synchrony in Ricker, but not Larkin stocks. 
+If this is the case then there should be greater variability in stock recruit relationships at low levels of synchrony and the difference between synchrony treatments should be relatively larger in Ricker than Larkin stocks. 
 
 ###Plot stock-recruit relationships
 ```{r stockRecCurves, echo = FALSE}
@@ -308,7 +308,7 @@ for (i in c(1, 4, 7, 10, 13, 16)) {
 }
 ```
 
-As expected high levels of synchrony result in strong reductions in overall variability in the SR relationship. These effects are present in the Larkin stocks, but the relative degree of contraction in the SR spread is reduced. To determine _why_ this occurs look at time series of recruit deviations.
+As expected high levels of synchrony result in strong reductions in overall variability in the SR relationship. These effects are present in the Larkin stocks, but the relative degree of contraction in the SR spread is reduced. Look at this more closely by plotting time series of recruit deviations.
 
 ### Plot time series of SR deviations
 ```{r recDeviations, echo = FALSE}
@@ -363,6 +363,4 @@ for (i in c(1, 4, 7, 10, 13, 16)) {
 }
 ```
 
-So on average deviations become more likely to be negative as synchrony increases, though this effect, again, varies by CU. What I believe is happening is that at high levels of synchrony and negative skewness, strong negative recruitment deviations that arise due to chance alone in single CUs spill over into the aggregate as a whole. Effectively this means that the aggregate isn't just behaving like a single stock, it's behaving like a single stock that repeatedly samples a risky distribution in a single year. The results of those repeated draws are then integrated over the entire aggregate via the variance-covariance matrix. 
-
-Thus even though the CUs aren't explicitly linked by dispersal or pred/prey dynamics, a fluky negative recruitment deviation that occurs in one CU will be absorbed by other CUs. Because under the reference scenario negative outcomes are no more likely than positive, the mean response there is 0. I have a hard time conceptualizing whether this accurately represents a *true* ecological process, but I do think it is producing patterns at the aggregate level consistent with what we see in many salmon stocks - more common, synchronous poor recruitment events. I'm curious what everyone else thinks though.
+So on average deviations are more likely to be negative as synchrony increases, though this effect, again, varies by CU. What seems to be happening is that at high levels of synchrony and negative skewness, strong negative recruitment deviations are more likely to occur and be shared among CUs due to the covariance matrix. My oversimplified understanding of multivariate distributions is that even though the CUs aren't explicitly linked by dispersal or pred/prey dynamics, a fluky negative recruitment deviation that occurs in one CU will be absorbed by other CUs. Because under the reference scenario negative outcomes are no more likely than positive, the mean response there is 0. I have a hard time conceptualizing whether this accurately represents a *true* ecological process, but I do think it is producing patterns at the aggregate level consistent with what we see in many salmon stocks - more common, synchronous poor recruitment events. 

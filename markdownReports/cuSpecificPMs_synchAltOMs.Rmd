@@ -101,12 +101,12 @@ for (i in seq_along(dirNames)) { #make dataframe
   cuList <- genOutputList(dirNames[i], agg = FALSE)
   plotList <- lapply(cuList, function(h) {
     plotDat <- NULL
-    nTrials <- nrow(h[["medSpawners"]])
+    nTrials <- nrow(h[["medRecRY"]])
     spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
                           synch = rep(unique(h[["opMod"]]), 
                                       length.out = nTrials * nCUs)
     )
-    spwn <- h[["medSpawners"]] %>%
+    spwn <- h[["medRecRY"]] %>%
       as.data.frame() 
     colnames(spwn) <- stkNames
     spwnLong <- spwn %>% 
@@ -119,7 +119,8 @@ for (i in seq_along(dirNames)) { #make dataframe
   fullPlotList[[paste0(omNames[i])]] <- plotDat2
 }
 plotDat3 <- do.call(rbind, fullPlotList) %>%
-  mutate(synch =  factor(synch, levels = c("lowSynch", "medSynch", "highSynch"))) %>% 
+  mutate(synch =  factor(synch, levels = c("lowSynch", "medSynch", 
+                                           "highSynch"))) %>% 
   filter(cu %in% c("Bwrn", "Chlk", "Clts", "E.St", "Hrrs", "L.Sh", "Nadn",
                    "Qsnl", "Raft"))
 
@@ -128,8 +129,8 @@ p <- ggplot(plotDat3, aes(x = om, y = spawners, alpha = synch)) +
               fill = "grey30") +
   scale_alpha_manual(name = "Synchrony OM", values = c(1, 0.65, 0.3)) +
   guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
-  labs(y = "Median Spawner\n Abundance (millions)",
-       x = "Operating Model") +
+  # labs(y = "Median Spawner\n Abundance (millions)",
+  #      x = "Operating Model") +
   theme_sleekX(facetSize = 1, axisSize = 12, legendSize = 0.85) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   facet_wrap(~cu, scales = "free_y")
@@ -222,7 +223,7 @@ plotDat4 <- do.call(rbind, fullPlotList) %>%
                    "Qsnl", "Raft"))
 
 colPal <- c("#b2182b", "#2166ac")
-names(colPal) <- unique(plotDat4$model)
+names(colPal) <- c("larkin", "ricker")
 p <- ggplot(plotDat4, aes(x = om, y = spawners, alpha = synch, 
                           fill = as.factor(model))) +
   geom_violin(draw_quantiles = c(0.5), 
@@ -259,12 +260,12 @@ srList <- lapply(seq_along(arrayNames), function(h) {
   datList <- readRDS(paste(here("outputs/simData"), dirNames[4], arrayNames[h], 
                            sep = "/"))
   sDat <- datList$S %>% 
-    melt() %>% 
+    reshape2::melt() %>% 
     dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
                   "spwn" = "value") %>% 
     mutate(synch = synchNames[h], om = "noBothSkewN")  
   rDat <- datList$recBY %>% 
-    melt() %>% 
+    reshape2::melt() %>% 
     dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
                   "rec" = "value") %>% 
     mutate(synch = synchNames[h], om = "noBothSkewN")
@@ -317,7 +318,7 @@ devList <- lapply(seq_along(arrayNames), function(h) {
   datList <- readRDS(paste(here("outputs/simData"), dirNames[4], arrayNames[h], 
                            sep = "/"))
   devDat <- datList$recDev %>% 
-    melt() %>% 
+    reshape2::melt() %>% 
     dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
                   "dev" = "value") %>% 
     mutate(synch = synchNames[h], om = "noBothSkewN")

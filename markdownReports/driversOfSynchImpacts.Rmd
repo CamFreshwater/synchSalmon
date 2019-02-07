@@ -300,7 +300,7 @@ dum <- prodFullDat %>%
   group_by(cu, trial, synch, model) %>% 
   summarize(medRec = median(value),
             meanRec = mean(value))
-ggplot(dum, aes(x = synch, y = meanRec, colour = model)) +
+ggplot(dum, aes(x = synch, y = medRec, colour = model)) +
   labs(x = "Time", y = "Median Recruitment Deviation Over Sim Period") +
   geom_boxplot() +
   scale_colour_manual(name = "Stock Recruit Model", values = colPal, 
@@ -340,19 +340,14 @@ aggDat <- srFullDat %>%
   summarize(aggRecBY = sum(recBY),
             aggS = sum(spwn))
 
-ggplot(aggDat, aes(x = synch, y = aggRecBY)) +
-  labs(x = "Time", y = "Unsummarized Aggregate Recruitment") +
-  geom_boxplot() +
-  theme_sleekX()
-
-
-# Caculate median over sim period (already filtered in srFullDat)
+# Caculate summary stats over sim period (already filtered in srFullDat)
 summAggDat <- aggDat %>% 
   gather(key = pm, value = value, aggRecBY, aggS) %>% 
   group_by(trial, synch, pm) %>% 
   summarize(meanPM = mean(value),
+            geoMeanPM = exp(mean(log(value))),
             medPM = median(value)) %>% 
-  gather(key = summStat, value = value, meanPM, medPM)
+  gather(key = summStat, value = value, geoMeanPM, meanPM, medPM)
 
 dum <- summAggDat %>% 
   filter(pm == "aggRecBY")
@@ -366,7 +361,38 @@ ggplot(dum, aes(x = synch, y = value)) +
 aggDat %>% 
   group_by(synch) %>% 
   summarize(aggMedianRec = median(aggRecBY),
-            aggMeanRec = mean(aggRecBY))  
+            aggMeanRec = mean(aggRecBY),
+            aggGeoMeanRec = exp(mean(log(aggRecBY))))  
 ```
 
-So the trends in reduced performance are not a bug in the model. They are present as soon as aggregate abundance is calculated and become much more apparent when looking at abundance over the simulation period **but only when using median PMs**. This suggests to me that there is some emergent property associated with the interaction between closed-loop sims and/or overcompensation plus the multivariate distribution that results in aggregate abundance declines at high levels of covariance. But I'm still not sure whether it's a bias that we need to correct for or something else. Thoughts?
+So the trends in reduced performance are not a bug in the model. They are present as soon as aggregate abundance is calculated and become much more apparent when looking at abundance over the simulation period **but only when using median or geometric mean PMs**. This suggests to me that there is some emergent property associated with the interaction between closed-loop sims and/or overcompensation plus the multivariate distribution that results in aggregate abundance declines at high levels of covariance. But if that's the case then surely it should be present prior to aggregating, correct?
+
+Check some more plots. First distribution of aggregate recruitment without summary statistics, then the same but for CUs (subset of six).
+```{r, unaggAbundance}
+ggplot(aggDat, aes(x = synch, y = aggRecBY)) +
+  labs(x = "Synch Treatment", y = "Unsummarized Aggregate Recruitment") +
+  geom_boxplot() +
+  theme_sleekX()
+
+aggDat %>% 
+  group_by(synch) %>% 
+  summarize(median(aggRecBY),
+            mean(aggRecBY),
+            exp(mean(log(aggRecBY))))
+
+ggplot(srFullDat %>% filter(cu < 7), aes(x = synch, y = recBY)) +
+  labs(x = "Synch Treatment", y = "Unsummarized Individual Recruitment") +
+  geom_boxplot() +
+  theme_sleekX() +
+  facet_wrap(~cu, scales = "free_y")
+
+srFullDat %>% 
+  group_by(synch) %>% 
+  summarize(median(recBY),
+            mean(recBY),
+            exp(mean(log(recBY))))
+
+
+```
+
+So median abundance **does** decline, even prior to calculating summary statistics, but only only for the aggregate. Sean's code snippet suggests that this is a fundamental attribute of correlated log-normal variables, but I don't really know what the implications are for the paper (i.e. does this even make sense as an experimental framework anymore?). 

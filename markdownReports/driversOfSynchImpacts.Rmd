@@ -16,7 +16,7 @@ Begin by examining reference productivity scenario to understand impacts of mort
 
 ```{r readLibraries, message=FALSE, warning=FALSE, include=FALSE}
 listOfPackages <- c("here", "parallel", "doParallel", "foreach", 
-                    "tidyverse", "tictoc", "samSim")
+                    "tidyverse", "tictoc", "samSim", "ggpubr")
 newPackages <- listOfPackages[!(listOfPackages %in% 
                                   installed.packages()[ , "Package"])]
 if (length(newPackages)) {
@@ -36,36 +36,38 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors=F)
 
 simParTrim <- simPar %>% 
   filter(scenario %in% c("ref", "noExp", "noMM", "noBoth"))
+  # filter(prodRegime == "skew")
+
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
                                                 sep = "_"))
 ```
 
 
-```{r runSim, echo=TRUE, warning=FALSE}
+```{r runSim, eval=FALSE, warning=FALSE, include=FALSE}
 # Define simulations to be run
-nTrials <- 100
-
-for (i in seq_along(dirNames)) {
-  dirName <- dirNames[i]
-  d <- subset(simParTrim, scenario == scenNames[i])
-  simsToRun <- split(d, seq(nrow(d)))
-  Ncores <- detectCores()
-  cl <- makeCluster(Ncores - 1) #save one core
-  registerDoParallel(cl)
-  clusterEvalQ(cl, c(library(samSim)))
-  clusterExport(cl, c("simsToRun","cuPar","nTrials","dirName",
-                      "catchDat","srDat","ricPars","larkPars",
-                      "tamFRP"), envir=environment())
-  tic("run in parallel")
-  parLapply(cl, simsToRun, function(x) {
-    recoverySim(x, cuPar, catchDat=catchDat, srDat=srDat, variableCU=FALSE,
-                ricPars, larkPars=larkPars, tamFRP=tamFRP, dirName=dirName,
-                nTrials=nTrials, makeSubDirs=FALSE, random=FALSE)
-    })
-  stopCluster(cl) #end cluster
-  toc()
-}
+# nTrials <- 100
+# 
+# for (i in seq_along(dirNames)) {
+#   dirName <- dirNames[i]
+#   d <- subset(simParTrim, scenario == scenNames[i])
+#   simsToRun <- split(d, seq(nrow(d)))
+#   Ncores <- detectCores()
+#   cl <- makeCluster(Ncores - 1) #save one core
+#   registerDoParallel(cl)
+#   clusterEvalQ(cl, c(library(samSim)))
+#   clusterExport(cl, c("simsToRun","cuPar","nTrials","dirName",
+#                       "catchDat","srDat","ricPars","larkPars",
+#                       "tamFRP"), envir=environment())
+#   tic("run in parallel")
+#   parLapply(cl, simsToRun, function(x) {
+#     recoverySim(x, cuPar, catchDat=catchDat, srDat=srDat, variableCU=FALSE,
+#                 ricPars, larkPars=larkPars, tamFRP=tamFRP, dirName=dirName,
+#                 nTrials=nTrials, makeSubDirs=FALSE, random=FALSE)
+#     })
+#   stopCluster(cl) #end cluster
+#   toc()
+# }
 ```
 
 
@@ -110,36 +112,63 @@ ggplot(temp, aes(x = synch, y = avg, ymin = lowQ, ymax = highQ)) +
     facet_wrap(~om, scales = "fixed")
 ```
 
-Declines in aggregate PMs still occur even under reference scenarios when both processes are taken out. However unlike skewed distribution the multivariate normal distribution does not result in a reduced mean as correlation strength increases.
+Declines in aggregate PMs still occur even under reference scenarios when both processes are taken out. Look into CU-specific relationships for any insight.
 
-```{r changesInMean, echo=TRUE, warning=FALSE}
-f <- function(N = 15, r = 0.4, sigma = 0.2, skew = 0.65) {
-  sig_mat <- matrix(as.numeric(sigma), nrow = 1, ncol = N)
-  cov_mat <- (t(sig_mat) %*% sig_mat) * r
-  diag(cov_mat) <- sigma^2
-  x <- sn::rmst(1e5, xi = rep(0, N), Omega = cov_mat,
-    alpha = rep(log(skew), N), nu = 200)
-  as.numeric(x)
+####Plot CU-specific PMs
+```{r cuSpecificPMs, echo=TRUE}
+#Now generate violin plots showing trends in spawner abundance across different
+#synchrony treatments.
+omNames <- scenNames
+stkNames <- genOutputList(dirNames[1], 
+                          agg = FALSE)[["medSynch_TAM"]][["stkName"]]
+nCUs <- length(stkNames)
+
+#First generate data and plots for different synch treatments
+fullPlotList <- list()
+for (i in seq_along(dirNames)) { #make dataframe
+  cuList <- genOutputList(dirNames[i], agg = FALSE)
+  plotList <- lapply(cuList, function(h) {
+    plotDat <- NULL
+    nTrials <- nrow(h[["medSpawners"]])
+    spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
+                          synch = rep(unique(h[["opMod"]]), 
+                                      length.out = nTrials * nCUs)
+    )
+    spwn <- h[["medSpawners"]] %>%
+      as.data.frame() 
+    colnames(spwn) <- stkNames
+    spwnLong <- spwn %>% 
+      gather(key = cu, value = spawners) %>% 
+      mutate(cu = as.factor(cu))
+    plotDat <- rbind(plotDat, cbind(spwnDat, spwnLong))
+    return(plotDat)
+  })
+  plotDat2 <- do.call(rbind, plotList)
+  fullPlotList[[paste0(omNames[i])]] <- plotDat2
 }
+plotDat3 <- do.call(rbind, fullPlotList) %>%
+  mutate(synch =  factor(synch, levels = c("lowSynch", "medSynch", 
+                                           "highSynch"))) %>% 
+  filter(cu %in% c("Bwrn", "Chlk", "Clts", "E.St", "Hrrs", "L.Sh", "Nadn",
+                   "Qsnl", "Raft"))
 
-x <- f(10)
-mean(x)
-
-.r <- seq(0, 0.7, 0.05)
-y <- purrr::map_df(.r, ~ data.frame(mean = mean(f(r = .x, skew = 0.65))))
-y2 <- purrr::map_df(.r, ~ data.frame(mean = mean(f(r = .x, skew = 1))))
-y$correlation <- .r
-y2$correlation <- .r
-
-library(ggplot2)
-ggplot(y, aes(correlation, mean)) +
-  geom_line()
+p <- ggplot(plotDat3, aes(x = om, y = spawners, alpha = synch)) +
+  geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75),
+              fill = "grey30") +
+  scale_alpha_manual(name = "Synchrony OM", values = c(1, 0.65, 0.3)) +
+  guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
+  theme_sleekX(facetSize = 1, axisSize = 12, legendSize = 0.85) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  facet_wrap(~cu, scales = "free_y")
+p
 ```
 
-Look into CU-specific relationships for any insight.
+No strong impact on CU-specific PMs which seems odd. Confirm by looking at a broader suite of characteristics.
 
-###Plot stock-recruit relationships
+####Plot stock-recruit relationships
 ```{r stockRecCurves, echo = FALSE}
+stkNames <- genOutputList(dirNames[1], 
+                          agg = FALSE)[["medSynch_TAM"]][["stkName"]]
 #Focus on simplest scenario where both exploitation and en route mortality have been removed (i.e. dirNames[4])
 arrayNames <- sapply(dirNames[4], function(x) { #matrix of array names to be passed
   list.files(paste(here("outputs/simData"), x, sep="/"), 
@@ -149,25 +178,30 @@ synchNames <- c("high", "low", "med")
 colPal <- c("#b2182b", "#2166ac")
 names(colPal) <- c("larkin", "ricker")
 
-srList <- lapply(seq_along(arrayNames), function(h) { 
+# Function to pull and clean array data
+pullList <- function(arrayName, synchName, omName, var = "recDev") {
   #medSynch treatment only
-  datList <- readRDS(paste(here("outputs/simData"), dirNames[4], arrayNames[h], 
+  datList <- readRDS(paste(here("outputs/simData"), dirNames[4], arrayName, 
                            sep = "/"))
-  sDat <- datList$S %>% 
+  datList[[var]] %>% 
     reshape2::melt() %>% 
     dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
-                  "spwn" = "value") %>% 
-    mutate(synch = synchNames[h], om = "noBoth")  
-  rDat <- datList$recBY %>% 
-    reshape2::melt() %>% 
-    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
-                  "rec" = "value") %>% 
-    mutate(synch = synchNames[h], om = "noBoth")
-  srDat <- merge(sDat, rDat, by = c("yr", "cu", "trial", "synch", "om"))
-  return(srDat)
-}) 
+                  "var" = "value") %>% 
+    mutate(synch = synchName, om = omName)
+}
 
-srFull <- do.call(rbind, srList) %>% 
+srList <- vector("list", length = length(arrayNames))
+for (h in seq_along(arrayNames)) {
+  sDat <- pullList(arrayNames[h], synchNames[h], omName = "noBoth", 
+                   var = "S")
+  rDat <- pullList(arrayNames[h], synchNames[h], omName = "noBoth", 
+                   var = "recBY")
+  srList[[h]] <- merge(sDat, rDat, by = c("yr", "cu", "trial", "synch", 
+                                          "om")) %>% 
+    rename("spwn" = "var.x", "recBY" = "var.y")
+}
+
+srFullDat <- do.call(rbind, srList) %>% 
   filter(!yr < 60) %>% #focus on median sig treatment, sim period
   mutate(synch = as.factor(synch), 
          model = case_when(
@@ -175,14 +209,14 @@ srFull <- do.call(rbind, srList) %>%
            TRUE ~ "ricker"
          )) %>% 
   mutate(synch = factor(synch, levels(synch)[c(2,3,1)]))
-omNames <- unique(srFull$om)
+omNames <- unique(srFullDat$om)
 
-drawTrials <- sample.int(max(srFull$trial), size = 1)
+drawTrials <- sample.int(max(srFullDat$trial), size = 1)
 plotList <- lapply(seq_along(stkNames[1:6]), function(i) { 
-    dum <- srFull %>% 
+    dum <- srFullDat %>% 
       filter(trial == drawTrials,
              cu == i) 
-    r <- ggplot(dum, aes(x = spwn, y = rec, colour = model)) +
+    r <- ggplot(dum, aes(x = spwn, y = recBY, colour = model)) +
       labs(x = "Spawners", y = "Recruits", title = stkNames[i]) +
       geom_point(size = 1.25) +
       scale_colour_manual(name = "Stock Recruit Model", values = colPal, 
@@ -203,41 +237,44 @@ for (i in c(1, 4)) {
 }
 ```
 
-Not a huge impact of reduced abundance. I think what we're seeing is the same phenomenon as before where aggregate abundances are dragged down by CU-specific draws from the distribution (i.e. spillover effects from the multivariate distribution), they're just much weaker when its not a skewed distribution.
+Cyclic populations are shown in red, standard Ricker in blue but there are no patterns associated with either so effectively they can be ignored. There is no apparent impact of greater synchrony on reduced abundance, i.e. the SR curves aren't contracting. Check some more CU-specific PMs, including recruitment deviations (to see how changes in the covariance matrix influence the residuals that are generated) as well as realized productivity to see if they produce knock on effects.
 
-Check recruitment deviations as before.
+```{r prepDevProdData, include=FALSE}
+prodList <- vector("list", length = length(arrayNames))
+for (h in seq_along(arrayNames)) {
+  devDat <- pullList(arrayNames[h], synchNames[h], omName = "noBoth", 
+                   var = "recDev") %>% 
+    rename("value" = "var") %>% 
+    mutate(var = "recDev")
+  prodDat <- pullList(arrayNames[h], synchNames[h], omName = "noBoth", 
+                   var = "logRS") %>% 
+    rename("value" = "var") %>% 
+    mutate(var = "logRS")
+  prodList[[h]] <- rbind(devDat, prodDat) %>% 
+    mutate(var = as.factor(var))
+}
 
-```{r recDeviations, echo = FALSE}
-devList <- lapply(seq_along(arrayNames), function(h) { 
-  #medSynch treatment only
-  datList <- readRDS(paste(here("outputs/simData"), dirNames[4], arrayNames[h], 
-                           sep = "/"))
-  devDat <- datList$recDev %>% 
-    reshape2::melt() %>% 
-    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
-                  "dev" = "value") %>% 
-    mutate(synch = synchNames[h], om = "noBoth")
-  return(devDat)
-}) 
-
-devFull <- do.call(rbind, devList) %>% 
-  filter(!yr < 60) %>% #focus on median sig treatment, sim period
+prodFullDat <- do.call(rbind, prodList) %>% 
+  filter(!yr < 60) %>% #focus on sim period
   mutate(synch = as.factor(synch), 
          model = case_when(
            cu %in% c(1, 2, 6, 8, 9) ~ "larkin",
            TRUE ~ "ricker"
          )) %>% 
   mutate(synch = factor(synch, levels(synch)[c(2,3,1)]))
-omNames <- unique(devFull$om)
+omNames <- unique(prodFullDat$om)
+```
 
-drawTrials <- sample.int(max(devFull$trial), size = 1)
+```{r plotDevs}
+drawTrials <- sample.int(max(prodFullDat$trial), size = 1)
 plotList <- lapply(seq_along(stkNames[1:6]), function(i) { 
-    dum <- devFull %>% 
+    dum <- prodFullDat %>% 
       filter(trial == drawTrials,
-             cu == i) %>% 
+             cu == i, 
+             var == "recDev") %>% 
       group_by(synch) %>% 
-      mutate(meanDev = mean(dev))
-    r <- ggplot(dum, aes(x = yr, y = dev, colour = model)) +
+      mutate(meanDev = mean(value))
+    r <- ggplot(dum, aes(x = yr, y = value, colour = model)) +
       labs(x = "Time", y = "Recruitment Deviations", title = stkNames[i]) +
       geom_line(size = 1.25) +
       geom_hline(dum, mapping = aes(yintercept = meanDev), linetype = 2) +
@@ -257,4 +294,79 @@ for (i in c(1, 4)) {
                   bottom = text_grob("Spawners"))
   print(devPlotList)
 }
+
+dum <- prodFullDat %>% 
+  filter(var == "recDev") %>%
+  group_by(cu, trial, synch, model) %>% 
+  summarize(medRec = median(value),
+            meanRec = mean(value))
+ggplot(dum, aes(x = synch, y = meanRec, colour = model)) +
+  labs(x = "Time", y = "Median Recruitment Deviation Over Sim Period") +
+  geom_boxplot() +
+  scale_colour_manual(name = "Stock Recruit Model", values = colPal, 
+                      guide = FALSE) +
+  theme_sleekX() +
+  facet_wrap(~cu, scale = "free_y")
 ```
+
+Yes definitely no CU-specific patterns in recruitment deviations, but what about realized productivity?
+
+```{r plotRealProd}
+dum <- prodFullDat %>% 
+  filter(var == "logRS") %>%
+  group_by(cu, trial, synch, model) %>% 
+  summarize(medProd = median(value),
+            meanProd = mean(value))
+ggplot(dum, aes(x = synch, y = meanProd, colour = model)) +
+  labs(x = "Time", y = "Mean Realized Productivity Over Sim Period") +
+  geom_boxplot() +
+  scale_colour_manual(name = "Stock Recruit Model", values = colPal, 
+                      guide = FALSE) +
+  theme_sleekX() +
+  facet_wrap(~cu, scale = "free_y")
+```
+
+No trends in CU-specific productivity either. So where are the trends in aggregate spawner abundance that are associated with increased synchrony coming from?
+
+
+####Plot Aggregate PMs... again
+
+Re-calculate aggregate performance metrics to see whether there is a bug in the model or else figure out where along the aggregation trends in performance appear. 
+
+```{r reCalculateAggMetrics}
+# Calculate aggregate recruit and spawner abundance
+aggDat <- srFullDat %>% 
+  group_by(trial, synch, yr) %>% 
+  summarize(aggRecBY = sum(recBY),
+            aggS = sum(spwn))
+
+ggplot(aggDat, aes(x = synch, y = aggRecBY)) +
+  labs(x = "Time", y = "Unsummarized Aggregate Recruitment") +
+  geom_boxplot() +
+  theme_sleekX()
+
+
+# Caculate median over sim period (already filtered in srFullDat)
+summAggDat <- aggDat %>% 
+  gather(key = pm, value = value, aggRecBY, aggS) %>% 
+  group_by(trial, synch, pm) %>% 
+  summarize(meanPM = mean(value),
+            medPM = median(value)) %>% 
+  gather(key = summStat, value = value, meanPM, medPM)
+
+dum <- summAggDat %>% 
+  filter(pm == "aggRecBY")
+
+ggplot(dum, aes(x = synch, y = value)) +
+  labs(x = "Time", y = "Summarized Recruit Abundance") +
+  geom_boxplot() +
+  theme_sleekX() +
+  facet_wrap(~summStat)
+
+aggDat %>% 
+  group_by(synch) %>% 
+  summarize(aggMedianRec = median(aggRecBY),
+            aggMeanRec = mean(aggRecBY))  
+```
+
+So the trends in reduced performance are not a bug in the model. They are present as soon as aggregate abundance is calculated and become much more apparent when looking at abundance over the simulation period **but only when using median PMs**. This suggests to me that there is some emergent property associated with the interaction between closed-loop sims and/or overcompensation plus the multivariate distribution that results in aggregate abundance declines at high levels of covariance. But I'm still not sure whether it's a bias that we need to correct for or something else. Thoughts?

@@ -1,0 +1,57 @@
+---
+title: "Skewed Distribution Adjustments"
+author: "Cam Freshwater"
+date: "February 7, 2019"
+output: html_document
+---
+
+Sean Anderson demonstrated that the mean is negatively correlated with the strength of covariance in skewed distributions. Extend his initial investigation to evaluate whether the distribution can be tuned to produce stable means by tweaking both parameters simultaneously.
+
+```{r }
+f <- function(N = 15, r = 0.4, sigma = 0.2, skew = 0.65) {
+  sig_mat <- matrix(as.numeric(sigma), nrow = 1, ncol = N)
+  cov_mat <- (t(sig_mat) %*% sig_mat) * r
+  diag(cov_mat) <- sigma^2
+  x <- sn::rmst(1e5, xi = rep(0, N), Omega = cov_mat,
+    alpha = rep(log(skew), N), nu = 200)
+  as.numeric(x)
+}
+
+x <- f(2)
+mean(x)
+
+.r <- seq(0, 0.7, 0.05)
+.skew <- seq(0.5, 1, length.out = length(.r))
+yList <- lapply(seq_along(.skew), function (i) {
+  purrr::map_df(.r, ~ data.frame(mean = mean(f(r = .x,
+                                               skew = .skew[i])))) %>% 
+    mutate(skewness = .skew[i],
+           correlation = .r)
+})
+
+plotDat <- do.call(rbind, yList) %>% 
+  mutate(skewness = round(skewness, digits = 3))
+
+library(ggplot2)
+ggplot(plotDat, aes(correlation, mean, colour = as.factor(skewness))) +
+  geom_line() +
+  theme_sleekX()
+
+```
+
+
+
+
+``` {r}
+library(manipulate)
+x <- seq(0.01, 0.99, length.out = 300)
+manipulate({
+  alpha <- mu^2 * (((1-mu)/sigma^2) - (1/mu))
+  y <- dbeta(
+    x = x,
+    shape1 = alpha,
+    shape2 = alpha * (1/mu - 1))
+  plot(x = x, y = y, type = "l", ylim = c(0, max(y)))},
+  mu = slider(0.02, 0.98, 0.8),
+  sigma = slider(0.05, 1, 0.08))
+```

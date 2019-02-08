@@ -91,6 +91,17 @@ recMat <- recDatTrim %>%
   as.matrix()
 # saveRDS(recMat, file = here("outputs", "generatedData", "recMat.rds"))
 
+
+### Export residual matrix to use in skewness tests
+residMat <- recDatTrim1 %>% 
+  select(stk, yr, logResid) %>% 
+  spread(stk, logResid) %>% 
+  select(-yr) %>% 
+  as.matrix()
+row.names(residMat) <- unique(recDatTrim1$yr)
+# saveRDS(residMat, file = here("outputs", "generatedData", "residMat.rds"))
+
+
 # Trim catch data
 catchDat <- read.csv(here("/data/sox/fraserCatchDatTrim.csv"), 
                      stringsAsFactors = FALSE)

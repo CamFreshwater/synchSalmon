@@ -22,20 +22,33 @@ mean(x)
 
 .r <- seq(0, 0.7, 0.05)
 .skew <- seq(0.5, 1, length.out = length(.r))
-yList <- lapply(seq_along(.skew), function (i) {
+yListSkew <- lapply(seq_along(.skew), function (i) {
   purrr::map_df(.r, ~ data.frame(mean = mean(f(r = .x,
                                                skew = .skew[i])))) %>% 
-    mutate(skewness = .skew[i],
+    dplyr::mutate(skewness = .skew[i],
            correlation = .r)
 })
 
-plotDat <- do.call(rbind, yList) %>% 
-  mutate(skewness = round(skewness, digits = 3))
+plotDat <- do.call(rbind, yListSkew) %>% 
+  dplyr::mutate(skewness = round(skewness, digits = 3))
 
 library(ggplot2)
 ggplot(plotDat, aes(correlation, mean, colour = as.factor(skewness))) +
   geom_line() +
-  theme_sleekX()
+  samSim::theme_sleekX()
+
+.sigma <- seq(0.05, 0.75, 0.05)
+yListSig <- lapply(seq_along(.sigma), function (i) {
+  purrr::map_df(.r, ~ data.frame(mean = mean(f(r = .x,
+                                               sigma = .sigma[i])))) %>% 
+    dplyr::mutate(sigma = .sigma[i],
+                  correlation = .r)
+})
+
+plotDatSig <- do.call(rbind, yListSig)
+ggplot(plotDat, aes(correlation, mean, colour = as.factor(sigma))) +
+  geom_line() +
+  samSim::theme_sleekX()
 
 ```
 

@@ -35,23 +35,24 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 10
+nTrials <- 300
 
 ## General robustness runs
 simParTrim <- subset(simPar, scenario %in% c("lowSig", "medSig", "highSig", 
                                              "lowSigLowA", "medSigLowA", 
-                                             "highSigLowA", "lowSigStudT", 
+                                             "highSigLowA", "lowSigStudT",
                                              "medSigStudT", "highSigStudT",
                                              "lowSigLowStudT", "medSigLowStudT",
-                                             "highSigLowStudT"))
+                                             "highSigLowStudT"
+                                             ))
 
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
                                                 sep = "_"))
 
-recoverySim(simParTrim[31, ], cuPar, catchDat = catchDat, srDat = srDat,
-            variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
-            dirName = "test", nTrials = 5, makeSubDirs = FALSE, random = FALSE)
+# recoverySim(simParTrim[31, ], cuPar, catchDat = catchDat, srDat = srDat,
+#             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
+#             dirName = "test", nTrials = 5, makeSubDirs = FALSE, random = FALSE)
 # for(i in seq_along(dirNames)) {
 # d <- subset(simParTrim, scenario == scenNames[i])
 # simsToRun <- split(d, seq(nrow(d)))
@@ -102,7 +103,7 @@ for (i in seq_along(dirNames)) {
 # different productivity scenarios
 vars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant",
           "medCatch", "ppnYrsHighCatch", "stabilityCatch")
-omNames <- rep(c("ref", "skewN", "skewT"), each = 3)
+omNames <- rep(c("ref", "lowA", "skewT"), each = 3)
 sigNames <- rep(c("low", "med", "high"), length.out = 9)
 
 plotDat = NULL
@@ -131,8 +132,8 @@ for(h in seq_along(dirNames)) {
 plotDat <- plotDat %>%
   mutate(cat = recode(cat, "1" = "low", "2" = "med", "3" = "high", 
                       .default = levels(cat)),
-         om = recode(om, "ref" = "Reference Prod.", "skewN" = "Low Prod.",
-                     "skewT" = "Very Low Prod.",
+         om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",
+                     "skewT" = "Heavy Tails.",
                      .default = levels(om))
   )
 

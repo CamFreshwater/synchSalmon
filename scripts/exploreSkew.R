@@ -97,36 +97,3 @@ names(colPal) <- levels(plotDat$dataset)
 ggplot(plotDat, aes(x = resid, fill = dataset)) +
   geom_histogram() +
   facet_wrap(~stk)
-
-
-
-
-f <- function(N = 15, r = 0.4, sigma = 0.2, skew = 1) {
-  sig_mat <- matrix(as.numeric(sigma), nrow = 1, ncol = N)
-  cov_mat <- (t(sig_mat) %*% sig_mat) * r
-  diag(cov_mat) <- sigma^2
-  x <- sn::rmsn(1e2, xi = rep(0, N), Omega = cov_mat,
-                alpha = rep(log(skew), N))
-  apply(x, 1, function(xx) sum(exp(xx)))
-}
-
-.r <- rep(seq(0, 0.9, 0.1), each = 200)
-y <- purrr::map_df(.r, function(.x) {
-  out <- f(r = .x)
-  tibble::tibble(
-    .median = median(out),
-    .mean = mean(out)
-  )
-})
-y$correlation <- as.factor(.r)
-
-library(ggplot2)
-library(dplyr)
-
-group_by(y, correlation) %>%
-  ggplot(aes(correlation, .median)) +
-  geom_boxplot()
-
-group_by(y, correlation) %>%
-  ggplot(aes(correlation, .mean)) +
-  geom_boxplot()

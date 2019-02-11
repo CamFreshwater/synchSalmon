@@ -5,7 +5,7 @@ date: "February 7, 2019"
 output: html_document
 ---
 
-Sean Anderson demonstrated that the mean is negatively correlated with the strength of covariance in skewed distributions. Extend his initial investigation to evaluate whether the distribution can be tuned to produce stable means by tweaking both parameters simultaneously.
+Sean Anderson demonstrated that the mean is negatively correlated with the strength of covariance in skewed distributions. First extend his initial investigation to evaluate whether the distribution can be tuned to produce stable means by tweaking both parameters simultaneously.
 
 ```{r }
 f <- function(N = 15, r = 0.4, sigma = 0.2, skew = 0.65) {
@@ -46,25 +46,145 @@ yListSig <- lapply(seq_along(.sigma), function (i) {
 })
 
 plotDatSig <- do.call(rbind, yListSig)
-ggplot(plotDat, aes(correlation, mean, colour = as.factor(sigma))) +
+ggplot(plotDatSig, aes(correlation, mean, colour = as.factor(sigma))) +
   geom_line() +
   samSim::theme_sleekX()
 
 ```
 
+Does not look it would be very easy to tune accordingly.
+
+-----
+
+Next look at whether an alternative skewed distribution OM could be presented to contrast with standard low alpha results. Basic premise is that low a represents declines in productivity that are concurrent, but not synchronized at annual level, while skewed declines are directly influenced by strength of covariance.
+
+Parameterization is a little ambiguous, but the basic premise is to take a reference covariance matrix and tune the skewness parameter to produce declines in CU-specific productivity that approximate those of kalman alpha. Then use the mean skewness parameter among stocks to forward simulate. Reference covariance matrix could be either the reference sigma and moderate correlation matrix **or** the covariance matrix calculated from mean correlations among CUs. Option 1 would result in synch treatments that are identical to what we have now and would be easier to implement. Option 2 would make the most sense if we used scalars to drive CU-specific patterns of covariance up/down. This may be more accurate, but since the trends will be CU-specific I'm not sure if it's more or less broadly applicable.
+
+First step is to calculate the two covariance matrices.
+
+```{r loadData}
+require(here); require(samSim); require(tidyverse)
+
+#Focus only on Ricker stocks because Larkin aren't amenable to easy
+#comparisons of realized recruitment. 
+cuPars <- read.csv(here("data", "sox", "fraserCUPars.csv")) %>% 
+  filter(model == "ricker")
+residMat <- readRDS(here("outputs", "generatedData", 
+                         "residMat.rds"))[ , as.character(cuPars$stk)]
+srDat <- read.csv(here("data", "sox", "fraserRecDatTrim.csv")) %>% 
+  filter(stk %in% cuPars$stk)
+
+nStks <- length(unique(cuPars$stkName))
+alphas <- cuPars$alpha
+betas <- cuPars$beta0
+sigmas <- cuPars$sigma
 
 
+## Covariance matrix 1 (based on sigmas and arbitrary correlation coef)
+r <- 0.5 #default moderate correlation
+sigMat <- matrix(as.numeric(sigmas), nrow = 1, ncol = nStks)
+covMat1 <- (t(sigMat) %*% sigMat) * r
+diag(covMat1) <- sigmas^2
 
-``` {r}
-library(manipulate)
-x <- seq(0.01, 0.99, length.out = 300)
-manipulate({
-  alpha <- mu^2 * (((1-mu)/sigma^2) - (1/mu))
-  y <- dbeta(
-    x = x,
-    shape1 = alpha,
-    shape2 = alpha * (1/mu - 1))
-  plot(x = x, y = y, type = "l", ylim = c(0, max(y)))},
-  mu = slider(0.02, 0.98, 0.8),
-  sigma = slider(0.05, 1, 0.08))
+## Covariance matrix 2 (based on residuals)
+calcCorMat <- function(mat) {
+  N <- ncol(mat)
+  corMat <- matrix(NA, nrow = N, ncol = N)
+  for (i in 1:N) {
+    for (j in 1:N) {
+      dum <- cbind(mat[ , i], mat[ , j])
+      dum <- dum[complete.cases(dum), ]
+      corMat[j, i] <- cor(dum)[2,1]
+    }
+  }
+  return(corMat)
+}
+
+## Generate covariance based on residuals from simple lm
+corMat <- calcCorMat(residMat)
+sigMat <- matrix(as.numeric(sigmas), nrow = 1, ncol = nStks)
+covMat2 <- (t(sigMat) %*% sigMat) * corMat
+diag(covMat2) <- sigmas^2
+```
+
+```{r calcRealizedProd}
+## Assume that low Kalman A is 0.65 current estimate
+N = 1000
+meanS <- srDat %>% 
+  group_by(stk) %>% 
+  summarize(meanS = mean(totalSpwn, na.rm = TRUE)) %>% 
+  select(meanS) %>%
+  unlist() %>% 
+  as.numeric()
+
+simpleRicker <- function(S, a, b, error) {
+    S * exp(a - b * S) * exp(error)
+}
+
+#Generate estimates of recruitment based on low productivity parameters
+ricSim <- function(trialN, meanS, alphas, betas, covMat, covMatName, stkNames, 
+                   normal = TRUE, skewPar) {
+  nStks <- length(stkNames)
+  if (normal == TRUE) {
+    err <- sn::rmst(n = 1, xi = rep(0, nStks), Omega = covMat, 
+                    alpha = rep(0, nStks), nu = 1000) %>% 
+      as.numeric()
+  }
+  if (normal == FALSE) {
+    err <- sn::rmst(n = 1, xi = rep(0, nStks), Omega = covMat, 
+                    alpha = rep(skewPar, nStks), nu = 1000) %>% 
+      as.numeric()
+  }
+  data.frame(trial = trialN,
+             skew = skewPar,
+             covMat = covMatName,
+             CU = stkNames,
+             rec = simpleRicker(meanS, alphas, betas, error = err))
+}
+
+lowAlphas <- 0.65 * alphas
+outRecList <- lapply(1:N, function (i) ricSim(i, meanS, lowAlphas, betas, 
+                                               covMat = covMat1, 
+                                               covMatName = "default",
+                                               stkNames = cuPars$stkName, 
+                                               normal = TRUE, skewPar = 1))
+outRecDat <- do.call(rbind, outRecList)
+
+#Generate estimates of recruitment based on skewed deviations
+skewPars <- seq(0.65, 0.95, by = 0.05)
+outSkewRecList <- lapply(seq_along(skewPars), function (h) {
+  set.seed(123)
+  innerList <- lapply(1:N, function (i) ricSim(i, meanS, alphas, betas, 
+                                               covMat = covMat1, 
+                                               covMatName = "default",
+                                               stkNames = cuPars$stkName, 
+                                               normal = FALSE, 
+                                               skewPar = skewPars[h]))
+do.call(rbind, innerList)
+})
+t <- do.call(rbind, outSkewRecList)
+outSkewRecList2 <- lapply(seq_along(skewPars), function (h) {
+  set.seed(123)
+  innerList <- lapply(1:N, function (i) ricSim(i, meanS, alphas, betas, 
+                                               covMat = covMat2, 
+                                               covMatName = "cu-spec",
+                                               stkNames = cuPars$stkName, 
+                                               normal = FALSE, 
+                                               skewPar = skewPars[h]))
+do.call(rbind, innerList)
+})
+
+outRecDat <- rbind(outRecDat, do.call(rbind, outSkewRecList),
+                   do.call(rbind, outSkewRecList2)) %>% 
+  mutate(skew = as.factor(skew),
+         covMat = as.factor(covMat))
+
+plotDat1 <- outRecDat %>% 
+  filter(covMat == "default")
+
+ggplot(plotDat1, aes(x = skew, y = rec)) +
+  geom_boxplot() +
+  theme_sleekX() +
+  facet_wrap(~CU, scales = "free_y")
+
 ```

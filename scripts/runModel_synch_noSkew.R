@@ -101,10 +101,10 @@ for (i in seq_along(dirNames)) {
 #_________________________________________________________________________
 ## Ugly custom code to generate proportional dot plots split across three 
 # different productivity scenarios
-vars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant",
+vars <- c("medRecRY", "ppnYrsCUsUpper", "ppnCUExtant",
           "medCatch", "ppnYrsHighCatch", "stabilityCatch")
-omNames <- rep(c("ref", "lowA", "skewT"), each = 3)
-sigNames <- rep(c("low", "med", "high"), length.out = 9)
+omNames <- rep(c("ref", "lowA", "studT", "lowStudT"), each = 3)
+sigNames <- rep(c("low", "med", "high"), length.out = length(omNames))
 
 plotDat = NULL
 for(h in seq_along(dirNames)) {
@@ -133,29 +133,30 @@ plotDat <- plotDat %>%
   mutate(cat = recode(cat, "1" = "low", "2" = "med", "3" = "high", 
                       .default = levels(cat)),
          om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",
-                     "skewT" = "Heavy Tails.",
-                     .default = levels(om))
+                     "studT" = "Ref. Heavy Tails", 
+                     "lowStudT" = "Low Heavy Tails", .default = levels(om))
   )
 
 #Save summary data to pass to Rmd
-write.csv(plotDat, here("outputs/generatedData", "summaryTable.csv"))
+write.csv(plotDat, here("outputs/generatedData", "summaryTable_noSkew.csv"))
 
 
 colPal <- viridis(length(levels(plotDat$cat)), begin = 0, end = 1)
 names(colPal) <- levels(plotDat$cat)
-dotSize = 3; lineSize = 0.8; legSize = 0.8; axSize = 10
+dotSize = 3; lineSize = 0.8; legSize = 0.7; axSize = 10; facetSize = 0.95
 
-consVars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant")
+consVars <- c("medRecRY", "ppnYrsCUsUpper", "ppnCUExtant")
 consYLabs <- c("Return\nAbundance", "Prop. CUs\nAbove Benchmark", 
                "Prop. CUs\nExtant")
-consLabs <- data.frame(om = rep(factor(unique(plotDat$om), 
-                                       levels = unique(plotDat$om)),
-                                each = 3),
-                       lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)", 
-                               "i)"),
-                       var = rep(factor(consVars, levels = unique(vars)), 
-                                 times = 3)
-)#make dataframe of labels to annotate facets
+## Correct based on column number
+# consLabs <- data.frame(om = rep(factor(unique(plotDat$om), 
+#                                        levels = unique(plotDat$om)),
+#                                 each = 3),
+#                        lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)", 
+#                                "i)"),
+#                        var = rep(factor(consVars, levels = unique(vars)), 
+#                                  times = 3)
+# )#make dataframe of labels to annotate facets
 consPlots <- lapply(seq_along(consVars), function(i) {
   temp <- plotDat %>%
     filter(var == consVars[i])
@@ -172,24 +173,22 @@ consPlots <- lapply(seq_along(consVars), function(i) {
                         labels = c("low" = "Low",
                                    "med" = "Moderate",
                                    "high" = "High")) +
-    # # scale_shape_manual(name = "Sigma", breaks = c("low", "med", "high"),
-    # #                    values = c(16, 17, 18), guide = FALSE) +
-    geom_text(data = consLabs %>% filter(var == consVars[i]),
-              mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
-                            hjust = 0.5, vjust = 0),
-              show.legend = FALSE, inherit.aes = FALSE) +
-    facet_wrap(~om, scales = "fixed")
+    # geom_text(data = consLabs %>% filter(var == consVars[i]),
+    #           mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
+    #                         hjust = 0.5, vjust = 0),
+    #           show.legend = FALSE, inherit.aes = FALSE) +
+    facet_wrap(~om, scales = "fixed", ncol = 4, nrow = 1)
   if (i == 1) {
     q <- q + theme_sleekX(position = "top", legendSize = legSize,
-                          axisSize = axSize)
+                          axisSize = axSize, facetSize = facetSize)
   }
   if (i == 2) {
     q <- q + theme_sleekX(position = "mid", legendSize = legSize,
-                          axisSize = axSize)
+                          axisSize = axSize, facetSize = facetSize)
   }
   if (i == 3) {
     q <- q + theme_sleekX(position = "bottom", legendSize = legSize,
-                          axisSize = axSize)
+                          axisSize = axSize, facetSize = facetSize)
   }
   return(q)
 })
@@ -197,14 +196,14 @@ consPlots <- lapply(seq_along(consVars), function(i) {
 catchVars <- c("medCatch", "ppnYrsHighCatch", "stabilityCatch")
 catchYLabs <- c("Catch\nAbundance", "Prop. Years Above\nCatch Threshold",
                 "Catch\nStability")
-catchLabs <- data.frame(om = rep(factor(unique(plotDat$om), 
-                                        levels = unique(plotDat$om)),
-                                 each = 3),
-                        lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)", 
-                                "i)"),
-                        var = rep(factor(catchVars, levels = unique(vars)), 
-                                  times = 3)
-)#make dataframe of labels to annotate facets
+# catchLabs <- data.frame(om = rep(factor(unique(plotDat$om), 
+#                                         levels = unique(plotDat$om)),
+#                                  each = 3),
+#                         lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)", 
+#                                 "i)"),
+#                         var = rep(factor(catchVars, levels = unique(vars)), 
+#                                   times = 3)
+# )#make dataframe of labels to annotate facets
 catchPlots <- lapply(seq_along(catchVars), function(i) {
   temp <- plotDat %>%
     filter(var == catchVars[i])
@@ -221,35 +220,33 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
                         labels = c("low" = "Low",
                                    "med" = "Moderate",
                                    "high" = "High")) +
-    # scale_shape_manual(name = "Sigma", breaks = c("low", "med", "high"),
-    #                    values = c(16, 17, 18), guide = FALSE) +
-    geom_text(data = catchLabs %>% filter(var == catchVars[i]),
-              mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
-                            hjust = 0.5, vjust = 0),
-              show.legend = FALSE, inherit.aes = FALSE) +
-    facet_wrap(~om, scales = "fixed")
+    # geom_text(data = catchLabs %>% filter(var == catchVars[i]),
+    #           mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
+    #                         hjust = 0.5, vjust = 0),
+    #           show.legend = FALSE, inherit.aes = FALSE) +
+    facet_wrap(~om, scales = "fixed", ncol = 4, nrow = 1)
   if (i == 1) {
     q <- q + theme_sleekX(position = "top", legendSize = legSize,
-                          axisSize = axSize)
+                          axisSize = axSize, facetSize = facetSize)
   }
   if (i == 2) {
     q <- q + theme_sleekX(position = "mid", legendSize = legSize,
-                          axisSize = axSize)
+                          axisSize = axSize, facetSize = facetSize)
   }
   if (i == 3) {
     q <- q + theme_sleekX(position = "bottom", legendSize = legSize,
-                          axisSize = axSize)
+                          axisSize = axSize, facetSize = facetSize)
   }
   return(q)
 })
 
-png(file = paste(here(),"/figs/Fig3_consGroupedPlots.png", sep = ""),
+png(file = paste(here(),"/figs/Fig3_consGroupedPlots_noSkew.png", sep = ""),
     height = 4.5, width = 6, units = "in", res = 600)
 ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]],
           ncol = 1, nrow = 3, common.legend = TRUE, legend = "right",
           align = "v", heights = c(1.1,1,1.2))
 dev.off()
-png(file = paste(here(),"/figs/Fig4_catchGroupedPlots.png", sep = ""),
+png(file = paste(here(),"/figs/Fig4_catchGroupedPlots_noSkew.png", sep = ""),
     height = 4.5, width = 6, units = "in", res = 600)
 ggarrange(catchPlots[[1]], catchPlots[[2]], catchPlots[[3]],
           ncol = 1, nrow = 3, common.legend = TRUE, legend = "right",
@@ -309,7 +306,7 @@ dev.off()
 
 ### Manipulate lists to create plottable data structure 
 ## In this case that is one median value per year per unique combo of OMs
-# omNames <- rep(c("ref", "skewN", "skewT"), each = 3)
+# omNames <- rep(c("ref", "skewN", "studT"), each = 3)
 # sigNames <- rep(c("lowSigma", "medSigma", "highSigma"), length.out = 9)
 # fullList <- sapply(seq_along(dirNames), function(h) {
 #   d <- newAgTSList[[h]]
@@ -413,8 +410,6 @@ dev.off()
 selectedCUs <- c("Bwrn" , "Chlk")
 nCUs <- length(selectedCUs)
 colPal <- c("#7fc97f", "#beaed4", "#fdc086")
-omNames <- rep(c("ref", "skewN", "skewT"), each = 3)
-sigNames <- rep(c("low", "med", "high"), length.out = 9)
 #make DF to contain CU-specific benchmark estimates from sim run
 bmDat <- data.frame(cu = selectedCUs, 
                     highBM = NA,
@@ -438,9 +433,9 @@ for (i in seq_along(dirNames)) { #make dataframe
   plotDat <- plotDat %>%
     mutate(cu = recode(cu, "Bwrn" = "Bowron", "Chlk" = "Chilko",
                        .default = levels(cu)),
-           om = recode(om, "ref" = "Ref.", "skewN" = "Low",
-                       "skewT" = "V. Low",
-                       .default = levels(om)))
+           om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",
+                       "studT" = "Ref. Heavy Tails", 
+                       "lowStudT" = "Low Heavy Tails", .default = levels(om)))
 }
 
 q <- ggplot(plotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
@@ -466,13 +461,14 @@ dev.off()
 
 
 fullPlotList <- list()
-for (i in c(2,5,8)) { #make dataframe
+for (i in c(2,5,8,11)) { #make dataframe
   cuList <- genOutputList(dirNames[i], selectedCUs = selectedCUs, agg = FALSE)
   plotList <- lapply(cuList, function(h) {
     plotDat <- NULL
     nTrials <- nrow(h[["medSpawners"]])
     spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
-                          synch = rep(unique(h[["opMod"]]), length.out = nTrials * nCUs)
+                          synch = rep(unique(h[["opMod"]]), 
+                                      length.out = nTrials * nCUs)
     )
     spwn <- h[["medSpawners"]] %>%
       as.data.frame() %>%
@@ -482,20 +478,18 @@ for (i in c(2,5,8)) { #make dataframe
     spwn$lowBM <- rep(h[["meanSGen"]], each = nTrials)
     spwn$highBM <- rep(0.8*h[["meanSMSY"]], each = nTrials)
     plotDat <- rbind(plotDat, cbind(spwnDat, spwn))
-    plotDat <- plotDat %>%
-      mutate(cu = recode(cu, "Bwrn" = "Bowron", "Chlk" = "Chilko",
-                         .default = levels(cu)),
-             om = recode(om, "ref" = "Ref.", "skewN" = "Low",
-                         "skewT" = "V. Low",
-                         .default = levels(om))
-      )
     return(plotDat)
   })
   plotDat2 <- do.call(rbind, plotList)
   fullPlotList[[paste0(omNames[i])]] <- plotDat2
 }
+
 plotDat3 <- do.call(rbind, fullPlotList) %>%
-  mutate(synch =  factor(synch, levels = c("lowSynch", "medSynch", "highSynch")))
+  mutate(cu = recode(cu, "Bwrn" = "Bowron", "Chlk" = "Chilko", 
+                     .default = levels(cu)), 
+         om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",
+                     "studT" = "Ref. Heavy Tails",
+                     "lowStudT" = "Low Heavy Tails", .default = levels(om)))
 row.names(plotDat3) <- NULL
 
 p <- ggplot(plotDat3, aes(x = om, y = spawners, fill = cu, alpha = synch)) +
@@ -519,6 +513,28 @@ png(file = paste(here(),"/figs/SFig_spawnerViolinSynch.png", sep = ""),
 print(p)
 dev.off()
 
+
+fullPlotList <- list()
+for (i in c(2,5,8,11)) { #make dataframe
+  cuList <- genOutputList(dirNames[i], selectedCUs = selectedCUs, agg = FALSE)
+  plotList <- lapply(cuList, function(h) {
+    plotDat <- NULL
+    nTrials <- nrow(h[["ppnYrsUpper"]])
+    spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
+                          synch = rep(unique(h[["opMod"]]), 
+                                      length.out = nTrials * nCUs)
+    )
+    spwn <- h[["ppnYrsUpper"]] %>%
+      as.data.frame() %>%
+      gather(key = cu, value = spawners)
+    spwn$cu <- plyr::revalue(as.factor(spwn$cu), c("V1" = selectedCUs[1],
+                                                   "V2" = selectedCUs[2]))
+    plotDat <- rbind(plotDat, cbind(spwnDat, spwn))
+    return(plotDat)
+  })
+  plotDat2 <- do.call(rbind, plotList)
+  fullPlotList[[paste0(omNames[i])]] <- plotDat2
+}
 
 ##### END PRIMARY ANALYSIS #####
 

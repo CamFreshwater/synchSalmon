@@ -1,0 +1,72 @@
+---
+title: "Interaction between synchrony and ppnCUs above BM"
+author: "Cam Freshwater"
+date: "February 12, 2019"
+output: html_document
+---
+
+Although median aggregate return abundance declines with increasing synchrony, the proportion of CUs above their biological BM increases. This Rmd looks at different data patterns to try to determine why that may be.
+
+```{r loadData}
+require(samSim); require(tidyverse); require(here)
+
+simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"), 
+                   stringsAsFactors = F)
+
+simParTrim <- subset(simPar, scenario %in% "medSig")
+
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
+                                                sep = "_"))
+
+agList <- genOutputList(dirNames[1], agg = TRUE, aggTS = TRUE)
+
+makeData <- function(list, variable) {
+  plotList <- lapply(list, function (i) {
+    dum <- i[[variable]]
+    nTrials <- ncol(dum)
+    nYears <- nrow(dum)
+    colnames(dum) <- seq(1, nTrials, by = 1)
+    dat <- data.frame(synch = rep(unique(i[["opMod"]]), 
+                                  length.out = nTrials * nYears),
+                      years = rep(seq(1, nYears, by = 1), times = nTrials),
+                      trial = rep(seq(1, nTrials, by = 1), each = nYears)
+    )
+    dum2 <- dum %>%
+        as.data.frame() %>%
+        gather(key = key, value = varName) 
+    cbind(dat, dum2) %>% 
+      select(-key)
+  })
+  outData <- do.call(rbind, plotList)
+  row.names(outData) <- NULL
+  return(outData)
+}
+
+ppnUpDat <- makeData(agList, "Prop Above Upper BM") %>% 
+  dplyr::rename(ppnUp = varName) %>% 
+  filter(!is.na(ppnUp)) %>%
+  dplyr::mutate(synch = factor(synch, levels = c("lowSynch", "medSynch",
+                                                 "highSynch")))
+```
+
+``` {r plotPpnTSByTrial}
+drawTrials <- sample.int(max(ppnUpDat$trial), size = 9, replace = FALSE)
+
+trimDat <- ppnUpDat %>% 
+  filter(trial %in% drawTrials)
+
+ggplot(trimDat, aes(x = years, y = ppnUp, linetype = synch)) +
+  geom_line() +
+  theme_sleekX() +
+  facet_wrap(~trial, scales = "free_y")
+
+meanDat <- ppnUpDat %>%
+  dplyr::group_by(trial, synch) %>% 
+  dplyr::summarize(meanUp = mean(ppnUp))
+
+ggplot(meanDat, aes(x = synch, y = meanUp)) +
+  geom_boxplot() +
+  theme_sleekX()
+
+```

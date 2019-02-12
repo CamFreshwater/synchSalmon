@@ -199,12 +199,16 @@ for (i in 1:nStks) {
     geom_boxplot() +
     theme_sleekX() +
     ggtitle(cuPars$stkName[i]) +
-    facet_wrap(~covMat, scales = "free_y")
+    facet_wrap(~covMat)
   print(p)
 }
+
+outDat %>% 
+  filter(!skew %in% c("ref", "lowA"))
+  group_by(CU, covMat , skew)
 ```
 
-Overall outcomes are quite similar except for Harrison. This isn't entirely unexpected given that there is strong coherence within the aggregate, except for this sea-type stock.
+Overall outcomes are quite similar except for Harrison. This isn't entirely unexpected given that there is strong coherence within the aggregate, except for this sea-type stock. 
 
 Next compare the multivariate normal distributions to the skewed with custom covariance matrix (default results were qualitatively similar).
 ``` {r compareSkewedMVN}

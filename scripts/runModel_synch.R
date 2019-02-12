@@ -474,7 +474,8 @@ for (i in c(2,5,8)) { #make dataframe
     plotDat <- NULL
     nTrials <- nrow(h[["medSpawners"]])
     spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
-                          synch = rep(unique(h[["opMod"]]), length.out = nTrials * nCUs)
+                          synch = rep(unique(h[["opMod"]]), 
+                                      length.out = nTrials * nCUs)
     )
     spwn <- h[["medSpawners"]] %>%
       as.data.frame() %>%

@@ -7,7 +7,7 @@ output: html_document
 
 Sean Anderson demonstrated that the mean is negatively correlated with the strength of covariance in skewed distributions. First extend his initial investigation to evaluate whether the distribution can be tuned to produce stable means by tweaking both parameters simultaneously.
 
-```{r }
+```{r changesInProd}
 f <- function(N = 15, r = 0.4, sigma = 0.2, skew = 0.65) {
   sig_mat <- matrix(as.numeric(sigma), nrow = 1, ncol = N)
   cov_mat <- (t(sig_mat) %*% sig_mat) * r
@@ -79,7 +79,6 @@ alphas <- cuPars$alpha
 betas <- cuPars$beta0
 sigmas <- cuPars$sigma
 
-
 ## Covariance matrix 1 (based on sigmas and arbitrary correlation coef)
 r <- 0.5 #default moderate correlation
 sigMat <- matrix(as.numeric(sigmas), nrow = 1, ncol = nStks)
@@ -105,11 +104,23 @@ corMat <- calcCorMat(residMat)
 sigMat <- matrix(as.numeric(sigmas), nrow = 1, ncol = nStks)
 covMat2 <- (t(sigMat) %*% sigMat) * corMat
 diag(covMat2) <- sigmas^2
+
+## Covariance matrix 3 (based on sigmas and high correlation coef)
+sigMat <- matrix(as.numeric(sigmas), nrow = 1, ncol = nStks)
+covMatHigh <- (t(sigMat) %*% sigMat) * 0.75
+diag(covMatHigh) <- sigmas^2
 ```
 
-```{r calcRealizedProd}
+Next generate estimates of recruitment (outside of a closed-loop) using a Ricker model and four productivity operating models
+
+1.  Reference - median alpha estimate + log MVN error from default covariance matrix
+2.  Low alpha - median alpha with 0.65 scalar (mean difference between min Kalman estimate and median) + log MVN error from default covariance matrix
+3.  Skewed default - median alpha + skewed MVN error (skewness parameters ranging from log(0.65) to log(0.95)) with default covariance matrix
+4.  Skewed custom - median alpha + skewed MVN error (as above) with CU-specific covariance
+
+```{r calcRealizedRecruitment}
 ## Assume that low Kalman A is 0.65 current estimate
-N = 1000
+N = 100
 meanS <- srDat %>% 
   group_by(stk) %>% 
   summarize(meanS = mean(totalSpwn, na.rm = TRUE)) %>% 
@@ -122,69 +133,111 @@ simpleRicker <- function(S, a, b, error) {
 }
 
 #Generate estimates of recruitment based on low productivity parameters
-ricSim <- function(trialN, meanS, alphas, betas, covMat, covMatName, stkNames, 
+ricSim <- function(N, meanS, alphas, betas, covMat, covMatName, stkNames, 
                    normal = TRUE, skewPar) {
   nStks <- length(stkNames)
-  if (normal == TRUE) {
+  trialSeq <- seq(1, N, by = 1)
+  outList <- lapply(1:N, function (x) {
+   if (normal == TRUE) {
     err <- sn::rmst(n = 1, xi = rep(0, nStks), Omega = covMat, 
                     alpha = rep(0, nStks), nu = 1000) %>% 
       as.numeric()
   }
   if (normal == FALSE) {
     err <- sn::rmst(n = 1, xi = rep(0, nStks), Omega = covMat, 
-                    alpha = rep(skewPar, nStks), nu = 1000) %>% 
+                    alpha = rep(log(skewPar), nStks), nu = 1000) %>% 
       as.numeric()
   }
-  data.frame(trial = trialN,
-             skew = skewPar,
+  data.frame(trial = trialSeq[x],
+             skew = as.factor(skewPar),
              covMat = covMatName,
              CU = stkNames,
-             rec = simpleRicker(meanS, alphas, betas, error = err))
+             rec = simpleRicker(meanS, alphas, betas, error = err)) 
+  })
+  outDat <- do.call(rbind, outList) %>% 
+    mutate(skew = as.factor(skew))
+  return(outDat)
 }
 
+N <- 100
 lowAlphas <- 0.65 * alphas
-outRecList <- lapply(1:N, function (i) ricSim(i, meanS, lowAlphas, betas, 
-                                               covMat = covMat1, 
-                                               covMatName = "default",
-                                               stkNames = cuPars$stkName, 
-                                               normal = TRUE, skewPar = 1))
-outRecDat <- do.call(rbind, outRecList)
-
-#Generate estimates of recruitment based on skewed deviations
-skewPars <- seq(0.65, 0.95, by = 0.05)
-outSkewRecList <- lapply(seq_along(skewPars), function (h) {
+outNorm <- ricSim(N, meanS, alphas, betas, covMat = covMat1, 
+                  covMatName = "default", stkNames = cuPars$stkName, 
+                  normal = TRUE, skewPar = "ref")
+outLow <- ricSim(N, meanS, lowAlphas, betas, covMat = covMat1, 
+                  covMatName = "default", stkNames = cuPars$stkName, 
+                  normal = TRUE, skewPar = "lowA")
+skewPars <- seq(0.4, 0.9, by = 0.1)
+outSkewList1 <- lapply(seq_along(skewPars), function (h) {
   set.seed(123)
-  innerList <- lapply(1:N, function (i) ricSim(i, meanS, alphas, betas, 
-                                               covMat = covMat1, 
-                                               covMatName = "default",
-                                               stkNames = cuPars$stkName, 
-                                               normal = FALSE, 
-                                               skewPar = skewPars[h]))
-do.call(rbind, innerList)
+  ricSim(N, meanS, alphas, betas, covMat = covMat1, covMatName = "default", 
+         stkNames = cuPars$stkName, normal = FALSE, skewPar = skewPars[h])
 })
-t <- do.call(rbind, outSkewRecList)
-outSkewRecList2 <- lapply(seq_along(skewPars), function (h) {
+outSkewList2 <- lapply(seq_along(skewPars), function (h) {
   set.seed(123)
-  innerList <- lapply(1:N, function (i) ricSim(i, meanS, alphas, betas, 
-                                               covMat = covMat2, 
-                                               covMatName = "cu-spec",
-                                               stkNames = cuPars$stkName, 
-                                               normal = FALSE, 
-                                               skewPar = skewPars[h]))
-do.call(rbind, innerList)
+  ricSim(N, meanS, alphas, betas, covMat = covMat2, covMatName = "custom", 
+         stkNames = cuPars$stkName, normal = FALSE, skewPar = skewPars[h])
 })
-
-outRecDat <- rbind(outRecDat, do.call(rbind, outSkewRecList),
-                   do.call(rbind, outSkewRecList2)) %>% 
-  mutate(skew = as.factor(skew),
-         covMat = as.factor(covMat))
-
-plotDat1 <- outRecDat %>% 
-  filter(covMat == "default")
-
-ggplot(plotDat1, aes(x = skew, y = rec)) +
-  geom_boxplot() +
-  theme_sleekX() +
-  facet_wrap(~CU, scales = "free_y")
-
+outSkewList3 <- lapply(seq_along(skewPars), function (h) {
+  set.seed(123)
+  ricSim(N, meanS, alphas, betas, covMat = covMatHigh, covMatName = "high", 
+         stkNames = cuPars$stkName, normal = FALSE, skewPar = skewPars[h])
+})
+outDat <- rbind(outNorm, outLow, do.call(rbind, outSkewList1), 
+                 do.call(rbind, outSkewList2), do.call(rbind, outSkewList3))
 ```
+
+First look at differences between different skewed covariate matrices.
+
+``` {r plotDifferentSkewed}
+#compare the two input covariance matrices
+for (i in 1:nStks) {
+  dum <- outDat %>% 
+    filter(CU == cuPars$stkName[i],
+           !skew %in% c("ref", "lowA"))
+  p <- ggplot(dum, aes(x = skew, y = rec)) +
+    geom_boxplot() +
+    theme_sleekX() +
+    ggtitle(cuPars$stkName[i]) +
+    facet_wrap(~covMat, scales = "free_y")
+  print(p)
+}
+```
+
+Overall outcomes are quite similar except for Harrison. This isn't entirely unexpected given that there is strong coherence within the aggregate, except for this sea-type stock.
+
+Next compare the multivariate normal distributions to the skewed with custom covariance matrix (default results were qualitatively similar).
+``` {r compareSkewedMVN}
+colPal <- c("#ffeda0", "#feb24c", rep("#f03b20", length.out = length(skewPars))) 
+names(colPal) <- levels(outDat$skew)
+
+plotDat1 <- outDat %>% 
+  filter(skew %in% c("ref", "lowA") | covMat == "custom",
+         !CU == "Cultus")
+
+ggplot(plotDat1, aes(x = skew, y = rec, fill = skew)) +
+  geom_boxplot() +
+  theme_sleekX(axisSize = 9, legendSize = 0.8) +
+  scale_fill_manual(name = "Skewness", values = colPal) +
+  facet_wrap(~CU, scales = "free_y")
+```
+
+Varies among CUs, but generally low alpha produces recruit abundances smaller than even relatively severe skewness parameters. 
+
+What happens when we use a relatively extreme covariance matrix (r = 0.75).
+
+``` {r plotHighCovComparison}
+plotDat2 <- outDat %>% 
+  filter(skew %in% c("ref", "lowA") | covMat == "high",
+         !CU == "Cultus")
+
+ggplot(plotDat2, aes(x = skew, y = rec, fill = skew)) +
+  geom_boxplot() +
+  theme_sleekX(axisSize = 9, legendSize = 0.8) +
+  scale_fill_manual(name = "Skewness", values = colPal) +
+  facet_wrap(~CU, scales = "free_y")
+```
+
+Depending on CUs even high skewness and high covariance doesn't result in realized productivity patterns that are more severe than Kalman filter estimates.
+
+Even though we cannot explicitly quantify what proportion of the decline in productivity is being introduced by changes in skewness, as opposed to variance or covariance, I still believe there's value in contrasting what the two operating models suggest. Highly correlated negative recruitment deviations seem to be more ecologically relevant than uniform declines in the mean. My only concern is that we may have insufficient space to fully defend the approach.

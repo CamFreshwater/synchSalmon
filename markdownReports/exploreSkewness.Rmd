@@ -5,9 +5,11 @@ date: "February 7, 2019"
 output: html_document
 ---
 
-Sean Anderson demonstrated that the mean is negatively correlated with the strength of covariance in skewed distributions. First extend his initial investigation to evaluate whether the distribution can be tuned to produce stable means by tweaking both parameters simultaneously.
+First some context. Sean Anderson demonstrated that the mean is negatively correlated with the strength of covariance in skewed distributions. First extend his initial investigation to evaluate variance, covariance, and skewness interact to drive changes in mean.
 
 ```{r changesInProd}
+require(tidyverse); require(ggplot2)
+
 f <- function(N = 15, r = 0.4, sigma = 0.2, skew = 0.65) {
   sig_mat <- matrix(as.numeric(sigma), nrow = 1, ncol = N)
   cov_mat <- (t(sig_mat) %*% sig_mat) * r
@@ -21,7 +23,7 @@ x <- f(2)
 mean(x)
 
 .r <- seq(0, 0.7, 0.05)
-.skew <- seq(0.5, 1, length.out = length(.r))
+.skew <- seq(0.5, 1, by = 0.05)
 yListSkew <- lapply(seq_along(.skew), function (i) {
   purrr::map_df(.r, ~ data.frame(mean = mean(f(r = .x,
                                                skew = .skew[i])))) %>% 
@@ -32,7 +34,6 @@ yListSkew <- lapply(seq_along(.skew), function (i) {
 plotDat <- do.call(rbind, yListSkew) %>% 
   dplyr::mutate(skewness = round(skewness, digits = 3))
 
-library(ggplot2)
 ggplot(plotDat, aes(correlation, mean, colour = as.factor(skewness))) +
   geom_line() +
   samSim::theme_sleekX()
@@ -52,15 +53,19 @@ ggplot(plotDatSig, aes(correlation, mean, colour = as.factor(sigma))) +
 
 ```
 
-Does not look it would be very easy to tune accordingly.
+First plot shows that it really doesn't take much skewness to trigger that relationship, but increasing the skewness dramatically doesn't really alter the slope of that relationship too much.
+
+Second plot shows sigma's impact on mean productivity. 
 
 -----
 
-Next look at whether an alternative skewed distribution OM could be presented to contrast with standard low alpha results. Basic premise is that low a represents declines in productivity that are concurrent, but not synchronized at annual level, while skewed declines are directly influenced by strength of covariance.
+#### Compare reference, Kalman A and various skewness-based operating models
 
-Parameterization is a little ambiguous, but the basic premise is to take a reference covariance matrix and tune the skewness parameter to produce declines in CU-specific productivity that approximate those of kalman alpha. Then use the mean skewness parameter among stocks to forward simulate. Reference covariance matrix could be either the reference sigma and moderate correlation matrix **or** the covariance matrix calculated from mean correlations among CUs. Option 1 would result in synch treatments that are identical to what we have now and would be easier to implement. Option 2 would make the most sense if we used scalars to drive CU-specific patterns of covariance up/down. This may be more accurate, but since the trends will be CU-specific I'm not sure if it's more or less broadly applicable.
+Next look at whether an alternative skewed distribution OM could be presented to contrast with standard low alpha results. Methods would clearly note that low a represents declines in productivity that are concurrent, but not synchronized at annual level, while skewed declines are directly influenced by strength of covariance.
 
-First step is to calculate the two covariance matrices.
+Parameterization is a little ambiguous, but one option is to take a reference covariance matrix and tune the skewness parameter to produce declines in CU-specific productivity that approximate those of kalman alpha. Then use the mean skewness parameter among stocks to forward simulate. Reference covariance matrix could be either the reference sigma and moderate correlation matrix **or** the covariance matrix calculated from mean correlations among CUs. Option 1 would result in synch treatments that are identical to what we have now and would be easier to implement. Option 2 may make the most sense if we used scalars to drive CU-specific patterns of covariance up/down. This may be more accurate, but since the trends will be CU-specific I'm not sure if it's more or less broadly applicable.
+
+First step is to calculate the two covariance matrices. Also calculate a third equivalent to option 1, but with stronger correlation just to see what patterns result.
 
 ```{r loadData}
 require(here); require(samSim); require(tidyverse)
@@ -117,9 +122,9 @@ Next generate estimates of recruitment (outside of a closed-loop) using a Ricker
 2.  Low alpha - median alpha with 0.65 scalar (mean difference between min Kalman estimate and median) + log MVN error from default covariance matrix
 3.  Skewed default - median alpha + skewed MVN error (skewness parameters ranging from log(0.65) to log(0.95)) with default covariance matrix
 4.  Skewed custom - median alpha + skewed MVN error (as above) with CU-specific covariance
+5.  Skewed high - median alpha + skewed MVN error (as above) with highly correlated covariance matrix
 
 ```{r calcRealizedRecruitment}
-## Assume that low Kalman A is 0.65 current estimate
 N = 1000
 meanS <- srDat %>% 
   group_by(stk) %>% 
@@ -159,7 +164,7 @@ ricSim <- function(N, meanS, alphas, betas, covMat, covMatName, stkNames,
   return(outDat)
 }
 
-N <- 100
+## Assume that low Kalman A is 0.65 current estimate
 lowAlphas <- 0.65 * alphas
 outNorm <- ricSim(N, meanS, alphas, betas, covMat = covMat1, 
                   covMatName = "default", stkNames = cuPars$stkName, 
@@ -169,17 +174,14 @@ outLow <- ricSim(N, meanS, lowAlphas, betas, covMat = covMat1,
                   normal = TRUE, skewPar = "lowA")
 skewPars <- seq(0.4, 0.9, by = 0.1)
 outSkewList1 <- lapply(seq_along(skewPars), function (h) {
-  set.seed(123)
   ricSim(N, meanS, alphas, betas, covMat = covMat1, covMatName = "default", 
          stkNames = cuPars$stkName, normal = FALSE, skewPar = skewPars[h])
 })
 outSkewList2 <- lapply(seq_along(skewPars), function (h) {
-  set.seed(123)
   ricSim(N, meanS, alphas, betas, covMat = covMat2, covMatName = "custom", 
          stkNames = cuPars$stkName, normal = FALSE, skewPar = skewPars[h])
 })
 outSkewList3 <- lapply(seq_along(skewPars), function (h) {
-  set.seed(123)
   ricSim(N, meanS, alphas, betas, covMat = covMatHigh, covMatName = "high", 
          stkNames = cuPars$stkName, normal = FALSE, skewPar = skewPars[h])
 })
@@ -187,11 +189,13 @@ outDat <- rbind(outNorm, outLow, do.call(rbind, outSkewList1),
                  do.call(rbind, outSkewList2), do.call(rbind, outSkewList3))
 ```
 
-First look at differences between different skewed covariate matrices.
+First look at differences between different skewed covariance matrices.
 
 ``` {r plotDifferentSkewed}
-#compare the two input covariance matrices
-for (i in 1:nStks) {
+stks <- unique(c(sample.int(length(cuPars$stkName), size = 3, replace = FALSE), 
+                 13))
+
+for (i in seq_along(stks)) {
   dum <- outDat %>% 
     filter(CU == cuPars$stkName[i],
            !skew %in% c("ref", "lowA"))
@@ -208,16 +212,19 @@ outDat %>%
   group_by(CU, covMat , skew)
 ```
 
-Overall outcomes are quite similar except for Harrison. This isn't entirely unexpected given that there is strong coherence within the aggregate, except for this sea-type stock. 
+Overall outcomes are quite similar between default and custom except for Harrison. This isn't entirely unexpected given that there is strong coherence within the aggregate, except for this sea-type stock. High covariance leads to a shift downwards.
 
-Next compare the multivariate normal distributions to the skewed with custom covariance matrix (default results were qualitatively similar).
+Next compare the multivariate normal distributions to the skewed with custom covariance matrix (default results were qualitatively similar; subset of stocks shown).
 ``` {r compareSkewedMVN}
 colPal <- c("#ffeda0", "#feb24c", rep("#f03b20", length.out = length(skewPars))) 
 names(colPal) <- levels(outDat$skew)
 
+stkSample <- unique(sample.int(length(cuPars$stkName), size = 6, replace = FALSE))
+stks <- cuPars$stkName[stkSample]
+
 plotDat1 <- outDat %>% 
   filter(skew %in% c("ref", "lowA") | covMat == "custom",
-         !CU == "Cultus")
+         CU %in% stks)
 
 ggplot(plotDat1, aes(x = skew, y = rec, fill = skew)) +
   geom_boxplot() +
@@ -226,14 +233,14 @@ ggplot(plotDat1, aes(x = skew, y = rec, fill = skew)) +
   facet_wrap(~CU, scales = "free_y")
 ```
 
-Varies among CUs, but generally low alpha produces recruit abundances smaller than even relatively severe skewness parameters. 
+Varies among CUs, but generally low alpha produces recruit abundances smaller than even  severe skewness parameters. 
 
 What happens when we use a relatively extreme covariance matrix (r = 0.75).
 
 ``` {r plotHighCovComparison}
 plotDat2 <- outDat %>% 
   filter(skew %in% c("ref", "lowA") | covMat == "high",
-         !CU == "Cultus")
+         CU %in% stks)
 
 ggplot(plotDat2, aes(x = skew, y = rec, fill = skew)) +
   geom_boxplot() +
@@ -242,62 +249,105 @@ ggplot(plotDat2, aes(x = skew, y = rec, fill = skew)) +
   facet_wrap(~CU, scales = "free_y")
 ```
 
-Depending on CUs even high skewness and high covariance doesn't result in realized productivity patterns that are more severe than Kalman filter estimates.
+Depending on CUs even high skewness and high covariance doesn't result in realized productivity patterns that are more severe than Kalman filter estimates. However ultimately the issue is do trends in CU-specific PMs make sense across synchrony treatments within a given productivity OM.
 
-All that being said I don't think we can get around the issue that greater covariance drives single CU abundance down. I just don't think that we can identify an ecologically plausible mechanism for that.
-
+Plot again to refresh:
 
 ``` {r lookAtCUSpecificPMs}
 simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"), 
                    stringsAsFactors = F)
 
-simParTrim <- subset(simPar, scenario %in% c("medSig", "medSigSkew"))
+simParTrim <- subset(simPar, scenario %in% c("medSig", "medSigSkew",
+                                             "medSigLowA"))
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
                                                 sep = "_"))
 
-omNames <- c("ref", "skewN")
-
-plotDat <- NULL
-for (i in seq_along(dirNames)) { #make dataframe
-  cuList <- genOutputList(dirNames[i], agg = FALSE)[["medSynch_TAM"]]
-  stkNames <- cuList[["stkName"]]
-  recBYMat <- cuList[["medRecBY"]]
-  colnames(recBYMat) <- stkNames
-  nTrials <- nrow(recBYMat)
-  recBYDat <- data.frame(om = rep(omNames[i], 
-                                  length.out = nTrials * length(stkNames)))
-  dum <- recBYMat %>%
-    as.data.frame() %>%
-    gather(key = cu, value = rec)
-  plotDat <- rbind(plotDat, cbind(recBYDat, dum))
-}
-
+omNames <- c("ref", "skewN", "lowA")
 
 fullPlotList <- list()
 for (i in seq_along(omNames)) { #make dataframe
   cuList <- genOutputList(dirNames[i], agg = FALSE)
   plotList <- lapply(cuList, function(h) {
     plotDat <- NULL
-    recMat <- h[["medRecBY"]]
+    sMat <- h[["medSpawners"]]
     nCUs <- length(h[["stkName"]])
     stkNames <- h[["stkName"]]
-    colnames(recMat) <- stkNames
-    nTrials <- nrow(recMat)
-    recBYDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
+    colnames(sMat) <- stkNames
+    nTrials <- nrow(sMat)
+    sDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
                           synch = rep(unique(h[["opMod"]]), 
                                       length.out = nTrials * nCUs)
     )
-    dum <- recMat %>%
+    dum <- sMat %>%
       as.data.frame() %>%
-      gather(key = cu, value = spawners)
-    plotDat <- rbind(plotDat, cbind(recBYDat, dum))
+      gather(key = cu, value = spwn)
+    plotDat <- rbind(plotDat, cbind(sDat, dum))
     return(plotDat)
   })
   plotDat2 <- do.call(rbind, plotList)
   fullPlotList[[paste0(omNames[i])]] <- plotDat2
 }
+
 plotDatFull <- do.call(rbind, fullPlotList) %>% 
-  mutate(cu = as.factor(cu))
+  mutate(cu = as.factor(cu),
+         synch = factor(synch, levels = c("lowSynch", "medSynch", 
+                                          "highSynch"))) %>% 
+  filter(cu %in% c("Chlk", "Clts", "L.Sh", "Hrrs"))
+
+lineSize = 0.8; legSize = 0.7; axSize = 10; facetSize = 0.95
+ggplot(plotDatFull, aes(x = om, y = spwn, alpha = synch)) +
+  geom_boxplot() +
+  scale_alpha_manual(name = "Synchrony", values = c(1, 0.65, 0.3),
+                     labels = c("low" = "Low",
+                                "med" = "Ref.",
+                                "high" = "High")) +
+  guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
+  labs(y = "Median Spawner Abundance (millions)",
+       x = "Productivity Scenario") +
+  theme_sleekX(facetSize = 1.1, axisSize = axSize - 1, 
+               legendSize = legSize * 0.75) +
+  facet_wrap(~cu, scales = "free_y", nrow = 2)
 
 ```
+
+Note that while skewed normal distributions do result in strong declines in median spawner abundance as synchrony increases (the original red flag), MVN distributions exhibit an opposite, though weaker, pattern. Revisit the simulations, this time generating recruits from MVN w/ high covariance matrix.
+
+```{r simHighCovar}
+outNorm <- ricSim(N*10, meanS, alphas, betas, covMat = covMat1, 
+                  covMatName = "default", stkNames = cuPars$stkName, 
+                  normal = TRUE, skewPar = "ref")
+outNormHigh <- ricSim(N*10, meanS, alphas, betas, covMat = covMatHigh, 
+                  covMatName = "high", stkNames = cuPars$stkName, 
+                  normal = TRUE, skewPar = "ref")
+# skewPars <- seq(0.4, 0.9, by = 0.1)
+# outSkewList1 <- lapply(seq_along(skewPars), function (h) {
+#   set.seed(123)
+#   ricSim(N, meanS, alphas, betas, covMat = covMat1, covMatName = "default", 
+#          stkNames = cuPars$stkName, normal = FALSE, skewPar = skewPars[h])
+# })
+# outSkewList2 <- lapply(seq_along(skewPars), function (h) {
+#   set.seed(123)
+#   ricSim(N, meanS, alphas, betas, covMat = covMat2, covMatName = "custom", 
+#          stkNames = cuPars$stkName, normal = FALSE, skewPar = skewPars[h])
+# })
+# outSkewList3 <- lapply(seq_along(skewPars), function (h) {
+#   set.seed(123)
+#   ricSim(N, meanS, alphas, betas, covMat = covMatHigh, covMatName = "high", 
+#          stkNames = cuPars$stkName, normal = FALSE, skewPar = skewPars[h])
+# })
+outDat <- rbind(outNorm, outNormHigh)
+
+ggplot(outDat %>% filter(!CU == "Cultus"), aes(x = covMat, y = rec)) +
+  geom_boxplot() +
+  theme_sleekX() +
+  facet_wrap(~CU, scales = "free_y")
+
+summDat1 <- outDat %>% 
+  group_by(CU, covMat) %>% 
+  summarize(meanRec = mean(rec),
+            medRec = median(rec))
+print(summDat1)
+```
+
+Whew. Looks like the differences may just be a function of low simulation number or some time series interactions because they disappear in the simpler simulation.

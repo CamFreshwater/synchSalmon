@@ -1,10 +1,13 @@
 ---
-title: "Interaction between synchrony and ppnCUs above BM"
+title: "Interaction between synchrony and PMs"
 author: "Cam Freshwater"
 date: "February 12, 2019"
 output: html_document
 ---
 
+Two unusual patterns associated with increasing synchrony. 
+
+#### 1) Increasing ppn of CUs above their BM
 Although median aggregate return abundance declines with increasing synchrony, the proportion of CUs above their biological BM increases. This Rmd looks at different data patterns to try to determine why that may be.
 
 ```{r loadData}
@@ -70,3 +73,60 @@ ggplot(meanDat, aes(x = synch, y = meanUp)) +
   theme_sleekX()
 
 ```
+
+High synchrony trials do seem to produce a greater number of years with CUs above the BM on average and boxplots, which recalculate the summary statistics produced internally by the model, show a similar trend. What I think may be going is that synchronized good recruitment events are enough to push a couple more CUs past the threshold; conversely synchronized bad events don’t strongly influence low status stocks (because they’re already low) or high status stocks (they’re far enough away from the edge to be ok). Need to dig in more but not sure how to tease it apart. 
+
+#### 2) Increasing CU-specific abundance
+```{r lookAtCUTrends}
+cuPar <- read.csv(here("data/sox/fraserCUPars.csv"), stringsAsFactors = F)
+
+cuList <- genOutputList(dirNames[1], agg = FALSE)
+
+arrayNames <- list.files(paste(here("outputs/simData"), dirNames[1], sep="/"),
+                         pattern = "\\Arrays.RData$")
+tsLists <- lapply(1:length(arrayNames), function(x) {
+  readRDS(paste(here("outputs/simData"), dirNames[1], arrayNames[x], sep = "/"))
+})
+
+plotList <- lapply(tsLists, function (i) {
+  dum <- i[["S"]]
+  synchOM <- i[["nameOM"]]
+  colnames(dum) <- abbreviate(cuPar$stkName, minlength = 4)
+  dum %>% 
+    reshape2::melt() %>% 
+    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+                  "spwn" = "value") %>% 
+    mutate(synch = i[["nameOM"]]) %>% 
+    filter(yr > i[["nPrime"]])
+})
+sDat <- do.call(rbind, plotList) %>% 
+  mutate(synch = factor(synch, levels = c("lowSynch", "medSynch",
+                                                 "highSynch")))
+
+drawTrials <- sample.int(max(sDat$trial), size = 4, replace = FALSE)
+trimDat <- sDat %>% 
+  filter(trial %in% drawTrials,
+         cu %in% c("Chlk", "Clts", "L.Sh", "Hrrs"))
+
+for(i in seq_along(drawTrials)) {
+  p <- ggplot(trimDat %>% filter(trial == drawTrials[i]), 
+              aes(x = yr, y = spwn, colour = synch)) +
+    geom_line() +
+    theme_sleekX() +
+    ggtitle(drawTrials[i]) +
+    facet_wrap(~cu, scales = "free_y")
+  print(p)
+}
+
+meanDat <- sDat %>%
+  filter(cu %in% c("Chlk", "Clts", "L.Sh", "Hrrs")) %>% 
+  dplyr::group_by(trial, cu, synch) %>% 
+  dplyr::summarize(medSpwn = median(spwn))
+
+ggplot(meanDat, aes(x = synch, y = medSpwn)) +
+  geom_boxplot() +
+  theme_sleekX() +
+  facet_wrap(~cu, scales = "free_y")
+```
+
+Difficult to tell from time series plots whether high synchrony results in greater spawner abundance than low, even though box plots seem to confirm it. Potentially driven by small sample size?

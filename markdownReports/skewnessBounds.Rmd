@@ -120,7 +120,7 @@ Next generate estimates of recruitment (outside of a closed-loop) using a Ricker
 
 ```{r calcRealizedRecruitment}
 ## Assume that low Kalman A is 0.65 current estimate
-N = 100
+N = 1000
 meanS <- srDat %>% 
   group_by(stk) %>% 
   summarize(meanS = mean(totalSpwn, na.rm = TRUE)) %>% 
@@ -204,7 +204,7 @@ for (i in 1:nStks) {
 }
 
 outDat %>% 
-  filter(!skew %in% c("ref", "lowA"))
+  filter(!skew %in% c("ref", "lowA")) %>% 
   group_by(CU, covMat , skew)
 ```
 
@@ -244,4 +244,60 @@ ggplot(plotDat2, aes(x = skew, y = rec, fill = skew)) +
 
 Depending on CUs even high skewness and high covariance doesn't result in realized productivity patterns that are more severe than Kalman filter estimates.
 
-Even though we cannot explicitly quantify what proportion of the decline in productivity is being introduced by changes in skewness, as opposed to variance or covariance, I still believe there's value in contrasting what the two operating models suggest. Highly correlated negative recruitment deviations seem to be more ecologically relevant than uniform declines in the mean. My only concern is that we may have insufficient space to fully defend the approach.
+All that being said I don't think we can get around the issue that greater covariance drives single CU abundance down. I just don't think that we can identify an ecologically plausible mechanism for that.
+
+
+``` {r lookAtCUSpecificPMs}
+simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"), 
+                   stringsAsFactors = F)
+
+simParTrim <- subset(simPar, scenario %in% c("medSig", "medSigSkew"))
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
+                                                sep = "_"))
+
+omNames <- c("ref", "skewN")
+
+plotDat <- NULL
+for (i in seq_along(dirNames)) { #make dataframe
+  cuList <- genOutputList(dirNames[i], agg = FALSE)[["medSynch_TAM"]]
+  stkNames <- cuList[["stkName"]]
+  recBYMat <- cuList[["medRecBY"]]
+  colnames(recBYMat) <- stkNames
+  nTrials <- nrow(recBYMat)
+  recBYDat <- data.frame(om = rep(omNames[i], 
+                                  length.out = nTrials * length(stkNames)))
+  dum <- recBYMat %>%
+    as.data.frame() %>%
+    gather(key = cu, value = rec)
+  plotDat <- rbind(plotDat, cbind(recBYDat, dum))
+}
+
+
+fullPlotList <- list()
+for (i in seq_along(omNames)) { #make dataframe
+  cuList <- genOutputList(dirNames[i], agg = FALSE)
+  plotList <- lapply(cuList, function(h) {
+    plotDat <- NULL
+    recMat <- h[["medRecBY"]]
+    nCUs <- length(h[["stkName"]])
+    stkNames <- h[["stkName"]]
+    colnames(recMat) <- stkNames
+    nTrials <- nrow(recMat)
+    recBYDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
+                          synch = rep(unique(h[["opMod"]]), 
+                                      length.out = nTrials * nCUs)
+    )
+    dum <- recMat %>%
+      as.data.frame() %>%
+      gather(key = cu, value = spawners)
+    plotDat <- rbind(plotDat, cbind(recBYDat, dum))
+    return(plotDat)
+  })
+  plotDat2 <- do.call(rbind, plotList)
+  fullPlotList[[paste0(omNames[i])]] <- plotDat2
+}
+plotDatFull <- do.call(rbind, fullPlotList) %>% 
+  mutate(cu = as.factor(cu))
+
+```

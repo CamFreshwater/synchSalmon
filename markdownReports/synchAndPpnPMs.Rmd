@@ -66,9 +66,10 @@ ggplot(trimDat, aes(x = years, y = ppnUp, linetype = synch)) +
 
 meanDat <- ppnUpDat %>%
   dplyr::group_by(trial, synch) %>% 
-  dplyr::summarize(meanUp = mean(ppnUp))
+  dplyr::summarize(meanUp = mean(ppnUp),
+                   medUp = median(ppnUp))
 
-ggplot(meanDat, aes(x = synch, y = meanUp)) +
+ggplot(meanDat, aes(x = synch, y = medUp)) +
   geom_boxplot() +
   theme_sleekX()
 
@@ -121,9 +122,10 @@ for(i in seq_along(drawTrials)) {
 meanDat <- sDat %>%
   filter(cu %in% c("Chlk", "Clts", "L.Sh", "Hrrs")) %>% 
   dplyr::group_by(trial, cu, synch) %>% 
-  dplyr::summarize(medSpwn = median(spwn))
+  dplyr::summarize(medSpwn = median(spwn),
+                   meanSpwn = mean(spwn))
 
-ggplot(meanDat, aes(x = synch, y = medSpwn)) +
+ggplot(meanDat, aes(x = synch, y = meanSpwn)) +
   geom_boxplot() +
   theme_sleekX() +
   facet_wrap(~cu, scales = "free_y")

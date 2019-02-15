@@ -136,6 +136,8 @@ round(1/nDist)
 round(1/sNDist)
 round(1/sTDist)
 
+
+
 ### Make empty plot to illustrate TAM rules
 
 # Generate data
@@ -166,8 +168,8 @@ axis(2, las = 1)
 mtext("Total Allowable Mortalty\n(TAM) Rate", 2, line = 2)
 abline(v = 0.4, col = "red", lty = 2, lwd = 2)
 abline(v = 1, col = "darkgreen", lty = 2, lwd = 2)
-text(x = c(0.15, 0.7, 1.5), y = rep(0.9, length.out = 3), labels = 
-       c("Zone 1", "Zone 2", "Zone 3"))
+# text(x = c(0.15, 0.7, 1.5), y = rep(0.9, length.out = 3), labels = 
+#        c("Zone 1", "Zone 2", "Zone 3"))
 plot(esc ~ ret, xlim=c(0, 2), ylim=c(0, 1), ylab="", xlab="", axes = F, 
      type ="l", lwd = 2)
 axis(1, las = 1)
@@ -176,6 +178,6 @@ abline(v = 0.4, col = "red", lty = 2, lwd = 2)
 abline(v = 1, col = "darkgreen", lty = 2, lwd = 2)
 mtext("Escapement\n(millions)", 2, line = 2)
 mtext("Return Abundance (millions)", 1, line = 2)
-text(x = c(0.15, 0.7, 1.5), y = rep(0.9, length.out = 3), labels = 
-       c("Zone 1", "Zone 2", "Zone 3"))
+# text(x = c(0.15, 0.7, 1.5), y = rep(0.9, length.out = 3), labels = 
+#        c("Zone 1", "Zone 2", "Zone 3"))
 dev.off()

@@ -165,9 +165,9 @@ consPlots <- lapply(seq_along(consVars), function(i) {
          fill = "Sim.\nParameter\nValue") +
     geom_pointrange(shape = 21, fatten = dotSize, size = lineSize,
                     position = position_dodge(width = 0.65)) +
-    scale_x_discrete(labels = c("lowSigma" = "Low",
-                                "medSigma" = "Reference",
-                                "highSigma" = "High")) +
+    scale_x_discrete(labels = c("low" = "Low",
+                                "med" = "Reference",
+                                "high" = "High")) +
     scale_fill_manual(name = "Synchrony", values = colPal,
                         labels = c("low" = "Low",
                                    "med" = "Moderate",
@@ -212,9 +212,9 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
          fill = "Sim.\nParameter\nValue") +
     geom_pointrange(fatten = dotSize, size = lineSize,
                     position = position_dodge(width = 0.65)) +
-    scale_x_discrete(labels = c("lowSigma" = "Low",
-                                "medSigma" = "Reference",
-                                "highSigma" = "High")) +
+    scale_x_discrete(labels = c("low" = "Low",
+                                "med" = "Reference",
+                                "high" = "High")) +
     scale_fill_manual(name = "Synchrony", values = colPal,
                         labels = c("low" = "Low",
                                    "med" = "Moderate",

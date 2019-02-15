@@ -35,26 +35,21 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 750
+nTrials <- 100
 
 ## General robustness runs
 simParTrim <- subset(simPar, scenario %in% c("lowSig", "medSig", "highSig",
                                              "lowSigLowA", "medSigLowA",
                                              "highSigLowA",
-                                             # "lowSigStudT",
-                                             # "medSigStudT", "highSigStudT",
                                              "lowSigLowStudT", "medSigLowStudT",
                                              "highSigLowStudT"
                                              ))
-
-simParTrim <- simPar %>%
-  filter(nameMP == )
 
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
                                                 sep = "_"))
 
-# recoverySim(simParTrim[31, ], cuPar, catchDat = catchDat, srDat = srDat,
+# recoverySim(simParTrim[11, ], cuPar, catchDat = catchDat, srDat = srDat,
 #             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
 #             dirName = "test", nTrials = 5, makeSubDirs = FALSE, random = FALSE)
 # for(i in seq_along(dirNames)) {
@@ -440,9 +435,9 @@ plotList <- lapply(seq_along(dirNames), function(i) {
                        "studT" = "Ref. Heavy Tails",
                        "lowStudT" = "Low Prod. Heavy Tails", 
                        .default = levels(om)))
-  # print(cuList[["meanSGen"]])
-  # print(cuList[["meanSMSY"]])
 })
+
+plotDat <- do.call(rbind, plotList)
 
 q <- ggplot(plotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
@@ -467,7 +462,7 @@ dev.off()
 
 
 fullPlotList <- list()
-for (i in c(2,5,8,11)) { #make dataframe
+for (i in c(2,5,8)) { #make dataframe
   cuList <- genOutputList(dirNames[i], selectedCUs = selectedCUs, agg = FALSE)
   plotList <- lapply(cuList, function(h) {
     plotDat <- NULL

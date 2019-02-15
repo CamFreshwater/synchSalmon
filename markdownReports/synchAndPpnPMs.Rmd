@@ -211,6 +211,40 @@ ggplot(plotDat, aes(x = synch, y = value)) +
 
 **Yes** appear to be driven by exploitation so that trends disappear when ER is set to 0. I.e. when populations are highly synchronized, HCRs are more effective at limiting overharvest (slightly).
 
+``` {r fixedVTamSims}
+simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"),
+                   stringsAsFactors = F)
+simParTrim <- simPar %>% 
+  filter(scenario %in% c("medSig", "medSigFixed"))
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+                                                sep = "_"))
+
+outList <- lapply(seq_along(dirNames), function(i) {
+  agList <- genOutputList(dirNames[i], agg = TRUE)
+  dum <- lapply(agList, function(x) {
+    x %>% 
+      select(opMod, manProc, trial, ppnCUUpper, ppnCULower, ppnMixedOpen) %>% 
+      dplyr::rename(synch = opMod)
+  })
+  do.call(rbind, dum)
+})
+outDat <- do.call(rbind, outList) %>% 
+  gather(key = pm, value = value, ppnCUUpper, ppnCULower, ppnMixedOpen) %>% 
+  mutate(synch = factor(factor(synch), levels = c("lowSynch", "medSynch",
+                                                   "highSynch")))
+
+plotDat <- outDat %>% 
+  filter(pm == "ppnCUUpper")
+
+ggplot(plotDat, aes(x = synch, y = value)) +
+  geom_boxplot() +
+  theme_sleekX() +
+  facet_wrap(~manProc)
+```
+
+Also confirmed looking at TAM vs. fixed exploitation rate.
+
 #### 2) Increasing CU-specific abundance
 ```{r lookAtCUTrends}
 cuPar <- read.csv(here("data/sox/fraserCUPars.csv"), stringsAsFactors = F)

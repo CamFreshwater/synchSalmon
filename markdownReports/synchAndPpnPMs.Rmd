@@ -77,6 +77,142 @@ ggplot(meanDat, aes(x = synch, y = medUp)) +
 
 High synchrony trials do seem to produce a greater number of years with CUs above the BM on average and boxplots, which recalculate the summary statistics produced internally by the model, show a similar trend. What I think may be going is that synchronized good recruitment events are enough to push a couple more CUs past the threshold; conversely synchronized bad events don’t strongly influence low status stocks (because they’re already low) or high status stocks (they’re far enough away from the edge to be ok). Need to dig in more but not sure how to tease it apart. 
 
+Try simulating some data to figure this out. First just draw from a multivariate normal distribution.
+
+```{r simData}
+require(tidyverse); require(ggplot2)
+
+f <- function(N = 15, r = 0.4, sigma = 0.2) {
+  sig_mat <- matrix(as.numeric(sigma), nrow = 1, ncol = N)
+  cov_mat <- (t(sig_mat) %*% sig_mat) * r
+  diag(cov_mat) <- sigma^2
+  x <- sn::rmst(1e4, xi = rep(0, N), Omega = cov_mat,
+    alpha = rep(0, N), nu = 1000)
+  as.numeric(x)
+}
+
+x <- f(15)
+mean(x)
+
+.r <- seq(0, 0.7, 0.05)
+thresh <- 0.2
+tempList <- lapply(seq_along(.r), function(i) {
+  dum <- f(r = .r[i])
+  data.frame(r = .r[i],
+             mean = mean(dum),
+             overT = length(dum[dum > thresh]) / length(dum))
+})
+dum <- do.call(rbind, tempList)
+ggplot(dum, aes(x = r, y = overT)) +
+  geom_point() +
+  theme_sleekX()
+```
+
+No obvious patterns when drawing from the MVN distribution itself. Check with a simple Ricker model where threshold is based on SR parameters.
+
+```{r simpleRickerSim}
+cuPars <- read.csv(here("data", "sox", "fraserCUPars.csv")) %>% 
+  filter(model == "ricker")
+srDat <- read.csv(here("data", "sox", "fraserRecDatTrim.csv")) %>% 
+  filter(stk %in% cuPars$stk)
+
+nStks <- length(unique(cuPars$stkName))
+alpha <- cuPars$alpha
+beta <- cuPars$beta0
+sigma <- cuPars$sigma
+stks <- cuPars$stkName
+#use smsy as threshold
+Smsy <- data.frame(CU = stks,
+                   Smsy = (1 - gsl::lambert_W0(exp(1 - alpha))) / beta)
+
+N = 1000
+meanS <- srDat %>% 
+  group_by(stk) %>% 
+  summarize(meanS = mean(totalSpwn, na.rm = TRUE)) %>% 
+  select(meanS) %>%
+  unlist() %>% 
+  as.numeric()
+
+simpleRicker <- function(S, a, b, error) {
+    S * exp(a - b * S) * exp(error)
+}
+
+#Generate estimates of recruitment based on low productivity parameters
+ricSim <- function(N, S = meanS, alphas = alpha, betas = beta, 
+                   sigmas = sigma, r = 0.5, stkNames = stks) {
+  nStks <- length(stkNames)
+
+  sigMat <- matrix(as.numeric(sigmas), nrow = 1, ncol = nStks)
+  covMat <- (t(sigMat) %*% sigMat) * r
+  diag(covMat) <- sigmas^2
+
+  trialSeq <- seq(1, N, by = 1)
+  outList <- lapply(1:N, function (x) {
+    err <- sn::rmst(n = 1, xi = rep(0, nStks), Omega = covMat, 
+                    alpha = rep(0, nStks), nu = 1000) %>%
+      as.numeric()
+    data.frame(trial = trialSeq[x],
+               CU = stkNames,
+               rec = simpleRicker(meanS, alphas, betas, error = err)) 
+  })
+  outDat <- do.call(rbind, outList)
+  return(outDat)
+}
+
+## Loop over and explore
+rSeq <- seq(0, 0.7, by = 0.1)
+outList <- lapply(seq_along(rSeq), function(x) {
+  set.seed(456)
+  dum <- ricSim(N = 10000, r = rSeq[x]) %>% 
+    mutate(r = as.factor(rSeq[x]),
+           trial = as.factor(trial))
+})
+dum <- do.call(rbind, outList)
+
+dum2 <- merge(dum, Smsy, by = "CU")
+
+t <- dum2 %>%
+  dplyr::group_by(r) %>% 
+  summarize(ppnOver = length(which(rec > Smsy)) / length(rec))
+```
+
+Hmm opposite pattern to that observed in closed-loop sim. Check out no fishing mortality and no en route mortality sim runs.
+
+``` {r noMortSims}
+simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorrNoMort.csv"),
+                   stringsAsFactors = F)
+simParTrim <- simPar %>% 
+  filter(scenario %in% c("ref", "noExp", "noMM", "noBoth"))
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+                                                sep = "_"))
+
+outList <- lapply(seq_along(dirNames), function(i) {
+  agList <- genOutputList(dirNames[i], agg = TRUE)
+  dum <- lapply(agList, function(x) {
+    x %>% 
+      select(opMod, trial, ppnCUUpper, ppnCULower) %>% 
+      dplyr::rename(synch = opMod) %>% 
+      mutate(opMod = as.factor(scenNames[i]))
+  })
+  do.call(rbind, dum)
+})
+outDat <- do.call(rbind, outList) %>% 
+  gather(key = pm, value = value, ppnCUUpper, ppnCULower) %>% 
+  mutate(synch = factor(factor(synch), levels = c("lowSynch", "medSynch",
+                                                   "highSynch")))
+
+plotDat <- outDat %>% 
+  filter(pm == "ppnCUUpper")
+
+ggplot(plotDat, aes(x = synch, y = value)) +
+  geom_boxplot() +
+  theme_sleekX() +
+  facet_wrap(~opMod)
+```
+
+**Yes** appear to be driven by exploitation. I.e. when populations are highly synchronized, HCRs are more effective at limiting overharvest (slightly).
+
 #### 2) Increasing CU-specific abundance
 ```{r lookAtCUTrends}
 cuPar <- read.csv(here("data/sox/fraserCUPars.csv"), stringsAsFactors = F)
@@ -131,4 +267,4 @@ ggplot(meanDat, aes(x = synch, y = meanSpwn)) +
   facet_wrap(~cu, scales = "free_y")
 ```
 
-Difficult to tell from time series plots whether high synchrony results in greater spawner abundance than low, even though box plots seem to confirm it. Potentially driven by small sample size?
+Difficult to tell from time series plots whether high synchrony results in greater spawner abundance than low, even though box plots seem to confirm it. Potentially driven by small sample size? **Confirmed after running with 1000 sims that patttern disappears**

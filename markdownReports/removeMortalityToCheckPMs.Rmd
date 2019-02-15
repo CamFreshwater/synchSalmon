@@ -49,41 +49,41 @@ dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
 
 ```{r runSimulations, eval=FALSE, include=FALSE}
 # Define simulations to be run
-# nTrials <- 75
-# 
-# for (i in seq_along(dirNames)) {
-#   dirName <- dirNames[i]
-#   d <- subset(simParTrim, scenario == scenNames[i])
-#   simsToRun <- split(d, seq(nrow(d)))
-#   Ncores <- detectCores()
-#   cl <- makeCluster(Ncores - 3) #save two cores
-#   registerDoParallel(cl)
-#   clusterEvalQ(cl, c(library(MASS),
-#                   library(here),
-#                   library(sensitivity),
-#                   library(mvtnorm),
-#                   library(scales), #shaded colors for figs
-#                   library(viridis), #color blind gradient palette
-#                   library(gsl),
-#                   library(dplyr),
-#                   library(Rcpp),
-#                   library(RcppArmadillo),
-#                   library(sn),
-#                   library(samSim)))
-#   #export custom function and objects
-#   clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
-#                       "catchDat", "srDat", "ricPars", "dirName", "larkPars",
-#                       "tamFRP"), envir = environment())
-#   tic("run in parallel")
-#   parLapply(cl, simsToRun, function(x) {
-#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
-#                 variableCU = FALSE, ricPars, larkPars = larkPars,
-#                 tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName,
-#                 nTrials = nTrials, multipleMPs = FALSE)
-#   })
-#   stopCluster(cl) #end cluster
-#   toc()
-# }
+nTrials <- 100
+
+for (i in seq_along(dirNames)) {
+  dirName <- dirNames[i]
+  d <- subset(simParTrim, scenario == scenNames[i])
+  simsToRun <- split(d, seq(nrow(d)))
+  Ncores <- detectCores()
+  cl <- makeCluster(Ncores - 1) #save two cores
+  registerDoParallel(cl)
+  clusterEvalQ(cl, c(library(MASS),
+                  library(here),
+                  library(sensitivity),
+                  library(mvtnorm),
+                  library(scales), #shaded colors for figs
+                  library(viridis), #color blind gradient palette
+                  library(gsl),
+                  library(dplyr),
+                  library(Rcpp),
+                  library(RcppArmadillo),
+                  library(sn),
+                  library(samSim)))
+  #export custom function and objects
+  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
+                      "catchDat", "srDat", "ricPars", "dirName", "larkPars",
+                      "tamFRP"), envir = environment())
+  tic("run in parallel")
+  parLapply(cl, simsToRun, function(x) {
+    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
+                variableCU = FALSE, ricPars, larkPars = larkPars,
+                tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName,
+                nTrials = nTrials, makeSubDirs = FALSE, random = FALSE)
+  })
+  stopCluster(cl) #end cluster
+  toc()
+}
 ```
 
 

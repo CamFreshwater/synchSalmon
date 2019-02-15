@@ -72,7 +72,6 @@ meanDat <- ppnUpDat %>%
 ggplot(meanDat, aes(x = synch, y = medUp)) +
   geom_boxplot() +
   theme_sleekX()
-
 ```
 
 High synchrony trials do seem to produce a greater number of years with CUs above the BM on average and boxplots, which recalculate the summary statistics produced internally by the model, show a similar trend. What I think may be going is that synchronized good recruitment events are enough to push a couple more CUs past the threshold; conversely synchronized bad events don’t strongly influence low status stocks (because they’re already low) or high status stocks (they’re far enough away from the edge to be ok). Need to dig in more but not sure how to tease it apart. 
@@ -163,14 +162,13 @@ ricSim <- function(N, S = meanS, alphas = alpha, betas = beta,
 rSeq <- seq(0, 0.7, by = 0.1)
 outList <- lapply(seq_along(rSeq), function(x) {
   set.seed(456)
-  dum <- ricSim(N = 10000, r = rSeq[x], sigmas = sigma * sigScalar[y]) %>% 
+  dum <- ricSim(N = 10000, r = rSeq[x], sigmas = sigma) %>% 
     mutate(r = as.factor(rSeq[x]),
            trial = as.factor(trial))
 })
 dum <- do.call(rbind, outList)
 
 dum2 <- merge(dum, Smsy, by = "CU")
-
 t <- dum2 %>%
   dplyr::group_by(r) %>% 
   summarize(ppnOver = length(which(rec > Smsy)) / length(rec))
@@ -191,21 +189,19 @@ outList <- lapply(seq_along(dirNames), function(i) {
   agList <- genOutputList(dirNames[i], agg = TRUE)
   dum <- lapply(agList, function(x) {
     x %>% 
-      select(opMod, trial, ppnCUUpper, ppnCULower, ppnYrsAllMixOpen,
-             ppnMixedOpen) %>% 
+      select(opMod, trial, ppnCUUpper, ppnCULower, ppnMixedOpen) %>% 
       dplyr::rename(synch = opMod) %>% 
       mutate(opMod = as.factor(scenNames[i]))
   })
   do.call(rbind, dum)
 })
 outDat <- do.call(rbind, outList) %>% 
-  gather(key = pm, value = value, ppnCUUpper, ppnCULower, ppnYrsAllMixOpen,
-         ppnMixedOpen) %>% 
+  gather(key = pm, value = value, ppnCUUpper, ppnCULower, ppnMixedOpen) %>% 
   mutate(synch = factor(factor(synch), levels = c("lowSynch", "medSynch",
                                                    "highSynch")))
 
 plotDat <- outDat %>% 
-  filter(pm == "ppnMixedOpen")
+  filter(pm == "ppnCUUpper")
 
 ggplot(plotDat, aes(x = synch, y = value)) +
   geom_boxplot() +
@@ -213,7 +209,7 @@ ggplot(plotDat, aes(x = synch, y = value)) +
   facet_wrap(~opMod)
 ```
 
-**Yes** appear to be driven by exploitation. I.e. when populations are highly synchronized, HCRs are more effective at limiting overharvest (slightly).
+**Yes** appear to be driven by exploitation so that trends disappear when ER is set to 0. I.e. when populations are highly synchronized, HCRs are more effective at limiting overharvest (slightly).
 
 #### 2) Increasing CU-specific abundance
 ```{r lookAtCUTrends}
@@ -272,13 +268,16 @@ ggplot(meanDat, aes(x = synch, y = meanSpwn)) +
 Difficult to tell from time series plots whether high synchrony results in greater spawner abundance than low, even though box plots seem to confirm it. Potentially driven by small sample size? **Confirmed after running with 1000 sims that patttern disappears**
 
 
-``` {r sigAndSynch}
+#### 3) Interaction between sigma and synch
+
+Why is pattern in synchrony (i.e. decreased recruit abundance) independent of sigma strength. 
+``` {r sigAndSynchSim}
 sigScalar <- c(0.5, 1, 1.5)
 rSeq <- seq(0, 0.6, by = 0.3)
 outterList <- lapply(seq_along(sigScalar), function(y) {
   outList <- lapply(seq_along(rSeq), function(x) {
     set.seed(456)
-    dum <- ricSim(N = 1000, r = rSeq[x], sigmas = sigma * sigScalar[y]) %>% 
+    dum <- ricSim(N = 5000, r = rSeq[x], sigmas = sigma * sigScalar[y]) %>% 
       mutate(sigScalar = as.factor(sigScalar[y]),
              r = as.factor(rSeq[x]),
              trial = as.factor(trial))
@@ -288,8 +287,89 @@ outterList <- lapply(seq_along(sigScalar), function(y) {
 dum2 <- do.call(rbind, outterList) %>% 
   filter(CU == levels(CU)[1:4])
 
-ggplot(dum2, aes(x=sigScalar, y=rec, fill=r)) + 
-  geom_boxplot() +
-  facet_wrap(~CU, scales = "free_y")
+stkSubset <- unique(dum2$CU)
+for (i in seq_along(stkSubset)) {
+  p <- ggplot(dum2 %>% filter(CU==stkSubset[i]), 
+         aes(x=r, y=rec)) + 
+    geom_boxplot() +
+    theme_sleekX() +
+    facet_wrap(~sigScalar, scales = "free_y")
+  print(p)
+}
 
+medRec <- dum2 %>% 
+  group_by(CU, r, sigScalar) %>% 
+  summarize(medRec = median(rec))
+medRec %>% 
+  group_by(CU, sigScalar) %>% 
+  summarize(maxMedDiff = max(medRec) - min(medRec))
+```
+
+Difference between synchrony treatments does increase with sigma. Confirm by looking at aggregate abundance.
+
+``` {r sigAndSynchAggSim}
+dum3 <- do.call(rbind, outterList) %>% 
+  group_by(trial, sigScalar, r) %>% 
+  summarize(aggRec = sum(rec))
+
+ggplot(dum3, aes(x=r, y=aggRec)) + 
+    geom_boxplot() +
+    theme_sleekX() +
+    facet_wrap(~sigScalar, scales = "free_y")
+
+medAggRec <- dum3 %>% 
+  group_by(r, sigScalar) %>% 
+  summarize(medAggRec = median(aggRec))
+medAggRec %>% 
+  group_by(sigScalar) %>% 
+  summarize(maxMedDiff = max(medAggRec) - min(medAggRec))
+```
+
+Difference in median aggregate recruitment between synchrony treatments also increases with sigma. Confirm by looking at reference simulation runs.
+
+``` {r sigAndSynchAggFullSim}
+simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"), 
+                   stringsAsFactors = F)
+simParTrim <- subset(simPar, scenario %in% c("lowSig", "medSig", "highSig"))
+
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
+                                                sep = "_"))
+
+outList <- lapply(seq_along(dirNames), function(i) {
+  agList <- genOutputList(dirNames[i], agg = TRUE)
+  dum <- lapply(agList, function(x) {
+    x %>% 
+      select(opMod, trial, medRecRY, medRecBY, ppnCUUpper, ppnCUExtant) %>% 
+      dplyr::rename(synch = opMod) %>% 
+      mutate(sigma = as.factor(scenNames[i]))
+  })
+  do.call(rbind, dum)
+})
+outDat <- do.call(rbind, outList) %>% 
+  gather(key = pm, value = value, -synch, -trial, -sigma) %>% 
+  mutate(synch = factor(factor(synch), levels = c("lowSynch", "medSynch",
+                                                   "highSynch")),
+         sigma = factor(factor(sigma), levels = c("lowSig", "medSig",
+                                                   "highSig")))
+
+vars <- unique(outDat$pm)
+for(i in seq_along(vars)) {
+  plotDat <- outDat %>% 
+    filter(pm == vars[i])
+  p <- ggplot(plotDat, aes(x = synch, y = value)) +
+    geom_boxplot() +
+    theme_sleekX() +
+    ggtitle(vars[i]) +
+    facet_wrap(~sigma)
+  print(p)
+}
+
+medPpn <- outDat %>%
+  filter(pm == "ppnCUUpper") %>% 
+  group_by(synch, sigma) %>% 
+  summarize(medPpn = median(value))
+medPpn %>% 
+  group_by(sigma) %>% 
+  summarize(maxMedDiff = max(medPpn) - min(medPpn))
 ```

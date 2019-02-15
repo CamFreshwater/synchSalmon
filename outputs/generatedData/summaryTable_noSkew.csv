@@ -1,217 +1,163 @@
 "","sigma","om","var","synch","cat","avg","lowQ","highQ"
-"1","low","Reference Prod.","medRecRY","0.75","high",8.2580080152299,6.3762672536516,10.4486990429149
-"2","low","Reference Prod.","medRecRY","0.05","low",8.83219432152896,7.54269927267764,10.2475593904519
-"3","low","Reference Prod.","medRecRY","0.5","med",8.46631919971265,6.83857242891228,10.4355838390128
-"4","low","Reference Prod.","ppnYrsCUsUpper","0.75","high",0.225,0.1,0.4
-"5","low","Reference Prod.","ppnYrsCUsUpper","0.05","low",0.1,0.025,0.225
-"6","low","Reference Prod.","ppnYrsCUsUpper","0.5","med",0.175,0.075,0.35
-"7","low","Reference Prod.","ppnCUExtant","0.75","high",1,1,1
-"8","low","Reference Prod.","ppnCUExtant","0.05","low",1,1,1
-"9","low","Reference Prod.","ppnCUExtant","0.5","med",1,1,1
-"10","low","Reference Prod.","medCatch","0.75","high",2.99057941447871,2.2625775711057,3.90394931816787
-"11","low","Reference Prod.","medCatch","0.05","low",3.21229064097506,2.70327475326554,3.77874769559045
-"12","low","Reference Prod.","medCatch","0.5","med",3.1106625493035,2.41672672890538,3.89244291070417
-"13","low","Reference Prod.","ppnYrsHighCatch","0.75","high",0.925,0.825,0.95
-"14","low","Reference Prod.","ppnYrsHighCatch","0.05","low",0.95,0.925,0.95
+"1","low","Reference Prod.","medRecRY","0.75","high",8.30013012490224,6.3655750374381,10.554370802842
+"2","low","Reference Prod.","medRecRY","0.05","low",8.88034674122635,7.54128655584721,10.3914812847794
+"3","low","Reference Prod.","medRecRY","0.5","med",8.52671876822609,6.73380245547999,10.5617632793276
+"4","low","Reference Prod.","ppnCUUpper","0.75","high",0.401388888888889,0.338888888888889,0.463888888888889
+"5","low","Reference Prod.","ppnCUUpper","0.05","low",0.391666666666667,0.359722222222222,0.425
+"6","low","Reference Prod.","ppnCUUpper","0.5","med",0.397222222222222,0.347222222222222,0.452777777777778
+"7","low","Reference Prod.","ppnMixedOpen","0.75","high",0.7875,0.725,0.8375
+"8","low","Reference Prod.","ppnMixedOpen","0.05","low",0.8,0.75,0.84375
+"9","low","Reference Prod.","ppnMixedOpen","0.5","med",0.7875,0.73125,0.84375
+"10","low","Reference Prod.","medCatch","0.75","high",3.01982371676741,2.22240211068649,3.88140802178329
+"11","low","Reference Prod.","medCatch","0.05","low",3.22706219199039,2.70537953317662,3.8603050013182
+"12","low","Reference Prod.","medCatch","0.5","med",3.09432064560818,2.37817201792632,3.90092782174152
+"13","low","Reference Prod.","ppnYrsHighCatch","0.75","high",0.925,0.85,0.95
+"14","low","Reference Prod.","ppnYrsHighCatch","0.05","low",0.95,0.925,0.975
 "15","low","Reference Prod.","ppnYrsHighCatch","0.5","med",0.925,0.875,0.95
-"16","low","Reference Prod.","stabilityCatch","0.75","high",1.35063358139326,0.982381979099285,1.73247802685106
-"17","low","Reference Prod.","stabilityCatch","0.05","low",1.66933488312168,1.28958726885223,2.11203355762374
-"18","low","Reference Prod.","stabilityCatch","0.5","med",1.44156126279493,1.06305497297356,1.8758842783395
-"19","med","Reference Prod.","medRecRY","0.75","high",8.20288552897371,6.03831828690684,11.2407079583478
-"20","med","Reference Prod.","medRecRY","0.05","low",9.21209207691079,7.67296395415387,10.9835455075041
-"21","med","Reference Prod.","medRecRY","0.5","med",8.65032507146969,6.57634106884947,11.3326308811819
-"22","med","Reference Prod.","ppnYrsCUsUpper","0.75","high",0.225,0.09875,0.425
-"23","med","Reference Prod.","ppnYrsCUsUpper","0.05","low",0.075,0.025,0.2
-"24","med","Reference Prod.","ppnYrsCUsUpper","0.5","med",0.175,0.075,0.35
-"25","med","Reference Prod.","ppnCUExtant","0.75","high",1,1,1
-"26","med","Reference Prod.","ppnCUExtant","0.05","low",1,1,1
-"27","med","Reference Prod.","ppnCUExtant","0.5","med",1,1,1
-"28","med","Reference Prod.","medCatch","0.75","high",3.00390346440905,2.11193855520138,4.06652329472411
-"29","med","Reference Prod.","medCatch","0.05","low",3.29708591704032,2.70856033345748,4.07205978754947
-"30","med","Reference Prod.","medCatch","0.5","med",3.14509869136333,2.32508628732349,4.09091300389476
+"16","low","Reference Prod.","stabilityCatch","0.75","high",1.34527064237417,0.982657623385995,1.72942543422964
+"17","low","Reference Prod.","stabilityCatch","0.05","low",1.68318859000722,1.2776693183027,2.13495292824909
+"18","low","Reference Prod.","stabilityCatch","0.5","med",1.43963178416797,1.03501212883592,1.87622706545523
+"19","med","Reference Prod.","medRecRY","0.75","high",8.23999722162864,5.95273114078106,11.1693393919328
+"20","med","Reference Prod.","medRecRY","0.05","low",9.25566898070157,7.60223156180736,11.1653426990721
+"21","med","Reference Prod.","medRecRY","0.5","med",8.70100401431024,6.49256830297366,11.2457105603684
+"22","med","Reference Prod.","ppnCUUpper","0.75","high",0.390277777777778,0.320833333333333,0.461111111111111
+"23","med","Reference Prod.","ppnCUUpper","0.05","low",0.379166666666667,0.343055555555556,0.413888888888889
+"24","med","Reference Prod.","ppnCUUpper","0.5","med",0.386111111111111,0.326388888888889,0.445208333333333
+"25","med","Reference Prod.","ppnMixedOpen","0.75","high",0.76875,0.69375,0.825
+"26","med","Reference Prod.","ppnMixedOpen","0.05","low",0.7875,0.73125,0.8375
+"27","med","Reference Prod.","ppnMixedOpen","0.5","med",0.775,0.7125,0.83125
+"28","med","Reference Prod.","medCatch","0.75","high",2.99465605923089,2.06085328178629,4.11227561148252
+"29","med","Reference Prod.","medCatch","0.05","low",3.30116648728251,2.71615055065863,4.08390226269883
+"30","med","Reference Prod.","medCatch","0.5","med",3.14384653749953,2.25174015959044,4.18909668614061
 "31","med","Reference Prod.","ppnYrsHighCatch","0.75","high",0.875,0.775,0.95
 "32","med","Reference Prod.","ppnYrsHighCatch","0.05","low",0.95,0.9,0.975
 "33","med","Reference Prod.","ppnYrsHighCatch","0.5","med",0.9,0.825,0.95
-"34","med","Reference Prod.","stabilityCatch","0.75","high",1.11693168273177,0.813097132089498,1.49985053370307
-"35","med","Reference Prod.","stabilityCatch","0.05","low",1.46212313947021,1.11052807541249,1.91333808744209
-"36","med","Reference Prod.","stabilityCatch","0.5","med",1.22169951796984,0.882442228527722,1.67984851508837
-"37","high","Reference Prod.","medRecRY","0.75","high",8.30696918305594,5.61613525617175,11.6326180007513
-"38","high","Reference Prod.","medRecRY","0.05","low",9.75412147757261,7.80805450367927,11.8082632132312
-"39","high","Reference Prod.","medRecRY","0.5","med",8.92991465924544,6.60399877186256,11.6355025460124
-"40","high","Reference Prod.","ppnYrsCUsUpper","0.75","high",0.225,0.1,0.4
-"41","high","Reference Prod.","ppnYrsCUsUpper","0.05","low",0.075,0.025,0.175
-"42","high","Reference Prod.","ppnYrsCUsUpper","0.5","med",0.175,0.075,0.32625
-"43","high","Reference Prod.","ppnCUExtant","0.75","high",1,1,1
-"44","high","Reference Prod.","ppnCUExtant","0.05","low",1,0.944444444444444,1
-"45","high","Reference Prod.","ppnCUExtant","0.5","med",1,1,1
-"46","high","Reference Prod.","medCatch","0.75","high",2.97095788517916,1.93280536978373,4.36507055478363
-"47","high","Reference Prod.","medCatch","0.05","low",3.40360063456871,2.73949110147351,4.3167407759759
-"48","high","Reference Prod.","medCatch","0.5","med",3.1861967198772,2.2733021535909,4.27335775110684
-"49","high","Reference Prod.","ppnYrsHighCatch","0.75","high",0.85,0.725,0.925
+"34","med","Reference Prod.","stabilityCatch","0.75","high",1.11964776284765,0.799469365579708,1.50105936029339
+"35","med","Reference Prod.","stabilityCatch","0.05","low",1.47141843300961,1.08562748738085,1.92803991908549
+"36","med","Reference Prod.","stabilityCatch","0.5","med",1.23019566205831,0.875303839154625,1.63689147861749
+"37","high","Reference Prod.","medRecRY","0.75","high",8.3885400347103,5.62212714441537,11.734338175818
+"38","high","Reference Prod.","medRecRY","0.05","low",9.76779860924439,7.79582780625215,12.0295848070762
+"39","high","Reference Prod.","medRecRY","0.5","med",8.9726748254074,6.3012081053035,11.9027377681971
+"40","high","Reference Prod.","ppnCUUpper","0.75","high",0.381944444444444,0.306944444444444,0.456944444444444
+"41","high","Reference Prod.","ppnCUUpper","0.05","low",0.369444444444444,0.333333333333333,0.405555555555556
+"42","high","Reference Prod.","ppnCUUpper","0.5","med",0.376388888888889,0.317291666666667,0.443055555555556
+"43","high","Reference Prod.","ppnMixedOpen","0.75","high",0.74375,0.6625,0.8125
+"44","high","Reference Prod.","ppnMixedOpen","0.05","low",0.775,0.725,0.825
+"45","high","Reference Prod.","ppnMixedOpen","0.5","med",0.75625,0.6875,0.81875
+"46","high","Reference Prod.","medCatch","0.75","high",2.97488797660241,1.92641575094019,4.30963665046303
+"47","high","Reference Prod.","medCatch","0.05","low",3.43779882793578,2.72556316328014,4.36724834985359
+"48","high","Reference Prod.","medCatch","0.5","med",3.20128816136631,2.15979431759335,4.41501489443102
+"49","high","Reference Prod.","ppnYrsHighCatch","0.75","high",0.85,0.725,0.95
 "50","high","Reference Prod.","ppnYrsHighCatch","0.05","low",0.95,0.9,0.975
-"51","high","Reference Prod.","ppnYrsHighCatch","0.5","med",0.9,0.775,0.95
-"52","high","Reference Prod.","stabilityCatch","0.75","high",0.97601609254147,0.710045952878859,1.3118943178174
-"53","high","Reference Prod.","stabilityCatch","0.05","low",1.32409737953191,0.997116123111531,1.71950052600701
-"54","high","Reference Prod.","stabilityCatch","0.5","med",1.08788244612073,0.783296627228366,1.4693287754987
-"55","low","Low Prod.","medRecRY","0.75","high",3.71312497242173,2.76043093332029,5.11075344877899
-"56","low","Low Prod.","medRecRY","0.05","low",3.95478507939278,3.23467188259472,4.67848379394934
-"57","low","Low Prod.","medRecRY","0.5","med",3.80355801523246,2.94670584191965,5.00344547751652
-"58","low","Low Prod.","ppnYrsCUsUpper","0.75","high",0.075,0.025,0.2
-"59","low","Low Prod.","ppnYrsCUsUpper","0.05","low",0.025,0,0.05
-"60","low","Low Prod.","ppnYrsCUsUpper","0.5","med",0.05,0.025,0.15125
-"61","low","Low Prod.","ppnCUExtant","0.75","high",1,0.997222222222222,1
-"62","low","Low Prod.","ppnCUExtant","0.05","low",1,1,1
-"63","low","Low Prod.","ppnCUExtant","0.5","med",1,1,1
-"64","low","Low Prod.","medCatch","0.75","high",1.24210692456798,0.915621639596795,1.77080020174823
-"65","low","Low Prod.","medCatch","0.05","low",1.3118440898168,1.07078951430725,1.57634864384339
-"66","low","Low Prod.","medCatch","0.5","med",1.26637758164261,0.977732644969183,1.68424614072655
-"67","low","Low Prod.","ppnYrsHighCatch","0.75","high",0.625,0.45,0.77625
-"68","low","Low Prod.","ppnYrsHighCatch","0.05","low",0.7,0.57375,0.825
-"69","low","Low Prod.","ppnYrsHighCatch","0.5","med",0.65,0.475,0.80125
-"70","low","Low Prod.","stabilityCatch","0.75","high",1.16130692081775,0.84331874978163,1.49090345387923
-"71","low","Low Prod.","stabilityCatch","0.05","low",1.37048082125638,1.05330232110245,1.67599631846479
-"72","low","Low Prod.","stabilityCatch","0.5","med",1.23759253492929,0.891126626910661,1.55099905729271
-"73","med","Low Prod.","medRecRY","0.75","high",3.91649208367965,2.75139877131004,5.90505918782866
-"74","med","Low Prod.","medRecRY","0.05","low",4.31370768045444,3.484057616686,5.4034170099991
-"75","med","Low Prod.","medRecRY","0.5","med",4.04438095194145,2.97883880907488,5.70630843070474
-"76","med","Low Prod.","ppnYrsCUsUpper","0.75","high",0.1,0.025,0.25125
-"77","med","Low Prod.","ppnYrsCUsUpper","0.05","low",0.025,0,0.075
-"78","med","Low Prod.","ppnYrsCUsUpper","0.5","med",0.075,0.025,0.2
-"79","med","Low Prod.","ppnCUExtant","0.75","high",1,0.944444444444444,1
-"80","med","Low Prod.","ppnCUExtant","0.05","low",1,0.944444444444444,1
-"81","med","Low Prod.","ppnCUExtant","0.5","med",1,0.944444444444444,1
-"82","med","Low Prod.","medCatch","0.75","high",1.29861555414409,0.884953178519071,2.05735633030327
-"83","med","Low Prod.","medCatch","0.05","low",1.42306028776299,1.1681766315671,1.81241487878785
-"84","med","Low Prod.","medCatch","0.5","med",1.35104711576354,0.975390671435111,1.95024958429389
+"51","high","Reference Prod.","ppnYrsHighCatch","0.5","med",0.8875,0.775,0.95
+"52","high","Reference Prod.","stabilityCatch","0.75","high",0.979064680771651,0.697014031225642,1.31461736476354
+"53","high","Reference Prod.","stabilityCatch","0.05","low",1.32482120448826,0.98990371058159,1.73737914231946
+"54","high","Reference Prod.","stabilityCatch","0.5","med",1.09340565414806,0.791074200946775,1.44991772936988
+"55","low","Low Prod.","medRecRY","0.75","high",3.73153717200102,2.7236449893437,5.07394592517189
+"56","low","Low Prod.","medRecRY","0.05","low",3.95749090199168,3.23335260339677,4.71827198580362
+"57","low","Low Prod.","medRecRY","0.5","med",3.84650179730124,2.91036402640042,5.00525477409568
+"58","low","Low Prod.","ppnCUUpper","0.75","high",0.304166666666667,0.238888888888889,0.381944444444444
+"59","low","Low Prod.","ppnCUUpper","0.05","low",0.295833333333333,0.261111111111111,0.331944444444444
+"60","low","Low Prod.","ppnCUUpper","0.5","med",0.300694444444444,0.247222222222222,0.366041666666667
+"61","low","Low Prod.","ppnMixedOpen","0.75","high",0.5375,0.4278125,0.64375
+"62","low","Low Prod.","ppnMixedOpen","0.05","low",0.55625,0.4875,0.63125
+"63","low","Low Prod.","ppnMixedOpen","0.5","med",0.54375,0.45,0.6409375
+"64","low","Low Prod.","medCatch","0.75","high",1.24694486545037,0.913451344257703,1.71733138511757
+"65","low","Low Prod.","medCatch","0.05","low",1.3192382776883,1.07015250670305,1.58402826040675
+"66","low","Low Prod.","medCatch","0.5","med",1.26995368210065,0.954593033088065,1.69100807082627
+"67","low","Low Prod.","ppnYrsHighCatch","0.75","high",0.625,0.45,0.8
+"68","low","Low Prod.","ppnYrsHighCatch","0.05","low",0.7,0.55,0.85
+"69","low","Low Prod.","ppnYrsHighCatch","0.5","med",0.65,0.475,0.825
+"70","low","Low Prod.","stabilityCatch","0.75","high",1.1538471842677,0.849338782308001,1.45775771390724
+"71","low","Low Prod.","stabilityCatch","0.05","low",1.3689505501408,1.07335999623447,1.67002554374538
+"72","low","Low Prod.","stabilityCatch","0.5","med",1.22294548042945,0.905116866767877,1.5472418381984
+"73","med","Low Prod.","medRecRY","0.75","high",3.93492186469283,2.62701248059382,5.71191322641369
+"74","med","Low Prod.","medRecRY","0.05","low",4.33088795922919,3.47311132906506,5.45039809392594
+"75","med","Low Prod.","medRecRY","0.5","med",4.08847892920734,2.95813990669646,5.7328228016045
+"76","med","Low Prod.","ppnCUUpper","0.75","high",0.311111111111111,0.236111111111111,0.4
+"77","med","Low Prod.","ppnCUUpper","0.05","low",0.301388888888889,0.261111111111111,0.338888888888889
+"78","med","Low Prod.","ppnCUUpper","0.5","med",0.305555555555556,0.243055555555556,0.379930555555556
+"79","med","Low Prod.","ppnMixedOpen","0.75","high",0.54375,0.4215625,0.66875
+"80","med","Low Prod.","ppnMixedOpen","0.05","low",0.575,0.5028125,0.65625
+"81","med","Low Prod.","ppnMixedOpen","0.5","med",0.5625,0.4465625,0.66875
+"82","med","Low Prod.","medCatch","0.75","high",1.30664106360111,0.873800712601596,1.99196433410807
+"83","med","Low Prod.","medCatch","0.05","low",1.44052865797208,1.15010839021769,1.82251013464025
+"84","med","Low Prod.","medCatch","0.5","med",1.36430942319063,0.960199208982587,1.96837778478854
 "85","med","Low Prod.","ppnYrsHighCatch","0.75","high",0.625,0.425,0.8
-"86","med","Low Prod.","ppnYrsHighCatch","0.05","low",0.725,0.575,0.85
-"87","med","Low Prod.","ppnYrsHighCatch","0.5","med",0.675,0.5,0.825
-"88","med","Low Prod.","stabilityCatch","0.75","high",1.01633261782285,0.690310663219977,1.33324968464883
-"89","med","Low Prod.","stabilityCatch","0.05","low",1.30144081045438,0.936670414411404,1.61971812939721
-"90","med","Low Prod.","stabilityCatch","0.5","med",1.12164860711504,0.781085779736486,1.4372137325386
-"91","high","Low Prod.","medRecRY","0.75","high",4.06407204956048,2.72510972202979,6.77832766772029
-"92","high","Low Prod.","medRecRY","0.05","low",4.78580591751501,3.86372917542012,6.287931187065
-"93","high","Low Prod.","medRecRY","0.5","med",4.2821485600399,3.06374583571433,6.41841701065242
-"94","high","Low Prod.","ppnYrsCUsUpper","0.75","high",0.125,0.025,0.3
-"95","high","Low Prod.","ppnYrsCUsUpper","0.05","low",0.025,0,0.075
-"96","high","Low Prod.","ppnYrsCUsUpper","0.5","med",0.075,0.025,0.225
-"97","high","Low Prod.","ppnCUExtant","0.75","high",1,0.944444444444444,1
-"98","high","Low Prod.","ppnCUExtant","0.05","low",1,0.944444444444444,1
-"99","high","Low Prod.","ppnCUExtant","0.5","med",1,0.944444444444444,1
-"100","high","Low Prod.","medCatch","0.75","high",1.36626823466603,0.888639384396079,2.33921331845445
-"101","high","Low Prod.","medCatch","0.05","low",1.57110762147314,1.23650620316544,2.1128929144485
-"102","high","Low Prod.","medCatch","0.5","med",1.45779349593465,1.00614088969829,2.21022908051039
+"86","med","Low Prod.","ppnYrsHighCatch","0.05","low",0.725,0.575,0.875
+"87","med","Low Prod.","ppnYrsHighCatch","0.5","med",0.65,0.48625,0.825
+"88","med","Low Prod.","stabilityCatch","0.75","high",1.00236342797005,0.698117274319457,1.33715916402556
+"89","med","Low Prod.","stabilityCatch","0.05","low",1.28847742830155,0.937593647059497,1.61775483841802
+"90","med","Low Prod.","stabilityCatch","0.5","med",1.10201730108919,0.768585893392437,1.43669907703936
+"91","high","Low Prod.","medRecRY","0.75","high",4.07017774971085,2.67865316446526,6.60348410687436
+"92","high","Low Prod.","medRecRY","0.05","low",4.82169516401123,3.81505327437553,6.29070653133448
+"93","high","Low Prod.","medRecRY","0.5","med",4.34456060413956,3.03863553227962,6.50969474698047
+"94","high","Low Prod.","ppnCUUpper","0.75","high",0.315277777777778,0.236111111111111,0.411875
+"95","high","Low Prod.","ppnCUUpper","0.05","low",0.304166666666667,0.263888888888889,0.345208333333333
+"96","high","Low Prod.","ppnCUUpper","0.5","med",0.311111111111111,0.244444444444444,0.391041666666667
+"97","high","Low Prod.","ppnMixedOpen","0.75","high",0.55,0.41875,0.68125
+"98","high","Low Prod.","ppnMixedOpen","0.05","low",0.59375,0.5125,0.66875
+"99","high","Low Prod.","ppnMixedOpen","0.5","med",0.56875,0.45,0.68125
+"100","high","Low Prod.","medCatch","0.75","high",1.36812025301016,0.877330061272717,2.30508903521833
+"101","high","Low Prod.","medCatch","0.05","low",1.58892115308883,1.2321407455441,2.1145678091874
+"102","high","Low Prod.","medCatch","0.5","med",1.46306159092886,0.96693105987532,2.20665125976599
 "103","high","Low Prod.","ppnYrsHighCatch","0.75","high",0.625,0.45,0.8
-"104","high","Low Prod.","ppnYrsHighCatch","0.05","low",0.75,0.625,0.85
-"105","high","Low Prod.","ppnYrsHighCatch","0.5","med",0.675,0.5,0.825
-"106","high","Low Prod.","stabilityCatch","0.75","high",0.90063184934867,0.585040662916801,1.21448080312782
-"107","high","Low Prod.","stabilityCatch","0.05","low",1.20193967413375,0.851427208500537,1.53678496786549
-"108","high","Low Prod.","stabilityCatch","0.5","med",1.01460199407814,0.673292889188324,1.32070796378994
-"109","low","Ref. Heavy Tails","medRecRY","0.75","high",7.66656551072163,5.24910601171514,10.726892164823
-"110","low","Ref. Heavy Tails","medRecRY","0.05","low",8.81786424675432,6.91761624765113,10.9698018154384
-"111","low","Ref. Heavy Tails","medRecRY","0.5","med",8.06154923567458,5.68611572744703,10.9532048924995
-"112","low","Ref. Heavy Tails","ppnYrsCUsUpper","0.75","high",0.2,0.1,0.35
-"113","low","Ref. Heavy Tails","ppnYrsCUsUpper","0.05","low",0.075,0.025,0.175
-"114","low","Ref. Heavy Tails","ppnYrsCUsUpper","0.5","med",0.1625,0.05,0.3
-"115","low","Ref. Heavy Tails","ppnCUExtant","0.75","high",1,1,1
-"116","low","Ref. Heavy Tails","ppnCUExtant","0.05","low",1,1,1
-"117","low","Ref. Heavy Tails","ppnCUExtant","0.5","med",1,1,1
-"118","low","Ref. Heavy Tails","medCatch","0.75","high",2.71505908673381,1.776571388125,4.01717826940848
-"119","low","Ref. Heavy Tails","medCatch","0.05","low",3.1137412014372,2.39131348559835,3.99404546991818
-"120","low","Ref. Heavy Tails","medCatch","0.5","med",2.88018453308573,1.92218777528417,4.03806482398727
-"121","low","Ref. Heavy Tails","ppnYrsHighCatch","0.75","high",0.85,0.72375,0.95
-"122","low","Ref. Heavy Tails","ppnYrsHighCatch","0.05","low",0.925,0.875,0.975
-"123","low","Ref. Heavy Tails","ppnYrsHighCatch","0.5","med",0.875,0.75,0.95
-"124","low","Ref. Heavy Tails","stabilityCatch","0.75","high",0.845058045468273,0.577824007434127,1.21739601195411
-"125","low","Ref. Heavy Tails","stabilityCatch","0.05","low",1.07808361435819,0.754776745286612,1.53114431679209
-"126","low","Ref. Heavy Tails","stabilityCatch","0.5","med",0.922916070194713,0.633584258649882,1.31388555901804
-"127","med","Ref. Heavy Tails","medRecRY","0.75","high",7.71284816462276,5.0392468317944,11.9552123994072
-"128","med","Ref. Heavy Tails","medRecRY","0.05","low",9.48253246279078,7.14491200039332,12.1444154868893
-"129","med","Ref. Heavy Tails","medRecRY","0.5","med",8.16361942098266,5.77756197454564,11.9184983791553
-"130","med","Ref. Heavy Tails","ppnYrsCUsUpper","0.75","high",0.2,0.1,0.375
-"131","med","Ref. Heavy Tails","ppnYrsCUsUpper","0.05","low",0.075,0.025,0.175
-"132","med","Ref. Heavy Tails","ppnYrsCUsUpper","0.5","med",0.175,0.05,0.3
-"133","med","Ref. Heavy Tails","ppnCUExtant","0.75","high",1,0.944444444444444,1
-"134","med","Ref. Heavy Tails","ppnCUExtant","0.05","low",1,0.944444444444444,1
-"135","med","Ref. Heavy Tails","ppnCUExtant","0.5","med",1,0.944444444444444,1
-"136","med","Ref. Heavy Tails","medCatch","0.75","high",2.69688302873776,1.6385536044533,4.3988435522615
-"137","med","Ref. Heavy Tails","medCatch","0.05","low",3.30438012575581,2.48389054893714,4.23121031722412
-"138","med","Ref. Heavy Tails","medCatch","0.5","med",2.87083649821894,1.88930096633403,4.30140879576047
-"139","med","Ref. Heavy Tails","ppnYrsHighCatch","0.75","high",0.825,0.65,0.925
-"140","med","Ref. Heavy Tails","ppnYrsHighCatch","0.05","low",0.925,0.85,0.95125
-"141","med","Ref. Heavy Tails","ppnYrsHighCatch","0.5","med",0.85,0.725,0.95
-"142","med","Ref. Heavy Tails","stabilityCatch","0.75","high",0.777907151865996,0.568145205538586,1.06732198931366
-"143","med","Ref. Heavy Tails","stabilityCatch","0.05","low",1.00658449447095,0.746167016260988,1.36551463514855
-"144","med","Ref. Heavy Tails","stabilityCatch","0.5","med",0.845144349047388,0.621649283832881,1.1792246268462
-"145","high","Ref. Heavy Tails","medRecRY","0.75","high",7.78934507289904,4.69030806653344,13.087825769617
-"146","high","Ref. Heavy Tails","medRecRY","0.05","low",10.213348313022,7.56877382535846,13.1083080818083
-"147","high","Ref. Heavy Tails","medRecRY","0.5","med",8.64788282294661,5.90359146329758,12.6054903680517
-"148","high","Ref. Heavy Tails","ppnYrsCUsUpper","0.75","high",0.225,0.1,0.37625
-"149","high","Ref. Heavy Tails","ppnYrsCUsUpper","0.05","low",0.075,0.025,0.175
-"150","high","Ref. Heavy Tails","ppnYrsCUsUpper","0.5","med",0.175,0.07375,0.3
-"151","high","Ref. Heavy Tails","ppnCUExtant","0.75","high",1,0.944444444444444,1
-"152","high","Ref. Heavy Tails","ppnCUExtant","0.05","low",1,0.944444444444444,1
-"153","high","Ref. Heavy Tails","ppnCUExtant","0.5","med",1,0.944444444444444,1
-"154","high","Ref. Heavy Tails","medCatch","0.75","high",2.79684007427197,1.55868237049226,4.74304209128959
-"155","high","Ref. Heavy Tails","medCatch","0.05","low",3.5034772273856,2.62794968833814,4.8625735869727
-"156","high","Ref. Heavy Tails","medCatch","0.5","med",3.01741069735256,1.898837881584,4.72539544979584
-"157","high","Ref. Heavy Tails","ppnYrsHighCatch","0.75","high",0.8,0.625,0.9
-"158","high","Ref. Heavy Tails","ppnYrsHighCatch","0.05","low",0.9,0.825,0.95
-"159","high","Ref. Heavy Tails","ppnYrsHighCatch","0.5","med",0.825,0.675,0.95
-"160","high","Ref. Heavy Tails","stabilityCatch","0.75","high",0.746126702081027,0.56589545875077,1.01596814937052
-"161","high","Ref. Heavy Tails","stabilityCatch","0.05","low",0.980899417935037,0.749469400556349,1.31137944627561
-"162","high","Ref. Heavy Tails","stabilityCatch","0.5","med",0.818434801993887,0.627662378440244,1.09902391629692
-"163","low","Low Heavy Tails","medRecRY","0.75","high",3.74021162263832,2.35475438452879,5.67847113080303
-"164","low","Low Heavy Tails","medRecRY","0.05","low",4.24633590908475,3.1812975715008,5.5428950770256
-"165","low","Low Heavy Tails","medRecRY","0.5","med",3.98474146668868,2.57107785075523,5.56981884611852
-"166","low","Low Heavy Tails","ppnYrsCUsUpper","0.75","high",0.125,0.025,0.275
-"167","low","Low Heavy Tails","ppnYrsCUsUpper","0.05","low",0.025,0,0.1
-"168","low","Low Heavy Tails","ppnYrsCUsUpper","0.5","med",0.075,0.025,0.2
-"169","low","Low Heavy Tails","ppnCUExtant","0.75","high",1,0.944444444444444,1
-"170","low","Low Heavy Tails","ppnCUExtant","0.05","low",1,0.944444444444444,1
-"171","low","Low Heavy Tails","ppnCUExtant","0.5","med",1,0.944444444444444,1
-"172","low","Low Heavy Tails","medCatch","0.75","high",1.23592705429495,0.750071291434099,2.00208983576054
-"173","low","Low Heavy Tails","medCatch","0.05","low",1.37652455393984,1.03327136071986,1.82812121623119
-"174","low","Low Heavy Tails","medCatch","0.5","med",1.31296041024727,0.815434230204676,1.90690710308963
-"175","low","Low Heavy Tails","ppnYrsHighCatch","0.75","high",0.6,0.4,0.775
-"176","low","Low Heavy Tails","ppnYrsHighCatch","0.05","low",0.675,0.52375,0.825
-"177","low","Low Heavy Tails","ppnYrsHighCatch","0.5","med",0.625,0.425,0.775
-"178","low","Low Heavy Tails","stabilityCatch","0.75","high",0.684694862129915,0.418488926400625,1.07369400642175
-"179","low","Low Heavy Tails","stabilityCatch","0.05","low",0.823935066489848,0.539739172619991,1.25986375322571
-"180","low","Low Heavy Tails","stabilityCatch","0.5","med",0.775213570116633,0.4474964519956,1.09646680158933
-"181","med","Low Heavy Tails","medRecRY","0.75","high",3.92667979451975,2.23913022226571,6.50282887029793
-"182","med","Low Heavy Tails","medRecRY","0.05","low",4.80320285190383,3.65420059808082,6.9551778143431
-"183","med","Low Heavy Tails","medRecRY","0.5","med",4.17211852619218,2.66219276642007,6.72106801833912
-"184","med","Low Heavy Tails","ppnYrsCUsUpper","0.75","high",0.15,0.05,0.3
-"185","med","Low Heavy Tails","ppnYrsCUsUpper","0.05","low",0.05,0,0.1
-"186","med","Low Heavy Tails","ppnYrsCUsUpper","0.5","med",0.1,0.025,0.25
-"187","med","Low Heavy Tails","ppnCUExtant","0.75","high",1,0.944444444444444,1
-"188","med","Low Heavy Tails","ppnCUExtant","0.05","low",1,0.944444444444444,1
-"189","med","Low Heavy Tails","ppnCUExtant","0.5","med",1,0.944444444444444,1
-"190","med","Low Heavy Tails","medCatch","0.75","high",1.30356992456248,0.708589984979807,2.29935338568668
-"191","med","Low Heavy Tails","medCatch","0.05","low",1.55654011300884,1.13923774260125,2.22969962581622
-"192","med","Low Heavy Tails","medCatch","0.5","med",1.41341227278434,0.830136298961933,2.2844637832086
-"193","med","Low Heavy Tails","ppnYrsHighCatch","0.75","high",0.6,0.4,0.775
-"194","med","Low Heavy Tails","ppnYrsHighCatch","0.05","low",0.7,0.55,0.825
-"195","med","Low Heavy Tails","ppnYrsHighCatch","0.5","med",0.625,0.44875,0.8
-"196","med","Low Heavy Tails","stabilityCatch","0.75","high",0.627050895320215,0.435227108096471,0.935332137442075
-"197","med","Low Heavy Tails","stabilityCatch","0.05","low",0.793241133729097,0.547585722244583,1.15890276455211
-"198","med","Low Heavy Tails","stabilityCatch","0.5","med",0.69456167133003,0.472101640637057,0.966270691929745
-"199","high","Low Heavy Tails","medRecRY","0.75","high",4.13857704415784,2.16346484720631,7.58468500422475
-"200","high","Low Heavy Tails","medRecRY","0.05","low",5.59881363477585,3.93243868925077,7.9131855584518
-"201","high","Low Heavy Tails","medRecRY","0.5","med",4.58894685726125,2.75379031611944,7.94054417805273
-"202","high","Low Heavy Tails","ppnYrsCUsUpper","0.75","high",0.175,0.05,0.325
-"203","high","Low Heavy Tails","ppnYrsCUsUpper","0.05","low",0.05,0.02375,0.125
-"204","high","Low Heavy Tails","ppnYrsCUsUpper","0.5","med",0.125,0.04875,0.275
-"205","high","Low Heavy Tails","ppnCUExtant","0.75","high",1,0.888888888888889,1
-"206","high","Low Heavy Tails","ppnCUExtant","0.05","low",1,0.888888888888889,1
-"207","high","Low Heavy Tails","ppnCUExtant","0.5","med",1,0.888888888888889,1
-"208","high","Low Heavy Tails","medCatch","0.75","high",1.38550717137747,0.718115808659772,2.65188408386986
-"209","high","Low Heavy Tails","medCatch","0.05","low",1.76523556604474,1.25200910485802,2.58094109554952
-"210","high","Low Heavy Tails","medCatch","0.5","med",1.51746864616451,0.856064915536714,2.71696974959205
-"211","high","Low Heavy Tails","ppnYrsHighCatch","0.75","high",0.6,0.4,0.8
-"212","high","Low Heavy Tails","ppnYrsHighCatch","0.05","low",0.725,0.575,0.85
-"213","high","Low Heavy Tails","ppnYrsHighCatch","0.5","med",0.65,0.47375,0.8
-"214","high","Low Heavy Tails","stabilityCatch","0.75","high",0.605340765550751,0.447535401713549,0.856828838299493
-"215","high","Low Heavy Tails","stabilityCatch","0.05","low",0.804930689284569,0.589371184296997,1.13421692453264
-"216","high","Low Heavy Tails","stabilityCatch","0.5","med",0.676036027060122,0.490608599740701,0.917204799638576
+"104","high","Low Prod.","ppnYrsHighCatch","0.05","low",0.75,0.625,0.875
+"105","high","Low Prod.","ppnYrsHighCatch","0.5","med",0.675,0.48625,0.825
+"106","high","Low Prod.","stabilityCatch","0.75","high",0.889973661438866,0.597563914246847,1.21640131953446
+"107","high","Low Prod.","stabilityCatch","0.05","low",1.1949667993945,0.836868791135173,1.55325450379932
+"108","high","Low Prod.","stabilityCatch","0.5","med",0.982409749658371,0.674635667056791,1.32287263859054
+"109","low","Low Prod. Heavy Tails","medRecRY","0.75","high",3.75637244168909,2.30383666747763,5.56906537794216
+"110","low","Low Prod. Heavy Tails","medRecRY","0.05","low",4.25066472986699,3.17421377816569,5.72584062543244
+"111","low","Low Prod. Heavy Tails","medRecRY","0.5","med",3.98036773268287,2.55191952248769,5.55586854473867
+"112","low","Low Prod. Heavy Tails","ppnCUUpper","0.75","high",0.304166666666667,0.223611111111111,0.395833333333333
+"113","low","Low Prod. Heavy Tails","ppnCUUpper","0.05","low",0.294444444444444,0.254166666666667,0.340277777777778
+"114","low","Low Prod. Heavy Tails","ppnCUUpper","0.5","med",0.301388888888889,0.235347222222222,0.379166666666667
+"115","low","Low Prod. Heavy Tails","ppnMixedOpen","0.75","high",0.53125,0.39375,0.65625
+"116","low","Low Prod. Heavy Tails","ppnMixedOpen","0.05","low",0.56875,0.4875,0.6534375
+"117","low","Low Prod. Heavy Tails","ppnMixedOpen","0.5","med",0.54375,0.4215625,0.65625
+"118","low","Low Prod. Heavy Tails","medCatch","0.75","high",1.23678047001721,0.731491618038808,1.92194802059981
+"119","low","Low Prod. Heavy Tails","medCatch","0.05","low",1.38925924727702,1.04418521921945,1.89688825412298
+"120","low","Low Prod. Heavy Tails","medCatch","0.5","med",1.30983703846453,0.821300186294736,1.90771709169024
+"121","low","Low Prod. Heavy Tails","ppnYrsHighCatch","0.75","high",0.6,0.375,0.775
+"122","low","Low Prod. Heavy Tails","ppnYrsHighCatch","0.05","low",0.675,0.525,0.825
+"123","low","Low Prod. Heavy Tails","ppnYrsHighCatch","0.5","med",0.625,0.425,0.8
+"124","low","Low Prod. Heavy Tails","stabilityCatch","0.75","high",0.682423686398176,0.417882435684767,1.11185271623917
+"125","low","Low Prod. Heavy Tails","stabilityCatch","0.05","low",0.824774883838471,0.543836828081902,1.30295261687674
+"126","low","Low Prod. Heavy Tails","stabilityCatch","0.5","med",0.75134539683269,0.46088548614699,1.15592483799749
+"127","med","Low Prod. Heavy Tails","medRecRY","0.75","high",3.95793139328512,2.21623656963098,6.47535575384113
+"128","med","Low Prod. Heavy Tails","medRecRY","0.05","low",4.85713904401751,3.60107583751965,6.98376379727728
+"129","med","Low Prod. Heavy Tails","medRecRY","0.5","med",4.23974703753779,2.6051470381045,6.74558782223065
+"130","med","Low Prod. Heavy Tails","ppnCUUpper","0.75","high",0.311111111111111,0.216666666666667,0.410486111111111
+"131","med","Low Prod. Heavy Tails","ppnCUUpper","0.05","low",0.301388888888889,0.259722222222222,0.348611111111111
+"132","med","Low Prod. Heavy Tails","ppnCUUpper","0.5","med",0.306944444444444,0.231180555555556,0.391041666666667
+"133","med","Low Prod. Heavy Tails","ppnMixedOpen","0.75","high",0.5375,0.3840625,0.66875
+"134","med","Low Prod. Heavy Tails","ppnMixedOpen","0.05","low",0.58125,0.5,0.66875
+"135","med","Low Prod. Heavy Tails","ppnMixedOpen","0.5","med",0.55625,0.41875,0.66875
+"136","med","Low Prod. Heavy Tails","medCatch","0.75","high",1.30602786358225,0.685786764766027,2.24118993126868
+"137","med","Low Prod. Heavy Tails","medCatch","0.05","low",1.55586110464007,1.14259125273647,2.2791944950705
+"138","med","Low Prod. Heavy Tails","medCatch","0.5","med",1.41879752875779,0.83654719114081,2.28629148623034
+"139","med","Low Prod. Heavy Tails","ppnYrsHighCatch","0.75","high",0.6,0.4,0.775
+"140","med","Low Prod. Heavy Tails","ppnYrsHighCatch","0.05","low",0.7,0.55,0.85
+"141","med","Low Prod. Heavy Tails","ppnYrsHighCatch","0.5","med",0.625,0.45,0.8
+"142","med","Low Prod. Heavy Tails","stabilityCatch","0.75","high",0.62584771621161,0.422156036504689,0.966835801560867
+"143","med","Low Prod. Heavy Tails","stabilityCatch","0.05","low",0.795134264945253,0.551726495796065,1.19887217492315
+"144","med","Low Prod. Heavy Tails","stabilityCatch","0.5","med",0.689936440640384,0.466132087780501,1.04670489309669
+"145","high","Low Prod. Heavy Tails","medRecRY","0.75","high",4.18224873652913,2.22554107217706,7.60961459812034
+"146","high","Low Prod. Heavy Tails","medRecRY","0.05","low",5.64353337218177,3.97123131225453,8.24577073683162
+"147","high","Low Prod. Heavy Tails","medRecRY","0.5","med",4.72751754354272,2.77681042142138,7.93284738529279
+"148","high","Low Prod. Heavy Tails","ppnCUUpper","0.75","high",0.318055555555556,0.215902777777778,0.420833333333333
+"149","high","Low Prod. Heavy Tails","ppnCUUpper","0.05","low",0.305555555555556,0.261736111111111,0.356944444444444
+"150","high","Low Prod. Heavy Tails","ppnCUUpper","0.5","med",0.313888888888889,0.230555555555556,0.4
+"151","high","Low Prod. Heavy Tails","ppnMixedOpen","0.75","high",0.5375,0.3903125,0.6784375
+"152","high","Low Prod. Heavy Tails","ppnMixedOpen","0.05","low",0.59375,0.50625,0.675
+"153","high","Low Prod. Heavy Tails","ppnMixedOpen","0.5","med",0.5625,0.4278125,0.675
+"154","high","Low Prod. Heavy Tails","medCatch","0.75","high",1.39557838710008,0.685994989030062,2.65887753477578
+"155","high","Low Prod. Heavy Tails","medCatch","0.05","low",1.80020251580898,1.22724301881125,2.69025487060362
+"156","high","Low Prod. Heavy Tails","medCatch","0.5","med",1.54084129818007,0.863925027151044,2.70307221454102
+"157","high","Low Prod. Heavy Tails","ppnYrsHighCatch","0.75","high",0.6,0.41125,0.8
+"158","high","Low Prod. Heavy Tails","ppnYrsHighCatch","0.05","low",0.725,0.575,0.85
+"159","high","Low Prod. Heavy Tails","ppnYrsHighCatch","0.5","med",0.65,0.475,0.8
+"160","high","Low Prod. Heavy Tails","stabilityCatch","0.75","high",0.607076484381271,0.438523438469157,0.879820248558239
+"161","high","Low Prod. Heavy Tails","stabilityCatch","0.05","low",0.801248731457499,0.577803849753582,1.1349287742441
+"162","high","Low Prod. Heavy Tails","stabilityCatch","0.5","med",0.674508308345291,0.480541771531758,0.962362602626309

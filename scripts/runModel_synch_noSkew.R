@@ -35,17 +35,20 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 1200
+nTrials <- 750
 
 ## General robustness runs
-simParTrim <- subset(simPar, scenario %in% c("lowSig", "medSig", "highSig"
-                                             # , 
-                                             # "lowSigLowA", "medSigLowA", 
-                                             # "highSigLowA", "lowSigStudT",
+simParTrim <- subset(simPar, scenario %in% c("lowSig", "medSig", "highSig",
+                                             "lowSigLowA", "medSigLowA",
+                                             "highSigLowA",
+                                             # "lowSigStudT",
                                              # "medSigStudT", "highSigStudT",
-                                             # "lowSigLowStudT", "medSigLowStudT",
-                                             # "highSigLowStudT"
+                                             "lowSigLowStudT", "medSigLowStudT",
+                                             "highSigLowStudT"
                                              ))
+
+simParTrim <- simPar %>%
+  filter(nameMP == )
 
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
@@ -102,9 +105,9 @@ for (i in seq_along(dirNames)) {
 #_________________________________________________________________________
 ## Ugly custom code to generate proportional dot plots split across three 
 # different productivity scenarios
-vars <- c("medRecRY", "ppnYrsCUsUpper", "ppnCUExtant",
+vars <- c("medRecRY", "ppnCUUpper", "ppnMixedOpen",
           "medCatch", "ppnYrsHighCatch", "stabilityCatch")
-omNames <- rep(c("ref", "lowA", "studT", "lowStudT"), each = 3)
+omNames <- rep(c("ref", "lowA", "lowStudT"), each = 3)
 sigNames <- rep(c("low", "med", "high"), length.out = length(omNames))
 
 plotDat = NULL
@@ -134,8 +137,8 @@ plotDat <- plotDat %>%
   mutate(cat = recode(cat, "1" = "low", "2" = "med", "3" = "high", 
                       .default = levels(cat)),
          om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",
-                     "studT" = "Ref. Heavy Tails", 
-                     "lowStudT" = "Low Heavy Tails", .default = levels(om))
+                     "lowStudT" = "Low Prod. Heavy Tails", 
+                     .default = levels(om))
   )
 
 #Save summary data to pass to Rmd
@@ -144,40 +147,40 @@ write.csv(plotDat, here("outputs/generatedData", "summaryTable_noSkew.csv"))
 
 colPal <- viridis(length(levels(plotDat$cat)), begin = 0, end = 1)
 names(colPal) <- levels(plotDat$cat)
-dotSize = 3; lineSize = 0.8; legSize = 0.7; axSize = 10; facetSize = 0.95
+dotSize = 3.25; lineSize = 0.8; legSize = 0.7; axSize = 10; facetSize = 0.95
 
-consVars <- c("medRecRY", "ppnYrsCUsUpper", "ppnCUExtant")
+consVars <- c("medRecRY", "ppnCUUpper", "ppnMixedOpen")
 consYLabs <- c("Return\nAbundance", "Prop. CUs\nAbove Benchmark", 
-               "Prop. CUs\nExtant")
+               "Prop. MUs\nAbove Esc. Goal")
 ## Correct based on column number
-# consLabs <- data.frame(om = rep(factor(unique(plotDat$om), 
-#                                        levels = unique(plotDat$om)),
-#                                 each = 3),
-#                        lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)", 
-#                                "i)"),
-#                        var = rep(factor(consVars, levels = unique(vars)), 
-#                                  times = 3)
-# )#make dataframe of labels to annotate facets
+consLabs <- data.frame(om = rep(factor(unique(plotDat$om),
+                                       levels = unique(plotDat$om)),
+                                each = 3),
+                       lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)",
+                               "i)"),
+                       var = rep(factor(consVars, levels = unique(vars)),
+                                 times = 3)
+)#make dataframe of labels to annotate facets
 consPlots <- lapply(seq_along(consVars), function(i) {
   temp <- plotDat %>%
     filter(var == consVars[i])
   q <- ggplot(temp, aes(x = sigma, y = avg, ymin = lowQ, ymax = highQ,
-                        color = cat)) +
+                        fill = cat)) +
     labs(x = "Component Variance", y = consYLabs[i], 
-         color = "Sim.\nParameter\nValue") +
-    geom_pointrange(fatten = dotSize, size = lineSize,
+         fill = "Sim.\nParameter\nValue") +
+    geom_pointrange(shape = 21, fatten = dotSize, size = lineSize,
                     position = position_dodge(width = 0.65)) +
     scale_x_discrete(labels = c("lowSigma" = "Low",
                                 "medSigma" = "Reference",
                                 "highSigma" = "High")) +
-    scale_colour_manual(name = "Synchrony", values = colPal,
+    scale_fill_manual(name = "Synchrony", values = colPal,
                         labels = c("low" = "Low",
                                    "med" = "Moderate",
                                    "high" = "High")) +
-    # geom_text(data = consLabs %>% filter(var == consVars[i]),
-    #           mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
-    #                         hjust = 0.5, vjust = 0),
-    #           show.legend = FALSE, inherit.aes = FALSE) +
+    geom_text(data = consLabs %>% filter(var == consVars[i]),
+              mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
+                            hjust = 1, vjust = 0),
+              show.legend = FALSE, inherit.aes = FALSE) +
     facet_wrap(~om, scales = "fixed", ncol = 4, nrow = 1)
   if (i == 1) {
     q <- q + theme_sleekX(position = "top", legendSize = legSize,
@@ -197,34 +200,34 @@ consPlots <- lapply(seq_along(consVars), function(i) {
 catchVars <- c("medCatch", "ppnYrsHighCatch", "stabilityCatch")
 catchYLabs <- c("Catch\nAbundance", "Prop. Years Above\nCatch Threshold",
                 "Catch\nStability")
-# catchLabs <- data.frame(om = rep(factor(unique(plotDat$om), 
-#                                         levels = unique(plotDat$om)),
-#                                  each = 3),
-#                         lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)", 
-#                                 "i)"),
-#                         var = rep(factor(catchVars, levels = unique(vars)), 
-#                                   times = 3)
-# )#make dataframe of labels to annotate facets
+catchLabs <- data.frame(om = rep(factor(unique(plotDat$om),
+                                        levels = unique(plotDat$om)),
+                                 each = 3),
+                        lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)",
+                                "i)"),
+                        var = rep(factor(catchVars, levels = unique(vars)),
+                                  times = 3)
+)#make dataframe of labels to annotate facets
 catchPlots <- lapply(seq_along(catchVars), function(i) {
   temp <- plotDat %>%
     filter(var == catchVars[i])
   q <- ggplot(temp, aes(x = sigma, y = avg, ymin = lowQ, ymax = highQ,
-                        color = cat)) +
+                        fill = cat)) +
     labs(x = "Component Variance", y = catchYLabs[i], 
-         color = "Sim.\nParameter\nValue") +
+         fill = "Sim.\nParameter\nValue") +
     geom_pointrange(fatten = dotSize, size = lineSize,
                     position = position_dodge(width = 0.65)) +
     scale_x_discrete(labels = c("lowSigma" = "Low",
                                 "medSigma" = "Reference",
                                 "highSigma" = "High")) +
-    scale_colour_manual(name = "Synchrony", values = colPal,
+    scale_fill_manual(name = "Synchrony", values = colPal,
                         labels = c("low" = "Low",
                                    "med" = "Moderate",
                                    "high" = "High")) +
-    # geom_text(data = catchLabs %>% filter(var == catchVars[i]),
-    #           mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
-    #                         hjust = 0.5, vjust = 0),
-    #           show.legend = FALSE, inherit.aes = FALSE) +
+    geom_text(data = catchLabs %>% filter(var == catchVars[i]),
+              mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
+                            hjust = 1, vjust = 0),
+              show.legend = FALSE, inherit.aes = FALSE) +
     facet_wrap(~om, scales = "fixed", ncol = 4, nrow = 1)
   if (i == 1) {
     q <- q + theme_sleekX(position = "top", legendSize = legSize,
@@ -415,9 +418,8 @@ colPal <- c("#7fc97f", "#beaed4", "#fdc086")
 bmDat <- data.frame(cu = selectedCUs, 
                     highBM = NA,
                     lowBM  = NA)
-plotDat <- NULL
-for (i in seq_along(dirNames)) { #make dataframe
-  cuList <- genOutputList(dirNames[i], selectedCUs = selectedCUs, 
+plotList <- lapply(seq_along(dirNames), function(i) { 
+  cuList <- genOutputList(dirNames[i], selectedCUs = selectedCUs,
                           agg = FALSE)[["medSynch_TAM"]]
   nTrials <- nrow(cuList[["medSpawners"]])
   spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
@@ -430,14 +432,17 @@ for (i in seq_along(dirNames)) { #make dataframe
                                                  "V2" = selectedCUs[2]))
   spwn$lowBM <- rep(cuList[["meanSGen"]], each = nTrials)
   spwn$highBM <- rep(0.8*cuList[["meanSMSY"]], each = nTrials)
-  plotDat <- rbind(plotDat, cbind(spwnDat, spwn))
-  plotDat <- plotDat %>%
+  plotDat <- cbind(spwnDat, spwn)
+  plotDat %>%
     mutate(cu = recode(cu, "Bwrn" = "Bowron", "Chlk" = "Chilko",
                        .default = levels(cu)),
            om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",
-                       "studT" = "Ref. Heavy Tails", 
-                       "lowStudT" = "Low Heavy Tails", .default = levels(om)))
-}
+                       "studT" = "Ref. Heavy Tails",
+                       "lowStudT" = "Low Prod. Heavy Tails", 
+                       .default = levels(om)))
+  # print(cuList[["meanSGen"]])
+  # print(cuList[["meanSMSY"]])
+})
 
 q <- ggplot(plotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
@@ -537,6 +542,55 @@ for (i in c(2,5,8,11)) { #make dataframe
   fullPlotList[[paste0(omNames[i])]] <- plotDat2
 }
 
+
+
+
+
+makeData <- function(list, variable) {
+  plotList <- lapply(list, function (i) {
+    dum <- i[[variable]]
+    nTrials <- ncol(dum)
+    nYears <- nrow(dum)
+    colnames(dum) <- seq(1, nTrials, by = 1)
+    dat <- data.frame(synch = rep(unique(i[["opMod"]]), 
+                                  length.out = nTrials * nYears),
+                      years = rep(seq(1, nYears, by = 1), times = nTrials),
+                      trial = rep(seq(1, nTrials, by = 1), each = nYears)
+    )
+    dum2 <- dum %>%
+      as.data.frame() %>%
+      gather(key = key, value = varName) 
+    cbind(dat, dum2) %>% 
+      select(-key)
+  })
+  outData <- do.call(rbind, plotList)
+  row.names(outData) <- NULL
+  return(outData)
+}
+
+agList <- genOutputList(dirNames[6], agg = TRUE, aggTS = TRUE)
+
+ppnOpenDat <- makeData(agList, "Prop Open Fishery") %>% 
+  dplyr::rename(ppnOpen = varName) %>% 
+  filter(!is.na(ppnOpen)) %>%
+  dplyr::mutate(synch = factor(synch, levels = c("lowSynch", "medSynch",
+                                                 "highSynch")))
+dum <- ppnOpenDat %>% 
+  filter(ppnOpen == 1.00) %>% 
+  dplyr::group_by(synch, trial) %>% 
+  dplyr::summarize(ppnYrsEGMet = sum(ppnOpen)/40)
+dum2 <- ppnOpenDat %>% 
+  dplyr::group_by(synch, trial) %>% 
+  dplyr::summarize(meanEGMet = mean(ppnOpen))
+
+ppnEG <- merge(dum, dum2, by = c("trial", "synch"))
+
+ggplot(ppnEG, aes(x = synch, y = ppnYrsEGMet)) +
+  geom_boxplot() +
+  theme_sleekX()
+ggplot(ppnEG, aes(x = synch, y = meanEGMet)) +
+  geom_boxplot() +
+  theme_sleekX()
 ##### END PRIMARY ANALYSIS #####
 
 

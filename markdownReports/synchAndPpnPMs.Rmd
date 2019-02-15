@@ -163,7 +163,7 @@ ricSim <- function(N, S = meanS, alphas = alpha, betas = beta,
 rSeq <- seq(0, 0.7, by = 0.1)
 outList <- lapply(seq_along(rSeq), function(x) {
   set.seed(456)
-  dum <- ricSim(N = 10000, r = rSeq[x]) %>% 
+  dum <- ricSim(N = 10000, r = rSeq[x], sigmas = sigma * sigScalar[y]) %>% 
     mutate(r = as.factor(rSeq[x]),
            trial = as.factor(trial))
 })
@@ -191,19 +191,21 @@ outList <- lapply(seq_along(dirNames), function(i) {
   agList <- genOutputList(dirNames[i], agg = TRUE)
   dum <- lapply(agList, function(x) {
     x %>% 
-      select(opMod, trial, ppnCUUpper, ppnCULower) %>% 
+      select(opMod, trial, ppnCUUpper, ppnCULower, ppnYrsAllMixOpen,
+             ppnMixedOpen) %>% 
       dplyr::rename(synch = opMod) %>% 
       mutate(opMod = as.factor(scenNames[i]))
   })
   do.call(rbind, dum)
 })
 outDat <- do.call(rbind, outList) %>% 
-  gather(key = pm, value = value, ppnCUUpper, ppnCULower) %>% 
+  gather(key = pm, value = value, ppnCUUpper, ppnCULower, ppnYrsAllMixOpen,
+         ppnMixedOpen) %>% 
   mutate(synch = factor(factor(synch), levels = c("lowSynch", "medSynch",
                                                    "highSynch")))
 
 plotDat <- outDat %>% 
-  filter(pm == "ppnCUUpper")
+  filter(pm == "ppnMixedOpen")
 
 ggplot(plotDat, aes(x = synch, y = value)) +
   geom_boxplot() +
@@ -268,3 +270,26 @@ ggplot(meanDat, aes(x = synch, y = meanSpwn)) +
 ```
 
 Difficult to tell from time series plots whether high synchrony results in greater spawner abundance than low, even though box plots seem to confirm it. Potentially driven by small sample size? **Confirmed after running with 1000 sims that patttern disappears**
+
+
+``` {r sigAndSynch}
+sigScalar <- c(0.5, 1, 1.5)
+rSeq <- seq(0, 0.6, by = 0.3)
+outterList <- lapply(seq_along(sigScalar), function(y) {
+  outList <- lapply(seq_along(rSeq), function(x) {
+    set.seed(456)
+    dum <- ricSim(N = 1000, r = rSeq[x], sigmas = sigma * sigScalar[y]) %>% 
+      mutate(sigScalar = as.factor(sigScalar[y]),
+             r = as.factor(rSeq[x]),
+             trial = as.factor(trial))
+  })
+  dum <- do.call(rbind, outList)
+})
+dum2 <- do.call(rbind, outterList) %>% 
+  filter(CU == levels(CU)[1:4])
+
+ggplot(dum2, aes(x=sigScalar, y=rec, fill=r)) + 
+  geom_boxplot() +
+  facet_wrap(~CU, scales = "free_y")
+
+```

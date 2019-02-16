@@ -129,8 +129,8 @@ dev.off()
 
 ### How often do extreme events occur?
 nDist <- pst(-3, xi = 0, alpha = 0, nu = Inf, omega = 1)
-sNDist <- pst(-3, xi = 0, alpha = log(0.67), nu = Inf, omega = 1)
-sTDist <- pst(-3, xi = 0, alpha = log(0.67), nu = 2, omega = 1)
+sNDist <- pst(-3, xi = 0, alpha = 0, nu = Inf, omega = 1)
+sTDist <- pst(-3, xi = 0, alpha = 0, nu = 2, omega = 1)
 
 round(1/nDist)
 round(1/sNDist)

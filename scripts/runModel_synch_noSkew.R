@@ -35,7 +35,7 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 100
+nTrials <- 1000
 
 ## General robustness runs
 simParTrim <- subset(simPar, scenario %in% c("lowSig", "medSig", "highSig",
@@ -210,7 +210,7 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
                         fill = cat)) +
     labs(x = "Component Variance", y = catchYLabs[i], 
          fill = "Sim.\nParameter\nValue") +
-    geom_pointrange(fatten = dotSize, size = lineSize,
+    geom_pointrange(shape = 21, fatten = dotSize, size = lineSize,
                     position = position_dodge(width = 0.65)) +
     scale_x_discrete(labels = c("low" = "Low",
                                 "med" = "Reference",
@@ -256,94 +256,96 @@ dev.off()
 #_________________________________________________________________________
 # Generate box plots (originally time series) of component CV, synch and ag CV;
 # Note that to make comparable to retrospective analysis only show 10 
-# plotList = vector("list", length = length(dirNames))
-# arrayNames <- sapply(dirNames, function(x) {
-#   list.files(paste(here("outputs/simData"), x, sep="/"),
-#              pattern = "\\Arrays.RData$")
-# })
-# 
-# tic("runParallel")
-# Ncores <- detectCores()
-# cl <- makeCluster(Ncores - 2) #save two cores
-# registerDoParallel(cl)
-# clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo),
-#                    library(parallel), library(doParallel), library(foreach),
-#                    library(samSim)))
-# newAgTSList <- lapply(seq_along(dirNames), function (h) {
-#   #export custom function and objects
-#   clusterExport(cl, c("dirNames", "arrayNames", "calcSynchMetrics", "wtdCV",
-#                       "genOutputList", "h"), envir = environment())
-#   listSynchLists <- parLapply(cl, 1:length(arrayNames[, h]), function(x) {
-#     datList <- readRDS(paste(here("outputs/simData"), dirNames[h],
-#                              arrayNames[x, h], sep = "/"))
-#     synchList <- calcSynchMetrics(datList, corr = FALSE,
-#                                   weight = TRUE, windowSize = 12)
-#     synchList <- c(datList$nameOM, synchList)
-#     names(synchList)[1] <- "opMod"
-#     return(synchList)
-#   }) #iterate across different OMs within a scenario
-#   # pull list of time series metrics estimated internally, then merge with
-#   # synch list generated above based on common op model
-#   agTSList <- genOutputList(dirNames[h], agg = TRUE, aggTS = TRUE)
-#   for(j in seq_along(agTSList)) {
-#     for(k in seq_along(listSynchLists)) {
-#       om <- agTSList[[j]]$opMod
-#       if (listSynchLists[[k]]$opMod == om) {
-#         agTSList[[j]] <- c(agTSList[[j]], listSynchLists[[k]][-1])
-#       }
-#     }
-#   }
-#   plotList[[h]] <- agTSList
-# }) #iterate across different scenarios
-# names(newAgTSList) <- dirNames
-# stopCluster(cl)
-# toc()
+refDirNames <- dirNames[1:3]
+
+plotList = vector("list", length = length(refDirNames))
+arrayNames <- sapply(refDirNames, function(x) {
+ list.files(paste(here("outputs/simData"), x, sep="/"),
+            pattern = "\\Arrays.RData$")
+})
+
+tic("runParallel")
+Ncores <- detectCores()
+cl <- makeCluster(Ncores - 1) #save two cores
+registerDoParallel(cl)
+clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo),
+                  library(parallel), library(doParallel), library(foreach),
+                  library(samSim)))
+newAgTSList <- lapply(seq_along(refDirNames), function (h) {
+ #export custom function and objects
+ clusterExport(cl, c("refDirNames", "arrayNames", "calcSynchMetrics", "wtdCV",
+                     "genOutputList", "h"), envir = environment())
+ listSynchLists <- parLapply(cl, 1:length(arrayNames[, h]), function(x) {
+   datList <- readRDS(paste(here("outputs/simData"), refDirNames[h],
+                            arrayNames[x, h], sep = "/"))
+   synchList <- calcSynchMetrics(datList, corr = FALSE,
+                                 weight = TRUE, windowSize = 12)
+   synchList <- c(datList$nameOM, synchList)
+   names(synchList)[1] <- "opMod"
+   return(synchList)
+ }) #iterate across different OMs within a scenario
+ # pull list of time series metrics estimated internally, then merge with
+ # synch list generated above based on common op model
+ agTSList <- genOutputList(refDirNames[h], agg = TRUE, aggTS = TRUE)
+ for(j in seq_along(agTSList)) {
+   for(k in seq_along(listSynchLists)) {
+     om <- agTSList[[j]]$opMod
+     if (listSynchLists[[k]]$opMod == om) {
+       agTSList[[j]] <- c(agTSList[[j]], listSynchLists[[k]][-1])
+     }
+   }
+ }
+ plotList[[h]] <- agTSList
+}) #iterate across different scenarios
+names(newAgTSList) <- refDirNames
+stopCluster(cl)
+toc()
 
 ## Save
 # saveRDS(newAgTSList, here("outputs/generatedData/synchTS/synchTSList.rda"))
-# newAgTSList <- readRDS(here("outputs/generatedData/synchTS/synchTSList.rda"))
+newAgTSList <- readRDS(here("outputs/generatedData/synchTS/synchTSList.rda"))
 
 ### Manipulate lists to create plottable data structure 
 ## In this case that is one median value per year per unique combo of OMs
-# omNames <- rep(c("ref", "skewN", "studT"), each = 3)
-# sigNames <- rep(c("lowSigma", "medSigma", "highSigma"), length.out = 9)
-# fullList <- sapply(seq_along(dirNames), function(h) {
-#   d <- newAgTSList[[h]]
-#   nYears <- d[[1]]$`nYears`
-#   simLength <- d[[1]]$`nYears` - d[[1]]$`nPrime`
-#   firstYear <- d[[1]]$`firstYr`
-#   start <- d[[1]]$`nPrime` + firstYear
-#   prodNames <- omNames[h]
-#   #subset list so it contains only sigma, synch and vars of interest,
-#   # calculate medians, and combine
-#   trimList <- lapply(d, function(x) {
-#     dat1 <- data.frame(sigmaOM = rep(sigNames[h], length.out = nYears),
-#                       synchOM = rep(x[["opMod"]], length.out = nYears),
-#                       prodOM = rep(prodNames, length.out = nYears),
-#                       year = seq(from = firstYear,
-#                                  to = (firstYear + nYears - 1))
-#                       ) %>%
-#       mutate(sigmaOM = as.character(sigmaOM),
-#              synchOM = as.character(synchOM),
-#              medSynchRecBY = apply(x[["synchRecBY"]], 1, median),
-#              medCompCVRecBY = apply(x[["compCVRecBY"]], 1, median)
-#       )
-#     dat1[dat1$year < start, c("sigmaOM", "synchOM")] <- "obs"
-#     dat2 <- dat1 %>%
-#       mutate(sigmaOM = factor(factor(sigmaOM),
-#                               levels = c("obs", "lowSigma", "medSigma",
-#                                          "highSigma")),
-#              synchOM = factor(factor(synchOM),
-#                               levels = c("obs", "lowSynch", "medSynch",
-#                                          "highSynch"))
-#       )
-#     return(dat2)
-#   })
-# })
-# plotDat <- do.call(rbind, fullList)
+omNames <- rep("ref", each = 3)
+sigNames <- c("lowSigma", "medSigma", "highSigma")
+fullList <- sapply(seq_along(refDirNames), function(h) {
+  d <- newAgTSList[[h]]
+  nYears <- d[[1]]$`nYears`
+  simLength <- d[[1]]$`nYears` - d[[1]]$`nPrime`
+  firstYear <- d[[1]]$`firstYr`
+  start <- d[[1]]$`nPrime` + firstYear
+  prodNames <- omNames[h]
+  #subset list so it contains only sigma, synch and vars of interest,
+  # calculate medians, and combine
+  trimList <- lapply(d, function(x) {
+    dat1 <- data.frame(sigmaOM = rep(sigNames[h], length.out = nYears),
+                      synchOM = rep(x[["opMod"]], length.out = nYears),
+                      prodOM = rep(prodNames, length.out = nYears),
+                      year = seq(from = firstYear,
+                                 to = (firstYear + nYears - 1))
+                      ) %>%
+      mutate(sigmaOM = as.character(sigmaOM),
+             synchOM = as.character(synchOM),
+             medSynchRecBY = apply(x[["synchRecBY"]], 1, median),
+             medCompCVRecBY = apply(x[["compCVRecBY"]], 1, median)
+      )
+    dat1[dat1$year < start, c("sigmaOM", "synchOM")] <- "obs"
+    dat2 <- dat1 %>%
+      mutate(sigmaOM = factor(factor(sigmaOM),
+                              levels = c("obs", "lowSigma", "medSigma",
+                                         "highSigma")),
+             synchOM = factor(factor(synchOM),
+                              levels = c("obs", "lowSynch", "medSynch",
+                                         "highSynch"))
+      )
+    return(dat2)
+  })
+})
+plotDat <- do.call(rbind, fullList)
 
-# saveRDS(plotDat, file = here("outputs/generatedData/synchTS/fullSynch_3OMs.rda"))
-plotDat <- readRDS(file = here("outputs/generatedData/synchTS/fullSynch_3OMs.rda"))
+# saveRDS(plotDat, file = here("outputs/generatedData/synchTS/fullSynch_refOMs.rda"))
+plotDat <- readRDS(file = here("outputs/generatedData/synchTS/fullSynch_refOMs.rda"))
 start <- plotDat %>%
   filter(!sigmaOM == "obs") %>%
   summarise(min(year))
@@ -366,10 +368,10 @@ q2 <- ggplot(dum, aes(x = sigmaOM, y = medCompCVRecBY, fill = sigmaOM)) +
   scale_fill_manual(name = "Operating Model", values = colPal) +
   scale_x_discrete(breaks = waiver(), labels = c("Observed", 
                                                  expression(paste("0.75", 
-                                                                  sigma)),
-                                                 expression(paste(sigma)),
+                                                                  sigma["p"])),
+                                                 expression(paste(sigma["p"])),
                                                  expression(paste("1.25", 
-                                                                  sigma))
+                                                                  sigma["p"]))
   )) +
   theme_sleekX(position = "standard", axisSize = axSize)
 
@@ -397,7 +399,6 @@ p2 <- ggplot(dum2, aes(x = synchOM, y = medSynchRecBY, fill = synchOM)) +
   )) +
   theme_sleekX(position = "standard", axisSize = axSize)
 
-
 png(file = paste(here(),"/figs/Fig2_SynchCompBoxPlots.png", sep = ""),
     height = 5, width = 3, units = "in", res = 600)
 ggarrange(q2, p2, nrow = 2, ncol = 1, heights = c(1, 1.2))
@@ -413,6 +414,8 @@ colPal <- c("#7fc97f", "#beaed4", "#fdc086")
 bmDat <- data.frame(cu = selectedCUs, 
                     highBM = NA,
                     lowBM  = NA)
+
+### Sigma data
 plotList <- lapply(seq_along(dirNames), function(i) { 
   cuList <- genOutputList(dirNames[i], selectedCUs = selectedCUs,
                           agg = FALSE)[["medSynch_TAM"]]
@@ -432,7 +435,7 @@ plotList <- lapply(seq_along(dirNames), function(i) {
     mutate(cu = recode(cu, "Bwrn" = "Bowron", "Chlk" = "Chilko",
                        .default = levels(cu)),
            om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",
-                       "studT" = "Ref. Heavy Tails",
+                       # "studT" = "Ref. Heavy Tails",
                        "lowStudT" = "Low Prod. Heavy Tails", 
                        .default = levels(om)))
 })
@@ -454,13 +457,7 @@ q <- ggplot(plotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
                legendSize = legSize * 0.75) +
   facet_wrap(~cu, scales = "free_y", nrow = 2)
 
-
-png(file = here("figs/Fig6_spawnerViolinSigma.png"),
-    height = 3.5, width = 3, units = "in", res = 600)
-print(q)
-dev.off()
-
-
+### Synch data
 fullPlotList <- list()
 for (i in c(2,5,8)) { #make dataframe
   cuList <- genOutputList(dirNames[i], selectedCUs = selectedCUs, agg = FALSE)
@@ -489,7 +486,7 @@ plotDat3 <- do.call(rbind, fullPlotList) %>%
   mutate(cu = recode(cu, "Bwrn" = "Bowron", "Chlk" = "Chilko", 
                      .default = levels(cu)), 
          om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",
-                     "studT" = "Ref. Heavy Tails",
+                     # "studT" = "Ref. Heavy Tails",
                      "lowStudT" = "Low Heavy Tails", .default = levels(om)))
 row.names(plotDat3) <- NULL
 
@@ -508,84 +505,22 @@ p <- ggplot(plotDat3, aes(x = om, y = spawners, fill = cu, alpha = synch)) +
                legendSize = legSize * 0.75) +
   facet_wrap(~cu, scales = "free_y", nrow = 2)
 
+# 
+# png(file = paste(here(),"/figs/SFig_spawnerViolinSynch.png", sep = ""),
+#     height = 3.5, width = 3, units = "in", res = 300)
+# print(p)
+# dev.off()
+# 
+# png(file = here("figs/Fig5_spawnerViolinSigma.png"),
+#     height = 3.5, width = 3, units = "in", res = 600)
+# print(q)
+# dev.off()
 
-png(file = paste(here(),"/figs/SFig_spawnerViolinSynch.png", sep = ""),
-    height = 3.5, width = 3, units = "in", res = 300)
-print(p)
+png(file = paste(here(),"/figs/Fig5_spawnerViolin.png", sep = ""),
+    height = 4.5, width = 6, units = "in", res = 600)
+ggarrange(q, p, nrow = 1, ncol = 2, heights = c(1, 1.2))
 dev.off()
 
-
-fullPlotList <- list()
-for (i in c(2,5,8,11)) { #make dataframe
-  cuList <- genOutputList(dirNames[i], selectedCUs = selectedCUs, agg = FALSE)
-  plotList <- lapply(cuList, function(h) {
-    plotDat <- NULL
-    nTrials <- nrow(h[["ppnYrsUpper"]])
-    spwnDat <- data.frame(om = rep(omNames[i], length.out = nTrials * nCUs),
-                          synch = rep(unique(h[["opMod"]]), 
-                                      length.out = nTrials * nCUs)
-    )
-    spwn <- h[["ppnYrsUpper"]] %>%
-      as.data.frame() %>%
-      gather(key = cu, value = spawners)
-    spwn$cu <- plyr::revalue(as.factor(spwn$cu), c("V1" = selectedCUs[1],
-                                                   "V2" = selectedCUs[2]))
-    plotDat <- rbind(plotDat, cbind(spwnDat, spwn))
-    return(plotDat)
-  })
-  plotDat2 <- do.call(rbind, plotList)
-  fullPlotList[[paste0(omNames[i])]] <- plotDat2
-}
-
-
-
-
-
-makeData <- function(list, variable) {
-  plotList <- lapply(list, function (i) {
-    dum <- i[[variable]]
-    nTrials <- ncol(dum)
-    nYears <- nrow(dum)
-    colnames(dum) <- seq(1, nTrials, by = 1)
-    dat <- data.frame(synch = rep(unique(i[["opMod"]]), 
-                                  length.out = nTrials * nYears),
-                      years = rep(seq(1, nYears, by = 1), times = nTrials),
-                      trial = rep(seq(1, nTrials, by = 1), each = nYears)
-    )
-    dum2 <- dum %>%
-      as.data.frame() %>%
-      gather(key = key, value = varName) 
-    cbind(dat, dum2) %>% 
-      select(-key)
-  })
-  outData <- do.call(rbind, plotList)
-  row.names(outData) <- NULL
-  return(outData)
-}
-
-agList <- genOutputList(dirNames[6], agg = TRUE, aggTS = TRUE)
-
-ppnOpenDat <- makeData(agList, "Prop Open Fishery") %>% 
-  dplyr::rename(ppnOpen = varName) %>% 
-  filter(!is.na(ppnOpen)) %>%
-  dplyr::mutate(synch = factor(synch, levels = c("lowSynch", "medSynch",
-                                                 "highSynch")))
-dum <- ppnOpenDat %>% 
-  filter(ppnOpen == 1.00) %>% 
-  dplyr::group_by(synch, trial) %>% 
-  dplyr::summarize(ppnYrsEGMet = sum(ppnOpen)/40)
-dum2 <- ppnOpenDat %>% 
-  dplyr::group_by(synch, trial) %>% 
-  dplyr::summarize(meanEGMet = mean(ppnOpen))
-
-ppnEG <- merge(dum, dum2, by = c("trial", "synch"))
-
-ggplot(ppnEG, aes(x = synch, y = ppnYrsEGMet)) +
-  geom_boxplot() +
-  theme_sleekX()
-ggplot(ppnEG, aes(x = synch, y = meanEGMet)) +
-  geom_boxplot() +
-  theme_sleekX()
 ##### END PRIMARY ANALYSIS #####
 
 

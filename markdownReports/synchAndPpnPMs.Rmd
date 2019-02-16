@@ -69,9 +69,14 @@ meanDat <- ppnUpDat %>%
   dplyr::summarize(meanUp = mean(ppnUp),
                    medUp = median(ppnUp))
 
-ggplot(meanDat, aes(x = synch, y = medUp)) +
+ggplot(meanDat, aes(x = synch, y = meanUp)) +
   geom_boxplot() +
   theme_sleekX()
+
+meanDat %>% 
+  group_by(trial, synch) %>% 
+  summarize(meanUp = median(meanUp),
+            medUp = median(medUp))
 ```
 
 High synchrony trials do seem to produce a greater number of years with CUs above the BM on average and boxplots, which recalculate the summary statistics produced internally by the model, show a similar trend. What I think may be going is that synchronized good recruitment events are enough to push a couple more CUs past the threshold; conversely synchronized bad events don’t strongly influence low status stocks (because they’re already low) or high status stocks (they’re far enough away from the edge to be ok). Need to dig in more but not sure how to tease it apart. 

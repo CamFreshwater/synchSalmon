@@ -10,7 +10,7 @@ This is a quick script that reads in summary data from the main synchrony salmon
 ```{r loadData}
 require(here); require(tidyverse)
 
-summDat <- read.csv("summaryTable.csv") %>% 
+summDat <- read.csv(here("outputs/generatedData", "summaryTable_noSkew.csv")) %>% 
   select(-X, -cat)
 
 
@@ -63,6 +63,17 @@ t2 <- extractVal(t, group = "synch") %>%
   filter(synch == "0.05")
 relDiff(t2$max, t2$min)
 
+# Increases in agg rec across sig when synch low
+t <- trimDat(oms = "Reference Prod.", vars = c("ppnCUUpper", "ppnMixedOpen"), 
+             data = summDat)
+t2 <- extractVal(t, group = "sigma") %>% 
+  filter(var == "ppnCUUpper")
+relDiff(t2$max, t2$min)
+t3 <- extractVal(t, group = "synch") %>% 
+  filter(var == "ppnCUUpper")
+relDiff(t3$max, t3$min)
+
+
 # Returns in low vs. ref prod OMs
 t <- trimDat(oms = c("Reference Prod.", "Low Prod."), vars = "medRecRY", 
              data = summDat)
@@ -70,7 +81,8 @@ t2 <- t %>%
   filter(sigma == "low", synch == "0.05")
 relDiff(max(t2$avg), min(t2$avg))
 t2 <- t %>% 
-  filter(om == "Low Prod.", sigma == "low", !synch == "0.75")
+  filter(sigma == "low", 
+         !synch == "0.50")
 relDiff(max(t2$avg), min(t2$avg))
 
 # Extirpation risk

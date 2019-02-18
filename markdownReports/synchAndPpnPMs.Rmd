@@ -82,6 +82,7 @@ ggplot(meanDat, aes(x = synch, y = ppnUp, colour = stat)) +
 
 ```
 
+Approximately similar patterns, keep mean for now to avoid rerunning sims unless co-authors object.
 
 ``` {r plotPpnTSByTrial}
 drawTrials <- sample.int(max(ppnUpDat$trial), size = 9, replace = FALSE)

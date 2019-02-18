@@ -16,13 +16,14 @@ require(samSim); require(tidyverse); require(here)
 simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorr.csv"), 
                    stringsAsFactors = F)
 
-simParTrim <- subset(simPar, scenario %in% "medSig")
+simParTrim <- simPar %>% 
+  filter(scenario %in% c("lowSig", "medSig", "highSig"))
 
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
                                                 sep = "_"))
 
-agList <- genOutputList(dirNames[1], agg = TRUE, aggTS = TRUE)
+agList <- genOutputList(dirNames[2], agg = TRUE, aggTS = TRUE)
 
 makeData <- function(list, variable) {
   plotList <- lapply(list, function (i) {
@@ -53,6 +54,35 @@ ppnUpDat <- makeData(agList, "Prop Above Upper BM") %>%
                                                  "highSynch")))
 ```
 
+
+First compare estimates of median ppn through time to means (default). Since absolute abundance PMs are based on medians need to confirm that using means doesn't bias results for ppn PMs.
+
+``` {r medPpnVsMeanPpn}
+ppnUpList <- lapply(seq_along(dirNames), function (x) {
+  agList <- genOutputList(dirNames[x], agg = TRUE, aggTS = TRUE)
+  makeData(agList, "Prop Above Upper BM") %>% 
+    dplyr::rename(ppnUp = varName) %>% 
+    filter(!is.na(ppnUp)) %>%
+    dplyr::mutate(synch = factor(synch, levels = c("lowSynch", "medSynch",
+                                                 "highSynch")),
+                  sigma = factor(scenNames[x]))  
+})
+fullPpnUpDat <- do.call(rbind, ppnUpList)
+
+meanDat <- fullPpnUpDat %>%
+  dplyr::group_by(trial, synch, sigma) %>% 
+  dplyr::summarize(meanUp = mean(ppnUp),
+                   medUp = median(ppnUp)) %>% 
+  gather(key = stat, value = ppnUp, meanUp, medUp)
+
+ggplot(meanDat, aes(x = synch, y = ppnUp, colour = stat)) +
+  geom_boxplot() +
+  theme_sleekX() +
+  facet_wrap(~sigma)
+
+```
+
+
 ``` {r plotPpnTSByTrial}
 drawTrials <- sample.int(max(ppnUpDat$trial), size = 9, replace = FALSE)
 
@@ -63,11 +93,6 @@ ggplot(trimDat, aes(x = years, y = ppnUp, linetype = synch)) +
   geom_line() +
   theme_sleekX() +
   facet_wrap(~trial, scales = "free_y")
-
-meanDat <- ppnUpDat %>%
-  dplyr::group_by(trial, synch) %>% 
-  dplyr::summarize(meanUp = mean(ppnUp),
-                   medUp = median(ppnUp))
 
 ggplot(meanDat, aes(x = synch, y = meanUp)) +
   geom_boxplot() +

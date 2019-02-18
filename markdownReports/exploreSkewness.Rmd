@@ -350,4 +350,4 @@ summDat1 <- outDat %>%
 print(summDat1)
 ```
 
-Whew. Looks like the differences may just be a function of low simulation number or some time series interactions because they disappear in the simpler simulation.
+Differences disappear with simpler simulations. Perhaps they are a function of harvest (which drives up ppn above the benchmark). Examine synchAndPpnPMs.Rmd

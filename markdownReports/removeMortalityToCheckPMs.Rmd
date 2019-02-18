@@ -49,7 +49,7 @@ dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
 
 ```{r runSimulations, eval=FALSE, include=FALSE}
 # Define simulations to be run
-nTrials <- 100
+nTrials <- 250
 
 for (i in seq_along(dirNames)) {
   dirName <- dirNames[i]

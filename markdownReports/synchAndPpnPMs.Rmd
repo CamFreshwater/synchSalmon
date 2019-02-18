@@ -276,6 +276,59 @@ ggplot(plotDat, aes(x = synch, y = value)) +
 
 Also confirmed looking at TAM vs. fixed exploitation rate.
 
+Do these drivers also explain trends in single CU PMs, specifically the increase in spawner abundance observed with greater synchrony?
+```{r noMortSimsSAbundance}
+simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorrNoMort.csv"),
+                   stringsAsFactors = F)
+simParTrim <- simPar %>% 
+  filter(scenario %in% c("ref", "noExp", "noMM", "noBoth"))
+scenNames <- unique(simParTrim$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
+                                                sep = "_"))
+selectedCUs <- c("E.St" , "Chlk")
+
+fullPlotList <- list()
+for (i in seq_along(dirNames)) { #make dataframe
+  cuList <- genOutputList(dirNames[i], selectedCUs = selectedCUs, agg = FALSE)
+  plotList <- lapply(cuList, function(h) {
+    plotDat <- NULL
+    nTrials <- nrow(h[["medSpawners"]])
+    spwnDat <- data.frame(om = rep(scenNames[i], length.out = nTrials * nCUs),
+                          synch = rep(unique(h[["opMod"]]), 
+                                      length.out = nTrials * nCUs)
+    )
+    spwn <- h[["medSpawners"]] %>%
+      as.data.frame() %>%
+      gather(key = cu, value = spawners)
+    spwn$cu <- plyr::revalue(as.factor(spwn$cu), c("V1" = selectedCUs[1],
+                                                   "V2" = selectedCUs[2]))
+    plotDat <- rbind(plotDat, cbind(spwnDat, spwn))
+    return(plotDat)
+  })
+  plotDat2 <- do.call(rbind, plotList)
+  fullPlotList[[paste0(omNames[i])]] <- plotDat2
+}
+
+plotDat <- do.call(rbind, fullPlotList) %>%
+  mutate(synch = factor(factor(synch),
+                        levels = c("lowSynch", "medSynch", "highSynch"))) %>% 
+  filter(cu == "E.St")
+row.names(plotDat) <- NULL
+
+ggplot(plotDat, aes(x = synch, y = spawners)) +
+  geom_boxplot() +
+  theme_sleekX() +
+  facet_wrap(~om)
+
+plotDat %>% 
+  # filter(om %in% c("ref", "noExp")) %>% 
+  dplyr::group_by(om, synch) %>% 
+  dplyr::summarize(median(spawners))
+
+```
+
+Again, trends in spawner abundance associated with increasing synchrony disappear when exploitation removed.
+
 #### 2) Increasing CU-specific abundance
 ```{r lookAtCUTrends}
 cuPar <- read.csv(here("data/sox/fraserCUPars.csv"), stringsAsFactors = F)

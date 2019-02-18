@@ -35,20 +35,22 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 200
+nTrials <- 1500
 
 ## General robustness runs
-simParTrim <- subset(simPar, scenario %in% c("lowSig", "medSig", "highSig"
-                                             # ,
-                                             # "lowSigLowA", "medSigLowA",
-                                             # "highSigLowA",
-                                             # "lowSigLowStudT", "medSigLowStudT",
-                                             # "highSigLowStudT"
+simParTrim <- subset(simPar, scenario %in% c("lowSig", "medSig", "highSig",
+                                             "lowSigLowA", "medSigLowA",
+                                             "highSigLowA",
+                                             "lowSigLowStudT", "medSigLowStudT",
+                                             "highSigLowStudT"
                                              ))
 
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
                                                 sep = "_"))
+
+# Default plotting variable settings
+dotSize = 3.25; lineSize = 0.8; legSize = 0.7; axSize = 10; facetSize = 0.95
 
 # recoverySim(simParTrim[11, ], cuPar, catchDat = catchDat, srDat = srDat,
 #             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
@@ -143,7 +145,6 @@ write.csv(plotDat, here("outputs/generatedData", "summaryTable_noSkew.csv"))
 
 colPal <- viridis(length(levels(plotDat$cat)), begin = 0, end = 1)
 names(colPal) <- levels(plotDat$cat)
-dotSize = 3.25; lineSize = 0.8; legSize = 0.7; axSize = 10; facetSize = 0.95
 
 consVars <- c("medRecRY", "ppnCUUpper", "ppnMixedOpen")
 consYLabs <- c("Return\nAbundance", "Prop. CUs\nAbove Benchmark", 
@@ -259,48 +260,48 @@ dev.off()
 # Note that to make comparable to retrospective analysis only show 10 
 refDirNames <- dirNames[1:3]
 
-plotList = vector("list", length = length(refDirNames))
-arrayNames <- sapply(refDirNames, function(x) {
- list.files(paste(here("outputs/simData"), x, sep="/"),
-            pattern = "\\Arrays.RData$")
-})
-
-tic("runParallel")
-Ncores <- detectCores()
-cl <- makeCluster(Ncores - 1) #save two cores
-registerDoParallel(cl)
-clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo),
-                  library(parallel), library(doParallel), library(foreach),
-                  library(samSim)))
-newAgTSList <- lapply(seq_along(refDirNames), function (h) {
- #export custom function and objects
- clusterExport(cl, c("refDirNames", "arrayNames", "calcSynchMetrics", "wtdCV",
-                     "genOutputList", "h"), envir = environment())
- listSynchLists <- parLapply(cl, 1:length(arrayNames[, h]), function(x) {
-   datList <- readRDS(paste(here("outputs/simData"), refDirNames[h],
-                            arrayNames[x, h], sep = "/"))
-   synchList <- calcSynchMetrics(datList, corr = FALSE,
-                                 weight = TRUE, windowSize = 12)
-   synchList <- c(datList$nameOM, synchList)
-   names(synchList)[1] <- "opMod"
-   return(synchList)
- }) #iterate across different OMs within a scenario
- # pull list of time series metrics estimated internally, then merge with
- # synch list generated above based on common op model
- agTSList <- genOutputList(refDirNames[h], agg = TRUE, aggTS = TRUE)
- for(j in seq_along(agTSList)) {
-   for(k in seq_along(listSynchLists)) {
-     om <- agTSList[[j]]$opMod
-     if (listSynchLists[[k]]$opMod == om) {
-       agTSList[[j]] <- c(agTSList[[j]], listSynchLists[[k]][-1])
-     }
-   }
- }
- plotList[[h]] <- agTSList
-}) #iterate across different scenarios
-names(newAgTSList) <- refDirNames
-stopCluster(cl)
-toc()
+# plotList = vector("list", length = length(refDirNames))
+# arrayNames <- sapply(refDirNames, function(x) {
+#  list.files(paste(here("outputs/simData"), x, sep="/"),
+#             pattern = "\\Arrays.RData$")
+# })
+# 
+# tic("runParallel")
+# Ncores <- detectCores()
+# cl <- makeCluster(Ncores - 1) #save two cores
+# registerDoParallel(cl)
+# clusterEvalQ(cl, c(library(here), library(synchrony), library(zoo),
+#                   library(parallel), library(doParallel), library(foreach),
+#                   library(samSim)))
+# newAgTSList <- lapply(seq_along(refDirNames), function (h) {
+#  #export custom function and objects
+#  clusterExport(cl, c("refDirNames", "arrayNames", "calcSynchMetrics", "wtdCV",
+#                      "genOutputList", "h"), envir = environment())
+#  listSynchLists <- parLapply(cl, 1:length(arrayNames[, h]), function(x) {
+#    datList <- readRDS(paste(here("outputs/simData"), refDirNames[h],
+#                             arrayNames[x, h], sep = "/"))
+#    synchList <- calcSynchMetrics(datList, corr = FALSE,
+#                                  weight = TRUE, windowSize = 12)
+#    synchList <- c(datList$nameOM, synchList)
+#    names(synchList)[1] <- "opMod"
+#    return(synchList)
+#  }) #iterate across different OMs within a scenario
+#  # pull list of time series metrics estimated internally, then merge with
+#  # synch list generated above based on common op model
+#  agTSList <- genOutputList(refDirNames[h], agg = TRUE, aggTS = TRUE)
+#  for(j in seq_along(agTSList)) {
+#    for(k in seq_along(listSynchLists)) {
+#      om <- agTSList[[j]]$opMod
+#      if (listSynchLists[[k]]$opMod == om) {
+#        agTSList[[j]] <- c(agTSList[[j]], listSynchLists[[k]][-1])
+#      }
+#    }
+#  }
+#  plotList[[h]] <- agTSList
+# }) #iterate across different scenarios
+# names(newAgTSList) <- refDirNames
+# stopCluster(cl)
+# toc()
 
 ## Save
 # saveRDS(newAgTSList, here("outputs/generatedData/synchTS/synchTSList.rda"))
@@ -308,19 +309,19 @@ newAgTSList <- readRDS(here("outputs/generatedData/synchTS/synchTSList.rda"))
 
 ### Manipulate lists to create plottable data structure 
 ## In this case that is one median value per year per unique combo of OMs
-omNames <- rep("ref", each = 3)
-sigNames <- c("lowSigma", "medSigma", "highSigma")
+refOmNames <- rep("ref", each = 3)
+refSigNames <- c("lowSigma", "medSigma", "highSigma")
 fullList <- sapply(seq_along(refDirNames), function(h) {
   d <- newAgTSList[[h]]
   nYears <- d[[1]]$`nYears`
   simLength <- d[[1]]$`nYears` - d[[1]]$`nPrime`
   firstYear <- d[[1]]$`firstYr`
   start <- d[[1]]$`nPrime` + firstYear
-  prodNames <- omNames[h]
+  prodNames <- refOmNames[h]
   #subset list so it contains only sigma, synch and vars of interest,
   # calculate medians, and combine
   trimList <- lapply(d, function(x) {
-    dat1 <- data.frame(sigmaOM = rep(sigNames[h], length.out = nYears),
+    dat1 <- data.frame(sigmaOM = rep(refSigNames[h], length.out = nYears),
                       synchOM = rep(x[["opMod"]], length.out = nYears),
                       prodOM = rep(prodNames, length.out = nYears),
                       year = seq(from = firstYear,
@@ -374,7 +375,7 @@ q2 <- ggplot(dum, aes(x = sigmaOM, y = medCompCVRecBY, fill = sigmaOM)) +
                                                  expression(paste("1.25", 
                                                                   sigma["p"]))
   )) +
-  theme_sleekX(position = "standard", axisSize = axSize)
+  theme_sleekX(position = "standard", axisSize = axSize * 0.9)
 
 dum2 <- plotDat %>%
   dplyr::filter(sigmaOM == "medSigma" | sigmaOM == "obs",
@@ -398,10 +399,10 @@ p2 <- ggplot(dum2, aes(x = synchOM, y = medSynchRecBY, fill = synchOM)) +
                                                  expression(paste(rho, 
                                                                   " = 0.75"))
   )) +
-  theme_sleekX(position = "standard", axisSize = axSize)
+  theme_sleekX(position = "standard", axisSize = axSize * 0.9)
 
 png(file = paste(here(),"/figs/Fig2_SynchCompBoxPlots.png", sep = ""),
-    height = 5, width = 3, units = "in", res = 600)
+    height = 4, width = 3, units = "in", res = 600)
 ggarrange(q2, p2, nrow = 2, ncol = 1, heights = c(1, 1.2))
 dev.off()
 
@@ -435,9 +436,8 @@ plotList <- lapply(seq_along(dirNames), function(i) {
   plotDat %>%
     mutate(cu = recode(cu, "Bwrn" = "Bowron", "Chlk" = "Chilko",
                        .default = levels(cu)),
-           om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",
-                       # "studT" = "Ref. Heavy Tails",
-                       "lowStudT" = "Low Prod. Heavy Tails", 
+           om = recode(om, "ref" = "Reference", "lowA" = "Low",
+                       "lowStudT" = "Low +\nHeavy Tails", 
                        .default = levels(om)))
 })
 
@@ -446,16 +446,16 @@ plotDat <- do.call(rbind, plotList)
 q <- ggplot(plotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
   geom_hline(plotDat, mapping = aes(yintercept = highBM), linetype = 2) +
-  scale_alpha_manual(name = "Component CV", values = c(1, 0.65, 0.3),
-                     labels = c("low" = "Low",
-                                "med" = "Ref.",
-                                "high" = "High")) +
+  scale_alpha_manual(values = c(1, 0.65, 0.3),
+                     guide = FALSE) +
   scale_fill_manual(values = colPal, guide = FALSE) +
-  guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
-  labs(y = "Median Spawner Abundance (millions)",
-       x = "Productivity Scenario") +
-  theme_sleekX(facetSize = 1.1, axisSize = axSize - 1, 
-               legendSize = legSize * 0.75) +
+  theme_sleekX(axisSize = axSize - 1) +
+  theme(strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank()) +
+  ggtitle("Component Variability") +
   facet_wrap(~cu, scales = "free_y", nrow = 2)
 
 ### Synch data
@@ -486,42 +486,40 @@ for (i in c(2,5,8)) { #make dataframe
 plotDat3 <- do.call(rbind, fullPlotList) %>%
   mutate(cu = recode(cu, "Bwrn" = "Bowron", "Chlk" = "Chilko", 
                      .default = levels(cu)), 
-         om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",
-                     # "studT" = "Ref. Heavy Tails",
-                     "lowStudT" = "Low Heavy Tails", .default = levels(om)))
+         om = recode(om, "ref" = "Reference", "lowA" = "Low",
+                     "lowStudT" = "Low +\nHeavy Tails", .default = levels(om)),
+         synch = factor(factor(synch),
+                        levels = c("lowSynch", "medSynch", "highSynch")))
 row.names(plotDat3) <- NULL
 
 p <- ggplot(plotDat3, aes(x = om, y = spawners, fill = cu, alpha = synch)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
   geom_hline(plotDat3, mapping = aes(yintercept = highBM), linetype = 2) +
-  scale_alpha_manual(name = "Synchrony", values = c(1, 0.65, 0.3),
+  scale_alpha_manual(name = "Operating Model", values = c(1, 0.65, 0.3),
                      labels = c("lowSynch" = "Low",
-                                "medSynch" = "Mod.",
+                                "medSynch" = "Ref/Mod.",
                                 "highSynch" = "High")) +
-  scale_fill_manual(values = colPal, guide = FALSE) +
+  scale_fill_manual(name = "Conservation Unit", values = colPal) +
   guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
-  labs(y = "Median Spawner Abundance (millions)",
-       x = "Productivity Scenario") +
-  theme_sleekX(facetSize = 1.1, axisSize = axSize - 1, 
-               legendSize = legSize * 0.75) +
+  theme_sleekX(axisSize = axSize - 1, 
+               legendSize = legSize * 1.1)+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank()) +
+  ggtitle("Synchrony") +
   facet_wrap(~cu, scales = "free_y", nrow = 2)
-
-# 
-# png(file = paste(here(),"/figs/SFig_spawnerViolinSynch.png", sep = ""),
-#     height = 3.5, width = 3, units = "in", res = 300)
-# print(p)
-# dev.off()
-# 
-# png(file = here("figs/Fig5_spawnerViolinSigma.png"),
-#     height = 3.5, width = 3, units = "in", res = 600)
-# print(q)
-# dev.off()
 
 png(file = paste(here(),"/figs/Fig5_spawnerViolin.png", sep = ""),
     height = 4.5, width = 6, units = "in", res = 600)
-ggarrange(q, p, nrow = 1, ncol = 2, heights = c(1, 1.2))
+fig <- ggarrange(q, p, nrow = 1, ncol = 2, widths = c(1, 1.55))
+annotate_figure(fig, 
+                bottom = text_grob("Productivity Scenario", size = axSize, 
+                                   color = "grey30"),
+                left = text_grob("Spawner Abundance (millions)", size = axSize,
+                                 rot = 90, color = "grey30"))
 dev.off()
-
 ##### END PRIMARY ANALYSIS #####
 
 

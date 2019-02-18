@@ -121,4 +121,8 @@ t <- trimDat(oms = c("Low Prod."), vars = "ppnYrsHighCatch",
              data = summDat)
 relDiff(max(t$avg), min(t$avg))
 
+# Catch stability in low vs low heavy
+t <- trimDat(oms = c("Low Prod.", "Low Prod. Heavy Tails"), vars = "stabilityCatch", 
+             data = summDat)
+
 ```

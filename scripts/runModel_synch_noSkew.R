@@ -27,15 +27,17 @@ cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), stringsAsFactors = F)
 srDat <- read.csv(here("data/sox/fraserRecDatTrim.csv"), stringsAsFactors = F)
 catchDat <- read.csv(here("data/sox/fraserCatchDatTrim.csv"), 
                      stringsAsFactors = F)
-ricPars <- read.csv(here("data/sox/pooledRickerMCMCPars.csv"), stringsAsFactors = F)
-larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"), stringsAsFactors = F)
+ricPars <- read.csv(here("data/sox/pooledRickerMCMCPars.csv"), 
+                    stringsAsFactors = F)
+larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"), 
+                     stringsAsFactors = F)
 tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 
 
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 1100
+nTrials <- 500
 
 ## General robustness runs
 simParTrim <- subset(simPar, scenario %in% c("lowSig", "medSig", "highSig",
@@ -65,39 +67,39 @@ dotSize = 3.25; lineSize = 0.8; legSize = 0.7; axSize = 10; facetSize = 0.95
 # })
 # }
 # 
-# for (i in seq_along(dirNames)) {
-#   dirName <- dirNames[i]
-#   d <- subset(simParTrim, scenario == scenNames[i])
-#   simsToRun <- split(d, seq(nrow(d)))
-#   Ncores <- detectCores()
-#   cl <- makeCluster(Ncores - 1) #save two cores
-#   registerDoParallel(cl)
-#   clusterEvalQ(cl, c(library(MASS),
-#                      library(here),
-#                      library(sensitivity),
-#                      library(mvtnorm),
-#                      library(scales), #shaded colors for figs
-#                      library(viridis), #color blind gradient palette
-#                      library(gsl), 
-#                      library(dplyr),
-#                      library(Rcpp),
-#                      library(RcppArmadillo),
-#                      library(sn),
-#                      library(samSim)))
-#   #export custom function and objects
-#   clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
-#                       "catchDat", "srDat", "ricPars", "dirName", "larkPars", 
-#                       "tamFRP"), envir = environment()) 
-#   tic("run in parallel")
-#   parLapply(cl, simsToRun, function(x) {
-#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
-#                 variableCU = FALSE, ricPars, larkPars = larkPars, 
-#                 tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName, 
-#                 nTrials = nTrials, makeSubDirs = FALSE, random = FALSE)
-#   })
-#   stopCluster(cl) #end cluster
-#   toc()
-# }
+for (i in seq_along(dirNames)) {
+  dirName <- dirNames[i]
+  d <- subset(simParTrim, scenario == scenNames[i])
+  simsToRun <- split(d, seq(nrow(d)))
+  Ncores <- detectCores()
+  cl <- makeCluster(Ncores - 1) #save two cores
+  registerDoParallel(cl)
+  clusterEvalQ(cl, c(library(MASS),
+                     library(here),
+                     library(sensitivity),
+                     library(mvtnorm),
+                     library(scales), #shaded colors for figs
+                     library(viridis), #color blind gradient palette
+                     library(gsl),
+                     library(dplyr),
+                     library(Rcpp),
+                     library(RcppArmadillo),
+                     library(sn),
+                     library(samSim)))
+  #export custom function and objects
+  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
+                      "catchDat", "srDat", "ricPars", "dirName", "larkPars",
+                      "tamFRP"), envir = environment())
+  tic("run in parallel")
+  parLapply(cl, simsToRun, function(x) {
+    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat,
+                variableCU = FALSE, ricPars, larkPars = larkPars,
+                tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName,
+                nTrials = nTrials, makeSubDirs = FALSE, random = FALSE)
+  })
+  stopCluster(cl) #end cluster
+  toc()
+}
 
 
 #_________________________________________________________________________
@@ -171,23 +173,27 @@ stdList <- lapply(seq_along(trimOmNames), function (h) {
   dum <- fullDat %>% 
     filter(om == trimOmNames[h])
   
-  # First calc low synch/low sigma dataset since necessary to std others
+  #First calculate within CU medians for low synch/low sigma dataset since 
+  #necessary to std others
   lowAggV <- dum %>% 
     filter(scenID == "low_lowSynch") %>% 
     group_by(cu, trial, sigma, synch, om, scenID) %>% 
     summarize(medR = median(recBY)) %>%
-    group_by(cu) %>% 
-    mutate(stdMedR = (medR - mean(medR))) %>% 
+    group_by(cu, sigma, synch, om, scenID) %>% 
+    mutate(lowScenMedR = median(medR)) %>% 
+    # group_by(cu) %>% 
+    # mutate(stdMedR = (medR - mean(medR))) %>% 
     as.data.frame
   #Trimmed version that can be merged and used to calculate relative differences
   trimLowV <- lowAggV %>% 
-    select(cu, trial, scenID, stdMedR)
+    select(cu, trial, scenID, lowScenMedR)
   
   scens <- unique(dum$scenID)
   stdInnerList <- lapply(seq_along(scens), function (i) {
     if (scens[i] == "low_lowSynch") {
       out <- lowAggV %>% 
-        select(-scenID)
+        mutate(stdMedR = medR - lowScenMedR) %>% 
+        select(-scenID, -lowScenMedR)
     } else {
       out <- dum %>% 
         filter(scenID == scens[i]) %>% 
@@ -196,12 +202,12 @@ stdList <- lapply(seq_along(trimOmNames), function (h) {
         #join so rel. diff can be calc
         inner_join(., trimLowV, by = c("cu", "trial")) %>%
         #rename low V column
-        dplyr::rename(lowVMedR = stdMedR) %>% 
+        # dplyr::rename(lowVMedR = stdMedR) %>% 
         group_by(cu) %>% 
         #calc rel. diff
-        mutate(stdMedR = (medR - lowVMedR) %>% 
+        mutate(stdMedR = (medR - lowScenMedR)) %>% 
         #remove values pulled from lowAggV
-        select(-lowVMedR, -scenID) %>% 
+        select(-lowScenMedR, -scenID) %>%
         as.data.frame
     }
     return(out)
@@ -225,7 +231,9 @@ stdList <- lapply(seq_along(trimOmNames), function (h) {
   return(finalOut)
 })
 stdFullDat <- do.call(rbind, stdList) %>% 
-  as.data.frame()
+  as.data.frame() %>%
+  mutate(synch = recode(synch, "lowSynch" = "low", "medSynch" = "med", 
+                        "highSynch" = "high", .default = levels(synch)))
 
 plotDat <- rbind(plotDat1, stdFullDat) %>%
   mutate(om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",

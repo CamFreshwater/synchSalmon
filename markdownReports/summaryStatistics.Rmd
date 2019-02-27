@@ -73,6 +73,9 @@ t3 <- extractVal(t, group = "synch") %>%
   filter(var == "ppnCUUpper")
 relDiff(t3$max, t3$min)
 
+t4 <- t %>% 
+  filter(var == "ppnMixedOpen")
+relDiff(max(t4$avg), min(t4$avg))
 
 # Returns in low vs. ref prod OMs
 t <- trimDat(oms = c("Reference Prod.", "Low Prod."), vars = "medRecRY", 

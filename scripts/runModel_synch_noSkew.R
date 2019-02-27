@@ -35,7 +35,7 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 1500
+nTrials <- 1100
 
 ## General robustness runs
 simParTrim <- subset(simPar, scenario %in% c("lowSig", "medSig", "highSig",
@@ -64,40 +64,40 @@ dotSize = 3.25; lineSize = 0.8; legSize = 0.7; axSize = 10; facetSize = 0.95
 #               nTrials=125, makeSubDirs=TRUE)
 # })
 # }
-
-for (i in seq_along(dirNames)) {
-  dirName <- dirNames[i]
-  d <- subset(simParTrim, scenario == scenNames[i])
-  simsToRun <- split(d, seq(nrow(d)))
-  Ncores <- detectCores()
-  cl <- makeCluster(Ncores - 1) #save two cores
-  registerDoParallel(cl)
-  clusterEvalQ(cl, c(library(MASS),
-                     library(here),
-                     library(sensitivity),
-                     library(mvtnorm),
-                     library(scales), #shaded colors for figs
-                     library(viridis), #color blind gradient palette
-                     library(gsl), 
-                     library(dplyr),
-                     library(Rcpp),
-                     library(RcppArmadillo),
-                     library(sn),
-                     library(samSim)))
-  #export custom function and objects
-  clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
-                      "catchDat", "srDat", "ricPars", "dirName", "larkPars", 
-                      "tamFRP"), envir = environment()) 
-  tic("run in parallel")
-  parLapply(cl, simsToRun, function(x) {
-    recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
-                variableCU = FALSE, ricPars, larkPars = larkPars, 
-                tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName, 
-                nTrials = nTrials, makeSubDirs = FALSE, random = FALSE)
-  })
-  stopCluster(cl) #end cluster
-  toc()
-}
+# 
+# for (i in seq_along(dirNames)) {
+#   dirName <- dirNames[i]
+#   d <- subset(simParTrim, scenario == scenNames[i])
+#   simsToRun <- split(d, seq(nrow(d)))
+#   Ncores <- detectCores()
+#   cl <- makeCluster(Ncores - 1) #save two cores
+#   registerDoParallel(cl)
+#   clusterEvalQ(cl, c(library(MASS),
+#                      library(here),
+#                      library(sensitivity),
+#                      library(mvtnorm),
+#                      library(scales), #shaded colors for figs
+#                      library(viridis), #color blind gradient palette
+#                      library(gsl), 
+#                      library(dplyr),
+#                      library(Rcpp),
+#                      library(RcppArmadillo),
+#                      library(sn),
+#                      library(samSim)))
+#   #export custom function and objects
+#   clusterExport(cl, c("simsToRun", "recoverySim", "cuPar", "dirName", "nTrials",
+#                       "catchDat", "srDat", "ricPars", "dirName", "larkPars", 
+#                       "tamFRP"), envir = environment()) 
+#   tic("run in parallel")
+#   parLapply(cl, simsToRun, function(x) {
+#     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, 
+#                 variableCU = FALSE, ricPars, larkPars = larkPars, 
+#                 tamFRP = tamFRP, cuCustomCorrMat = NULL, dirName = dirName, 
+#                 nTrials = nTrials, makeSubDirs = FALSE, random = FALSE)
+#   })
+#   stopCluster(cl) #end cluster
+#   toc()
+# }
 
 
 #_________________________________________________________________________
@@ -108,7 +108,7 @@ vars <- c("medRecRY", "ppnCUUpper", "ppnMixedOpen",
 omNames <- rep(c("ref", "lowA", "lowStudT"), each = 3)
 sigNames <- rep(c("low", "med", "high"), length.out = length(omNames))
 
-plotDat = NULL
+plotDat1 = NULL
 for(h in seq_along(dirNames)) {
   agList <- genOutputList(dirNames[h], agg = TRUE)
   keyVar <- sapply(agList, function(x) unique(x$keyVar))
@@ -119,8 +119,7 @@ for(h in seq_along(dirNames)) {
                       om = rep(omNames[h], length.out = length(agList)),
                       var = rep(vars[i], length.out = length(agList)),
                       synch = as.factor(keyVar),
-                      cat = as.factor(plotOrder),
-                      avg = sapply(agList, function(x) median(x[,vars[i]])),
+                      medn = sapply(agList, function(x) median(x[,vars[i]])),
                       lowQ = sapply(agList, function(x) qLow(x[,vars[i]])),
                       highQ = sapply(agList, function(x) qHigh(x[,vars[i]])),
                       row.names = NULL
@@ -129,40 +128,137 @@ for(h in seq_along(dirNames)) {
   }
   rownames(singleScen) <- c()
   #merge multiple scenarios into one dataframe
-  plotDat <- rbind(plotDat, singleScen) 
+  plotDat1 <- rbind(plotDat1, singleScen) 
 }
-plotDat <- plotDat %>%
-  mutate(cat = recode(cat, "1" = "low", "2" = "med", "3" = "high", 
-                      .default = levels(cat)),
-         om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",
+plotDat1 <- plotDat1 %>%
+  mutate(synch = recode(synch, "0.05" = "low", "0.5" = "med", "0.75" = "high", 
+                     .default = levels(synch)))
+
+
+
+### C. Holt suggested standardized CU-specific return abundances either to this 
+# plot as an additional row or as a supplementary figure; load in CU-specific 
+# time series data and scale each trial's results relative to low CVc, low 
+# synch scenario then average across CUs for each trial
+arrayNames <- sapply(dirNames, function(x) {
+ list.files(paste(here("outputs/simData"), x, sep="/"),
+            pattern = "\\Arrays.RData$")
+})
+
+#iterate over productivity scenarios
+listByOM <- lapply(seq_along(dirNames), function (h) { 
+ #iterate over synch scenarios
+ listBySynch <- lapply(seq_along(arrayNames[, h]), function (x) {
+   datList <- readRDS(paste(here("outputs/simData"), dirNames[h],
+                            arrayNames[x, h], sep = "/"))
+   datList$recBY %>% 
+     reshape2::melt() %>% 
+     dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
+                   "recBY" = "value") %>% 
+     mutate(sigma = as.factor(sigNames[h]), synch = as.factor(datList$nameOM), 
+            om = as.factor(omNames[h]),
+            scenID = as.factor(paste(sigNames[h], datList$nameOM, 
+                                     sep = "_"))) %>% 
+     filter(yr > datList$nPrime)
+ }) #iterate across different OMs within a scenario
+ dat <- do.call(rbind, listBySynch) #merge synch list elements into DF
+})
+fullDat <- do.call(rbind, listByOM)
+
+# standardize data within each productivity operating model
+trimOmNames <- unique(omNames)
+stdList <- lapply(seq_along(trimOmNames), function (h) {
+  dum <- fullDat %>% 
+    filter(om == trimOmNames[h])
+  
+  # First calc low synch/low sigma dataset since necessary to std others
+  lowAggV <- dum %>% 
+    filter(scenID == "low_lowSynch") %>% 
+    group_by(cu, trial, sigma, synch, om, scenID) %>% 
+    summarize(medR = median(recBY)) %>%
+    group_by(cu) %>% 
+    mutate(stdMedR = (medR - mean(medR))) %>% 
+    as.data.frame
+  #Trimmed version that can be merged and used to calculate relative differences
+  trimLowV <- lowAggV %>% 
+    select(cu, trial, scenID, stdMedR)
+  
+  scens <- unique(dum$scenID)
+  stdInnerList <- lapply(seq_along(scens), function (i) {
+    if (scens[i] == "low_lowSynch") {
+      out <- lowAggV %>% 
+        select(-scenID)
+    } else {
+      out <- dum %>% 
+        filter(scenID == scens[i]) %>% 
+        group_by(cu, trial, sigma, synch, om) %>% 
+        summarize(medR = median(recBY)) %>% 
+        #join so rel. diff can be calc
+        inner_join(., trimLowV, by = c("cu", "trial")) %>%
+        #rename low V column
+        dplyr::rename(lowVMedR = stdMedR) %>% 
+        group_by(cu) %>% 
+        #calc rel. diff
+        mutate(stdMedR = (medR - lowVMedR) %>% 
+        #remove values pulled from lowAggV
+        select(-lowVMedR, -scenID) %>% 
+        as.data.frame
+    }
+    return(out)
+  })
+  
+  #merge and calculate means across CUs per trial
+  temp <- do.call(rbind, stdInnerList) %>% 
+    group_by(trial, sigma, synch, om) %>% 
+    summarize(meanStdRecBY = mean(stdMedR))
+  
+  #finally calculate medians and quantiles to generate dataset equivalent to 
+  #plotdat
+  finalOut <- temp %>% 
+    group_by(sigma, synch, om) %>% 
+    mutate(var = "stdRecBY",
+           mean = mean(meanStdRecBY),
+           medn = median(meanStdRecBY),
+           lowQ = qLow(meanStdRecBY),
+           highQ = qHigh(meanStdRecBY)) %>%
+    select(sigma, om, var, synch, medn, lowQ, highQ)
+  return(finalOut)
+})
+stdFullDat <- do.call(rbind, stdList) %>% 
+  as.data.frame()
+
+plotDat <- rbind(plotDat1, stdFullDat) %>%
+  mutate(om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",
                      "lowStudT" = "Low Prod. Heavy Tails", 
-                     .default = levels(om))
-  )
+                     .default = levels(om))) 
+
+
 
 #Save summary data to pass to Rmd
-write.csv(plotDat, here("outputs/generatedData", "summaryTable_noSkew.csv"))
+# write.csv(plotDat, here("outputs/generatedData", "summaryTable_noSkew.csv"))
 
 
-colPal <- viridis(length(levels(plotDat$cat)), begin = 0, end = 1)
-names(colPal) <- levels(plotDat$cat)
+colPal <- viridis(length(levels(plotDat$synch)), begin = 0, end = 1)
+names(colPal) <- levels(plotDat$synch)
 
-consVars <- c("medRecRY", "ppnCUUpper", "ppnMixedOpen")
+consVars <- c("medRecRY", "ppnCUUpper", "ppnMixedOpen", "stdRecBY")
 consYLabs <- c("Return\nAbundance", "Prop. CUs\nAbove Benchmark", 
-               "Prop. MUs\nAbove Esc. Goal")
+               "Prop. MUs\nAbove Esc. Goal", "Standardized Recruit Abundance")
 ## Correct based on column number
-consLabs <- data.frame(om = rep(factor(unique(plotDat$om),
-                                       levels = unique(plotDat$om)),
-                                each = 3),
-                       lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)",
-                               "i)"),
-                       var = rep(factor(consVars, levels = unique(vars)),
-                                 times = 3)
-)#make dataframe of labels to annotate facets
+# consLabs <- data.frame(om = rep(factor(unique(plotDat$om),
+#                                        levels = unique(plotDat$om)),
+#                                 each = 3),
+#                        lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)",
+#                                "i)"),
+#                        var = rep(factor(consVars, levels = unique(vars)),
+#                                  times = 3)
+# )#make dataframe of labels to annotate facets
+
 consPlots <- lapply(seq_along(consVars), function(i) {
   temp <- plotDat %>%
     filter(var == consVars[i])
-  q <- ggplot(temp, aes(x = sigma, y = avg, ymin = lowQ, ymax = highQ,
-                        fill = cat)) +
+  q <- ggplot(temp, aes(x = sigma, y = medn, ymin = lowQ, ymax = highQ,
+                        fill = synch)) +
     labs(x = "Component Variance", y = consYLabs[i], 
          fill = "Sim.\nParameter\nValue") +
     geom_pointrange(shape = 21, fatten = dotSize, size = lineSize,
@@ -174,20 +270,20 @@ consPlots <- lapply(seq_along(consVars), function(i) {
                         labels = c("low" = "Low",
                                    "med" = "Moderate",
                                    "high" = "High")) +
-    geom_text(data = consLabs %>% filter(var == consVars[i]),
-              mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
-                            hjust = 1, vjust = 0),
-              show.legend = FALSE, inherit.aes = FALSE) +
+    # geom_text(data = consLabs %>% filter(var == consVars[i]),
+    #           mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
+    #                         hjust = 1, vjust = 0),
+    #           show.legend = FALSE, inherit.aes = FALSE) +
     facet_wrap(~om, scales = "fixed", ncol = 4, nrow = 1)
   if (i == 1) {
     q <- q + theme_sleekX(position = "top", legendSize = legSize,
                           axisSize = axSize, facetSize = facetSize)
   }
-  if (i == 2) {
+  if (i == 2 | i == 3) {
     q <- q + theme_sleekX(position = "mid", legendSize = legSize,
                           axisSize = axSize, facetSize = facetSize)
   }
-  if (i == 3) {
+  if (i == 4) {
     q <- q + theme_sleekX(position = "bottom", legendSize = legSize,
                           axisSize = axSize, facetSize = facetSize)
   }
@@ -208,8 +304,8 @@ catchLabs <- data.frame(om = rep(factor(unique(plotDat$om),
 catchPlots <- lapply(seq_along(catchVars), function(i) {
   temp <- plotDat %>%
     filter(var == catchVars[i])
-  q <- ggplot(temp, aes(x = sigma, y = avg, ymin = lowQ, ymax = highQ,
-                        fill = cat)) +
+  q <- ggplot(temp, aes(x = sigma, y = medn, ymin = lowQ, ymax = highQ,
+                        fill = synch)) +
     labs(x = "Component Variance", y = catchYLabs[i], 
          fill = "Sim.\nParameter\nValue") +
     geom_pointrange(shape = 21, fatten = dotSize, size = lineSize,

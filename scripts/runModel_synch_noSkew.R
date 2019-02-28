@@ -247,10 +247,9 @@ plotDat <- rbind(plotDat1, stdFullDat) %>%
 colPal <- viridis(length(levels(plotDat$synch)), begin = 0, end = 1)
 names(colPal) <- levels(plotDat$synch)
 
-consVars <- c("medRecRY", "stdRecRY", "ppnCUUpper", "ppnMixedOpen")
-consYLabs <- c("Return\nAbundance", "Standardized\nReturn Abundance", 
-               "Prop. CUs\nAbove Benchmark", 
-               "Prop. MUs\nAbove Esc. Goal")
+consVars <- c("medRecRY", "stdRecRY", "ppnMixedOpen", "ppnCUUpper")
+consYLabs <- c("Agg. Return\nAbundance", "CU-Specific Std.\nReturn Abundance", 
+               "Prop. MUs\nAbove Esc. Goal", "Prop. CUs\nAbove Benchmark")
 consLabs <- data.frame(om = rep(factor(unique(plotDat$om),
                                        levels = unique(plotDat$om)),
                                 each = 4),
@@ -276,10 +275,10 @@ consPlots <- lapply(seq_along(consVars), function(i) {
                         labels = c("low" = "Low",
                                    "med" = "Moderate",
                                    "high" = "High")) +
-    # geom_text(data = consLabs %>% filter(var == consVars[i]),
-    #           mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
-    #                         hjust = 1, vjust = 0),
-    #           show.legend = FALSE, inherit.aes = FALSE) +
+    geom_text(data = consLabs %>% filter(var == consVars[i]),
+              mapping = aes(x = 0.75, y = min(temp$lowQ), label = lab,
+                            hjust = 1, vjust = 0),
+              show.legend = FALSE, inherit.aes = FALSE) +
     facet_wrap(~om, scales = "fixed", ncol = 4, nrow = 1)
   if (i == 1) {
     q <- q + theme_sleekX(position = "top", legendSize = legSize,
@@ -473,10 +472,10 @@ q2 <- ggplot(dum, aes(x = sigmaOM, y = medCompCVRecBY, fill = sigmaOM)) +
   scale_fill_manual(name = "Operating Model", values = colPal) +
   scale_x_discrete(breaks = waiver(), labels = c("Observed", 
                                                  expression(paste("0.75", 
-                                                                  sigma["p"])),
-                                                 expression(paste(sigma["p"])),
+                                                                  sigma["R"])),
+                                                 expression(paste(sigma["R"])),
                                                  expression(paste("1.25", 
-                                                                  sigma["p"]))
+                                                                  sigma["R"]))
   )) +
   theme_sleekX(position = "standard", axisSize = axSize * 0.9)
 
@@ -495,11 +494,11 @@ p2 <- ggplot(dum2, aes(x = synchOM, y = medSynchRecBY, fill = synchOM)) +
   guides(fill = FALSE, color = FALSE) +
   scale_fill_manual(values = colPal2) +
   scale_x_discrete(breaks = waiver(), labels = c("Observed", 
-                                                 expression(paste(rho, 
+                                                 expression(paste(rho["R"], 
                                                                   " = 0.05")),
-                                                 expression(paste(rho, 
+                                                 expression(paste(rho["R"], 
                                                                   " = 0.50")),
-                                                 expression(paste(rho, 
+                                                 expression(paste(rho["R"], 
                                                                   " = 0.75"))
   )) +
   theme_sleekX(position = "standard", axisSize = axSize * 0.9)

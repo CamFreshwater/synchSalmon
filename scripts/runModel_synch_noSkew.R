@@ -153,10 +153,10 @@ listByOM <- lapply(seq_along(dirNames), function (h) {
  listBySynch <- lapply(seq_along(arrayNames[, h]), function (x) {
    datList <- readRDS(paste(here("outputs/simData"), dirNames[h],
                             arrayNames[x, h], sep = "/"))
-   datList$recBY %>% 
+   datList$recRY %>% 
      reshape2::melt() %>% 
      dplyr::rename("yr" = "Var1", "cu" =  "Var2", "trial" = "Var3", 
-                   "recBY" = "value") %>% 
+                   "recRY" = "value") %>% 
      mutate(sigma = as.factor(sigNames[h]), synch = as.factor(datList$nameOM), 
             om = as.factor(omNames[h]),
             scenID = as.factor(paste(sigNames[h], datList$nameOM, 
@@ -178,7 +178,7 @@ stdList <- lapply(seq_along(trimOmNames), function (h) {
   lowAggV <- dum %>% 
     filter(scenID == "low_lowSynch") %>% 
     group_by(cu, trial, sigma, synch, om, scenID) %>% 
-    summarize(medR = median(recBY)) %>%
+    summarize(medR = median(recRY)) %>%
     group_by(cu, sigma, synch, om, scenID) %>% 
     mutate(lowScenMedR = median(medR)) %>% 
     # group_by(cu) %>% 
@@ -198,7 +198,8 @@ stdList <- lapply(seq_along(trimOmNames), function (h) {
       out <- dum %>% 
         filter(scenID == scens[i]) %>% 
         group_by(cu, trial, sigma, synch, om) %>% 
-        summarize(medR = median(recBY)) %>% 
+        #calculate median CU-specific recruitment within a trial
+        summarize(medR = median(recRY)) %>% 
         #join so rel. diff can be calc
         inner_join(., trimLowV, by = c("cu", "trial")) %>%
         #rename low V column
@@ -216,17 +217,17 @@ stdList <- lapply(seq_along(trimOmNames), function (h) {
   #merge and calculate means across CUs per trial
   temp <- do.call(rbind, stdInnerList) %>% 
     group_by(trial, sigma, synch, om) %>% 
-    summarize(meanStdRecBY = mean(stdMedR))
+    summarize(meanStdRecRY = mean(stdMedR))
   
   #finally calculate medians and quantiles to generate dataset equivalent to 
   #plotdat
   finalOut <- temp %>% 
     group_by(sigma, synch, om) %>% 
-    mutate(var = "stdRecBY",
-           mean = mean(meanStdRecBY),
-           medn = median(meanStdRecBY),
-           lowQ = qLow(meanStdRecBY),
-           highQ = qHigh(meanStdRecBY)) %>%
+    mutate(var = "stdRecRY",
+           mean = mean(meanStdRecRY),
+           medn = median(meanStdRecRY),
+           lowQ = qLow(meanStdRecRY),
+           highQ = qHigh(meanStdRecRY)) %>%
     select(sigma, om, var, synch, medn, lowQ, highQ)
   return(finalOut)
 })
@@ -240,27 +241,24 @@ plotDat <- rbind(plotDat1, stdFullDat) %>%
                      "lowStudT" = "Low Prod. Heavy Tails", 
                      .default = levels(om))) 
 
-
-
 #Save summary data to pass to Rmd
 # write.csv(plotDat, here("outputs/generatedData", "summaryTable_noSkew.csv"))
-
 
 colPal <- viridis(length(levels(plotDat$synch)), begin = 0, end = 1)
 names(colPal) <- levels(plotDat$synch)
 
-consVars <- c("medRecRY", "ppnCUUpper", "ppnMixedOpen", "stdRecBY")
-consYLabs <- c("Return\nAbundance", "Prop. CUs\nAbove Benchmark", 
-               "Prop. MUs\nAbove Esc. Goal", "Standardized Recruit Abundance")
-## Correct based on column number
-# consLabs <- data.frame(om = rep(factor(unique(plotDat$om),
-#                                        levels = unique(plotDat$om)),
-#                                 each = 3),
-#                        lab = c("a)", "d)", "g)", "b)", "e)", "h)", "c)", "f)",
-#                                "i)"),
-#                        var = rep(factor(consVars, levels = unique(vars)),
-#                                  times = 3)
-# )#make dataframe of labels to annotate facets
+consVars <- c("medRecRY", "stdRecRY", "ppnCUUpper", "ppnMixedOpen")
+consYLabs <- c("Return\nAbundance", "Standardized\nReturn Abundance", 
+               "Prop. CUs\nAbove Benchmark", 
+               "Prop. MUs\nAbove Esc. Goal")
+consLabs <- data.frame(om = rep(factor(unique(plotDat$om),
+                                       levels = unique(plotDat$om)),
+                                each = 4),
+                       lab = c("a)", "d)", "g)", "j)", "b)", "e)", "h)", "k)",
+                               "c)", "f)", "i)", "l)"),
+                       var = rep(factor(consVars, levels = unique(consVars)),
+                                 times = 3)
+)#make dataframe of labels to annotate facets
 
 consPlots <- lapply(seq_along(consVars), function(i) {
   temp <- plotDat %>%
@@ -346,10 +344,11 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
 })
 
 png(file = paste(here(),"/figs/Fig3_consGroupedPlots_noSkew.png", sep = ""),
-    height = 4.5, width = 6, units = "in", res = 600)
+    height = 5.5, width = 6, units = "in", res = 600)
 ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]],
-          ncol = 1, nrow = 3, common.legend = TRUE, legend = "right",
-          align = "v", heights = c(1.1,1,1.2))
+          consPlots[[4]],
+          ncol = 1, nrow = 4, common.legend = TRUE, legend = "right",
+          align = "v", heights = c(1.1,1,1,1.2))
 dev.off()
 png(file = paste(here(),"/figs/Fig4_catchGroupedPlots_noSkew.png", sep = ""),
     height = 4.5, width = 6, units = "in", res = 600)

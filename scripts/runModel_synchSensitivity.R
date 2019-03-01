@@ -78,7 +78,7 @@ for (i in seq_along(dirNames)) {
   d <- subset(simParTrim, scenario == scenNames[i])
   simsToRun <- split(d, seq(nrow(d)))
   Ncores <- detectCores()
-  cl <- makeCluster(Ncores - 3) #save two cores
+  cl <- makeCluster(Ncores - 2) #save two cores
   registerDoParallel(cl)
   clusterEvalQ(cl, c(library(MASS),
                      library(here),
@@ -103,7 +103,8 @@ for (i in seq_along(dirNames)) {
   parLapply(cl, simsToRun, function(x) {
     recoverySim(x, cuPar, catchDat = catchDat, srDat = srDat, variableCU = FALSE, 
                 ricPars, larkPars = larkPars, tamFRP = tamFRP,  
-                dirName = dirName, nTrials = nTrials, multipleMPs = FALSE)
+                dirName = dirName, nTrials = nTrials, makeSubDirs = FALSE, 
+                random = FALSE)
   })
   stopCluster(cl) #end cluster
   toc()
@@ -112,8 +113,9 @@ for (i in seq_along(dirNames)) {
 
 #_________________________________________________________________________
 ## Modified version of multi-OM grouped box plots
-vars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant",
+vars <- c("medRecRY", "ppnCUUpper", "ppnMixedOpen",
           "medCatch", "ppnYrsHighCatch", "stabilityCatch")
+
 plotDat = NULL
 for (h in seq_along(dirNames)) {
   agList <- genOutputList(dirNames[h], agg = TRUE)
@@ -138,13 +140,14 @@ plotDat <- plotDat  %>%
          scen = factor(scen, levels = c("rho", "ageTau", "enRouteSig", "ouSig", 
                                         "refSensitivity")))
 
+
 colPal <- c("black", "blue", "orange")
 names(colPal) <- levels(plotDat$om)
 
 dotSize = 3; lineSize = 0.8; legSize = 0.8; axSize = 10
-consVars <- c("medRecRY", "ppnCUUpper", "ppnCUExtant") 
-consYLabs <- c("Return\nAbundance", "Prop. CUs\nAbove Benchmark", 
-               "Prop. CUs\nExtant")
+consVars <- c("medRecRY", "ppnCUUpper", "ppnMixedOpen") 
+consYLabs <- c("Return\nAbundance", "Prop. MUs\nAbove Esc. Goal",
+               "Prop. CUs\nAbove Benchmark")
 consPlots <- lapply(seq_along(consVars), function(i) {
   temp <- plotDat %>% 
     filter(var == consVars[i],

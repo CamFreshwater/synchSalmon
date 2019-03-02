@@ -235,6 +235,7 @@ stdFullDat <- do.call(rbind, stdList) %>%
   as.data.frame() %>%
   mutate(synch = recode(synch, "lowSynch" = "low", "medSynch" = "med", 
                         "highSynch" = "high", .default = levels(synch)))
+saveRDS(stdFullDat, here("outputs/generatedData/stdMedRecRY.rds"))
 
 plotDat <- rbind(plotDat1, stdFullDat) %>%
   mutate(om = recode(om, "ref" = "Reference Prod.", "lowA" = "Low Prod.",

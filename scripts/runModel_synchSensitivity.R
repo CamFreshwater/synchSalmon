@@ -33,7 +33,6 @@ ricPars <- read.csv(here("data/sox/pooledRickerMCMCPars.csv"), stringsAsFactors 
 larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"), stringsAsFactors = F)
 tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 
-
 ## Check SD among CU-specific uncertainty parameters to ensure that proposed
 # sensitivity values are reasonable
 sdER <- sd(cuPar$meanDBE)

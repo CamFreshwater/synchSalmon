@@ -39,7 +39,6 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 ## Define simulations to be run
 nTrials <- 500
 
-## General robustness runs
 simParTrim <- subset(simPar, scenario %in% c("lowSig", "medSig", "highSig",
                                              "lowSigLowA", "medSigLowA",
                                              "highSigLowA",
@@ -159,7 +158,7 @@ listByOM <- lapply(seq_along(dirNames), function (h) {
                    "recRY" = "value") %>% 
      mutate(sigma = as.factor(sigNames[h]), synch = as.factor(datList$nameOM), 
             om = as.factor(omNames[h]),
-            scenID = as.factor(paste(sigNames[h], datList$nameOM, 
+            scenID = as.factor(paste(omNames[h], sigNames[h], datList$nameOM, 
                                      sep = "_"))) %>% 
      filter(yr > datList$nPrime)
  }) #iterate across different OMs within a scenario
@@ -167,43 +166,37 @@ listByOM <- lapply(seq_along(dirNames), function (h) {
 })
 fullDat <- do.call(rbind, listByOM)
 
-# standardize data within each productivity operating model
-trimOmNames <- unique(omNames)
-stdList <- lapply(seq_along(trimOmNames), function (h) {
-  dum <- fullDat %>% 
-    filter(om == trimOmNames[h])
+# standardize data relative to low synch/low sigma in reference OM
+# trimOmNames <- unique(omNames)
+# stdList <- lapply(seq_along(trimOmNames), function (h) {
   
-  #First calculate within CU medians for low synch/low sigma dataset since 
-  #necessary to std others
-  lowAggV <- dum %>% 
-    filter(scenID == "low_lowSynch") %>% 
+  #First calculate within CU medians for low synch/low sigma/reference dataset
+  lowAggV <- fullDat %>% 
+    filter(scenID == "ref_low_lowSynch") %>% 
     group_by(cu, trial, sigma, synch, om, scenID) %>% 
     summarize(medR = median(recRY)) %>%
     group_by(cu, sigma, synch, om, scenID) %>% 
     mutate(lowScenMedR = median(medR)) %>% 
-    # group_by(cu) %>% 
-    # mutate(stdMedR = (medR - mean(medR))) %>% 
     as.data.frame
   #Trimmed version that can be merged and used to calculate relative differences
   trimLowV <- lowAggV %>% 
     select(cu, trial, scenID, lowScenMedR)
   
-  scens <- unique(dum$scenID)
+  scens <- unique(fullDat$scenID)
+  #standardize by subtracting median (lowScenMedR)
   stdInnerList <- lapply(seq_along(scens), function (i) {
-    if (scens[i] == "low_lowSynch") {
+    if (scens[i] == "ref_low_lowSynch") {
       out <- lowAggV %>% 
         mutate(stdMedR = medR - lowScenMedR) %>% 
         select(-scenID, -lowScenMedR)
     } else {
-      out <- dum %>% 
+      out <- fullDat %>% 
         filter(scenID == scens[i]) %>% 
         group_by(cu, trial, sigma, synch, om) %>% 
         #calculate median CU-specific recruitment within a trial
         summarize(medR = median(recRY)) %>% 
         #join so rel. diff can be calc
         inner_join(., trimLowV, by = c("cu", "trial")) %>%
-        #rename low V column
-        # dplyr::rename(lowVMedR = stdMedR) %>% 
         group_by(cu) %>% 
         #calc rel. diff
         mutate(stdMedR = (medR - lowScenMedR)) %>% 
@@ -228,12 +221,14 @@ stdList <- lapply(seq_along(trimOmNames), function (h) {
            medn = median(meanStdRecRY),
            lowQ = qLow(meanStdRecRY),
            highQ = qHigh(meanStdRecRY)) %>%
-    select(sigma, om, var, synch, medn, lowQ, highQ)
-  return(finalOut)
-})
-stdFullDat <- do.call(rbind, stdList) %>% 
-  as.data.frame() %>%
-  mutate(synch = recode(synch, "lowSynch" = "low", "medSynch" = "med", 
+    select(sigma, om, var, synch, medn, lowQ, highQ) 
+  # return(finalOut)
+# })
+# stdFullDat <- do.call(rbind, stdList) %>% 
+#   as.data.frame()
+stdFullDat <- finalOut %>% 
+  as.data.frame() %>% 
+  mutate(synch = recode(synch, "lowSynch" = "low", "medSynch" = "med",
                         "highSynch" = "high", .default = levels(synch)))
 saveRDS(stdFullDat, here("outputs/generatedData/stdMedRecRY.rds"))
 
@@ -345,8 +340,7 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
 
 png(file = paste(here(),"/figs/Fig3_consGroupedPlots_noSkew.png", sep = ""),
     height = 5.5, width = 6, units = "in", res = 600)
-ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]],
-          consPlots[[4]],
+ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]], consPlots[[4]],
           ncol = 1, nrow = 4, common.legend = TRUE, legend = "right",
           align = "v", heights = c(1.1,1,1,1.2))
 dev.off()

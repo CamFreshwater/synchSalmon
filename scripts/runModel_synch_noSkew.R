@@ -543,7 +543,7 @@ plotDat <- do.call(rbind, plotList)
 q <- ggplot(plotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
   geom_hline(plotDat, mapping = aes(yintercept = highBM), linetype = 2) +
-  scale_alpha_manual(values = c(1, 0.65, 0.3),
+  scale_alpha_manual(values = c(1, 0.575, 0.15),
                      guide = FALSE) +
   scale_fill_manual(values = colPal, guide = FALSE) +
   theme_sleekX(axisSize = axSize - 1) +
@@ -592,7 +592,7 @@ row.names(plotDat3) <- NULL
 p <- ggplot(plotDat3, aes(x = om, y = spawners, fill = cu, alpha = synch)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
   geom_hline(plotDat3, mapping = aes(yintercept = highBM), linetype = 2) +
-  scale_alpha_manual(name = "Operating Model", values = c(1, 0.65, 0.3),
+  scale_alpha_manual(name = "Operating Model", values = c(1, 0.575, 0.15),
                      labels = c("lowSynch" = "Low",
                                 "medSynch" = "Ref/Mod.",
                                 "highSynch" = "High")) +

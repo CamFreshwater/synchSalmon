@@ -148,33 +148,33 @@ rawProdPlot <- ggplot(rawDat, aes(x = yr, y = rollProd, col = stk)) +
   scale_color_manual(values = rep("grey", length.out = stkN), guide = FALSE) +
   stat_summary(fun.y = mean, colour = "black", geom = "line", size = 1.25)  +
   theme_sleekX(position = "top", axisSize = 10) +
-  theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
+  theme(axis.text.y = element_text(hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "prod"),
             mapping = aes(x = min(plotYrs), y = max(rawDat$rollProd), 
-                          label = lab, hjust = 0.25, vjust = 0.5), 
+                          label = lab, hjust = 0.25, vjust = 0.75), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4)
 aggRetPlot <- ggplot(catchDatLong, aes(x = yr, y = rollRet)) +
   geom_line(size = 1.25) +
   xlim(plotYrs) +
   ylim(0,  max(catchDatLong$rollRet, na.rm = TRUE)) +
   theme_sleekX(position = "top", axisSize = 10) +
-  theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
+  theme(axis.text.y = element_text(hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "rec"),
             mapping = aes(x = min(plotYrs), 
                           y = max(catchDatLong$rollRet, na.rm = TRUE), 
-                          label = lab, hjust = 0.25, vjust = 0.5), 
+                          label = lab, hjust = 0.25, vjust = 0.75), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
   labs(x = "", y = "Aggregate Return")
 aggCatchPlot <- ggplot(catchDatLong, aes(x = yr, y = rollCatch)) + 
   geom_line(size = 1.15) +
   theme_sleekX(position = "top", axisSize = 10) +
-  theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
+  theme(axis.text.y = element_text(hjust = 0.5)) +
   xlim(plotYrs) +
   ylim(0, max(catchDatLong$rollRet, na.rm = TRUE)) +
   geom_text(data = labDat %>% filter(var == "catch"),
             mapping = aes(x = min(plotYrs), 
                           y = max(catchDatLong$rollRet, na.rm = TRUE), 
-                          label = lab, hjust = 0.25, vjust = 0.5), 
+                          label = lab, hjust = 0.25, vjust = 0.75), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
   labs(x = "", y = "Aggregate Catch") 
 compCVPlot <- ggplot(retroCVc, aes(x = broodYr, y = est)) + 
@@ -182,11 +182,11 @@ compCVPlot <- ggplot(retroCVc, aes(x = broodYr, y = est)) +
   xlim(plotYrs) +
   geom_ribbon(aes(ymin = lwr, ymax = upr), alpha=0.2) +
   theme_sleekX(axisSize = 10) +
-  theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
+  theme(axis.text.y = element_text(hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "cv"),
             mapping = aes(x = min(plotYrs), 
                           y = max(retroCVc$upr, na.rm = TRUE), 
-                          label = lab, hjust = 0.25, vjust = 0.5), 
+                          label = lab, hjust = 0.25, vjust = 0.75), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
   labs(x = "", y = "Component Variability") 
 synchPlot <- ggplot(retroPhi, aes(x = broodYr, y = est)) + 
@@ -194,11 +194,11 @@ synchPlot <- ggplot(retroPhi, aes(x = broodYr, y = est)) +
   xlim(plotYrs) +
   geom_ribbon(aes(ymin = lwr, ymax = upr), alpha=0.2) +
   theme_sleekX(axisSize = 10) +
-  theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
+  theme(axis.text.y = element_text(hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "synch"),
             mapping = aes(x = min(plotYrs), 
                           y = max(retroPhi$upr, na.rm = TRUE), 
-                          label = lab, hjust = 0.25, vjust = 0.5), 
+                          label = lab, hjust = 0.25, vjust = 0.75), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
   labs(x = "", y = "Synchrony")
 agCVPlot <- ggplot(retroCVa, aes(x = broodYr, y = est)) + 
@@ -206,11 +206,11 @@ agCVPlot <- ggplot(retroCVa, aes(x = broodYr, y = est)) +
   xlim(plotYrs) +
   geom_ribbon(aes(ymin = lwr, ymax = upr), alpha=0.2) +
   theme_sleekX(axisSize = 10) +
-  theme(axis.text.y = element_text(angle = 90, vjust = 1, hjust = 0.5)) +
+  theme(axis.text.y = element_text(hjust = 0.5)) +
   geom_text(data = labDat %>% filter(var == "aggCV"),
             mapping = aes(x = min(plotYrs), 
                           y = max(retroCVa$upr, na.rm = TRUE), 
-                          label = lab, hjust = 0.25, vjust = 0.5), 
+                          label = lab, hjust = 0.25, vjust = 0.75), 
             show.legend = FALSE, inherit.aes = FALSE, size = 4) +
   labs(x = "", y = "Aggregate Variability")
 

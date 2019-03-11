@@ -37,7 +37,7 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 500
+nTrials <- 1500
 
 simParTrim <- subset(simPar, scenario %in% c("lowSig", "medSig", "highSig",
                                              "lowSigLowA", "medSigLowA",
@@ -53,7 +53,7 @@ dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
 # Default plotting variable settings
 dotSize = 3.25; lineSize = 0.8; legSize = 0.7; axSize = 10; facetSize = 0.95
 
-# recoverySim(simParTrim[11, ], cuPar, catchDat = catchDat, srDat = srDat,
+# recoverySim(simParTrim[24, ], cuPar, catchDat = catchDat, srDat = srDat,
 #             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
 #             dirName = "test", nTrials = 5, makeSubDirs = FALSE, random = FALSE)
 # for(i in seq_along(dirNames)) {

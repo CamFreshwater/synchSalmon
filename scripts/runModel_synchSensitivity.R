@@ -51,7 +51,7 @@ hist(cuPar$tauCycAge - sdTau) #lines up well
 ### SET UP MODEL RUN -----------------------------------------------------
 
 ## Define simulations to be run
-nTrials <- 500
+nTrials <- 1500
 
 ## General robustness runs
 simParTrim <- subset(simPar

@@ -167,65 +167,59 @@ listByOM <- lapply(seq_along(dirNames), function (h) {
 fullDat <- do.call(rbind, listByOM)
 
 # standardize data relative to low synch/low sigma in reference OM
-# trimOmNames <- unique(omNames)
-# stdList <- lapply(seq_along(trimOmNames), function (h) {
-  
-  #First calculate within CU medians for low synch/low sigma/reference dataset
-  lowAggV <- fullDat %>% 
-    filter(scenID == "ref_low_lowSynch") %>% 
-    group_by(cu, trial, sigma, synch, om, scenID) %>% 
-    summarize(medR = median(recRY)) %>%
-    group_by(cu, sigma, synch, om, scenID) %>% 
-    mutate(lowScenMedR = median(medR)) %>% 
-    as.data.frame
-  #Trimmed version that can be merged and used to calculate relative differences
-  trimLowV <- lowAggV %>% 
-    select(cu, trial, scenID, lowScenMedR)
-  
-  scens <- unique(fullDat$scenID)
-  #standardize by subtracting median (lowScenMedR)
-  stdInnerList <- lapply(seq_along(scens), function (i) {
-    if (scens[i] == "ref_low_lowSynch") {
-      out <- lowAggV %>% 
-        mutate(stdMedR = medR - lowScenMedR) %>% 
-        select(-scenID, -lowScenMedR)
-    } else {
-      out <- fullDat %>% 
-        filter(scenID == scens[i]) %>% 
-        group_by(cu, trial, sigma, synch, om) %>% 
-        #calculate median CU-specific recruitment within a trial
-        summarize(medR = median(recRY)) %>% 
-        #join so rel. diff can be calc
-        inner_join(., trimLowV, by = c("cu", "trial")) %>%
-        group_by(cu) %>% 
-        #calc rel. diff
-        mutate(stdMedR = (medR - lowScenMedR)) %>% 
-        #remove values pulled from lowAggV
-        select(-lowScenMedR, -scenID) %>%
-        as.data.frame
-    }
-    return(out)
-  })
-  
-  #merge and calculate means across CUs per trial
-  temp <- do.call(rbind, stdInnerList) %>% 
-    group_by(trial, sigma, synch, om) %>% 
-    summarize(meanStdRecRY = mean(stdMedR))
-  
-  #finally calculate medians and quantiles to generate dataset equivalent to 
-  #plotdat
-  finalOut <- temp %>% 
-    group_by(sigma, synch, om) %>% 
-    mutate(var = "stdRecRY",
-           mean = mean(meanStdRecRY),
-           medn = median(meanStdRecRY),
-           lowQ = qLow(meanStdRecRY),
-           highQ = qHigh(meanStdRecRY)) %>%
-    select(sigma, om, var, synch, medn, lowQ, highQ) 
-  # return(finalOut)
-# })
-# stdFullDat <- do.call(rbind, stdList) %>% 
-#   as.data.frame()
+#First calculate within CU medians for low synch/low sigma/reference dataset
+lowAggV <- fullDat %>% 
+  filter(scenID == "ref_low_lowSynch") %>% 
+  group_by(cu, trial, sigma, synch, om, scenID) %>% 
+  summarize(medR = median(recRY)) %>%
+  group_by(cu, sigma, synch, om, scenID) %>% 
+  mutate(lowScenMedR = median(medR)) %>% 
+  as.data.frame
+#Trimmed version that can be merged and used to calculate relative differences
+trimLowV <- lowAggV %>% 
+  select(cu, trial, scenID, lowScenMedR)
+
+scens <- unique(fullDat$scenID)
+#standardize by subtracting median (lowScenMedR)
+stdInnerList <- lapply(seq_along(scens), function (i) {
+  if (scens[i] == "ref_low_lowSynch") {
+    out <- lowAggV %>% 
+      mutate(stdMedR = medR - lowScenMedR) %>% 
+      select(-scenID, -lowScenMedR)
+  } else {
+    out <- fullDat %>% 
+      filter(scenID == scens[i]) %>% 
+      group_by(cu, trial, sigma, synch, om) %>% 
+      #calculate median CU-specific recruitment within a trial
+      summarize(medR = median(recRY)) %>% 
+      #join so rel. diff can be calc
+      inner_join(., trimLowV, by = c("cu", "trial")) %>%
+      group_by(cu) %>% 
+      #calc rel. diff
+      mutate(stdMedR = (medR - lowScenMedR)) %>% 
+      #remove values pulled from lowAggV
+      select(-lowScenMedR, -scenID) %>%
+      as.data.frame
+  }
+  return(out)
+})
+
+#merge and calculate means across CUs per trial
+temp <- do.call(rbind, stdInnerList) %>% 
+  group_by(trial, sigma, synch, om) %>% 
+  summarize(meanStdRecRY = mean(stdMedR))
+
+#finally calculate medians and quantiles to generate dataset equivalent to 
+#plotdat
+finalOut <- temp %>% 
+  group_by(sigma, synch, om) %>% 
+  mutate(var = "stdRecRY",
+         mean = mean(meanStdRecRY),
+         medn = median(meanStdRecRY),
+         lowQ = qLow(meanStdRecRY),
+         highQ = qHigh(meanStdRecRY)) %>%
+  select(sigma, om, var, synch, medn, lowQ, highQ) 
+
 stdFullDat <- finalOut %>% 
   as.data.frame() %>% 
   mutate(synch = recode(synch, "lowSynch" = "low", "medSynch" = "med",
@@ -238,7 +232,7 @@ plotDat <- rbind(plotDat1, stdFullDat) %>%
                      .default = levels(om))) 
 
 #Save summary data to pass to Rmd
-# write.csv(plotDat, here("outputs/generatedData", "summaryTable_noSkew.csv"))
+write.csv(plotDat, here("outputs/generatedData", "summaryTable_noSkew.csv"))
 
 colPal <- viridis(length(levels(plotDat$synch)), begin = 0, end = 1)
 names(colPal) <- levels(plotDat$synch)
@@ -355,8 +349,8 @@ dev.off()
 #_________________________________________________________________________
 # Generate box plots (originally time series) of component CV, synch and ag CV;
 # Note that to make comparable to retrospective analysis only show 10 
-refDirNames <- dirNames[1:3]
-
+# refDirNames <- dirNames[1:3]
+# 
 # plotList = vector("list", length = length(refDirNames))
 # arrayNames <- sapply(refDirNames, function(x) {
 #  list.files(paste(here("outputs/simData"), x, sep="/"),

@@ -11,7 +11,7 @@ This is a quick script that reads in summary data from the main synchrony salmon
 require(here); require(tidyverse)
 
 summDat <- read.csv(here("outputs/generatedData", "summaryTable_noSkew.csv")) %>% 
-  select(-X, -cat)
+  select(-X)
 
 
 # Quick helper functions to calc relative difference
@@ -31,21 +31,21 @@ trimDat <- function(oms, vars, synchs = NULL, sigmas = NULL, data) {
       filter(om %in% oms, var %in% vars, sigma %in% sigmas)
   }
   dum %>% 
-    select(om, var, sigma, synch, avg)
+    select(om, var, sigma, synch, medn)
 }
 
 extractVal <- function(data, group){
   if (group == "sigma") {
     dum <- data %>% 
-      group_by(om, var, sigma) %>% 
-      summarize(max = max(avg),
-             min = min(avg))
+      dplyr::group_by(om, var, sigma) %>% 
+      summarize(max = max(medn),
+             min = min(medn))
   }
   if (group == "synch") {
     dum <- data %>% 
-      group_by(om, var, synch) %>%
-      summarize(max = max(avg),
-             min = min(avg))
+      dplyr::group_by(om, var, synch) %>%
+      summarize(max = max(medn),
+             min = min(medn))
   }
   dum
 }
@@ -60,7 +60,7 @@ relDiff(t2$max, t2$min)
 
 # Increases in agg rec across sig when synch low
 t2 <- extractVal(t, group = "synch") %>% 
-  filter(synch == "0.05")
+  filter(synch == "low")
 relDiff(t2$max, t2$min)
 
 # Increases in agg rec across sig when synch low
@@ -106,9 +106,9 @@ relDiff(t2$max, t2$min)
 
 # Declines in other catch PMs across each sigma treatment
 t <- trimDat(oms = "Reference Prod.", vars = "ppnYrsHighCatch", data = summDat)
-relDiff(max(t$avg), min(t$avg))
+relDiff(max(t$medn), min(t$medn))
 t <- trimDat(oms = "Reference Prod.", vars = "stabilityCatch", data = summDat)
-relDiff(max(t$avg), min(t$avg))
+relDiff(max(t$medn), min(t$medn))
 
 # Increases in agg rec across sig when synch low
 t2 <- extractVal(t, group = "synch") %>% 
@@ -118,11 +118,11 @@ relDiff(t2$max, t2$min)
 # Returns in low vs. ref prod OMs
 t <- trimDat(oms = c("Low Prod."), vars = "medCatch", 
              data = summDat)
-relDiff(max(t$avg), min(t$avg))
+relDiff(max(t$medn), min(t$medn))
 
 t <- trimDat(oms = c("Low Prod."), vars = "ppnYrsHighCatch", 
              data = summDat)
-relDiff(max(t$avg), min(t$avg))
+relDiff(max(t$medn), min(t$medn))
 
 # Catch stability in low vs low heavy
 t <- trimDat(oms = c("Low Prod.", "Low Prod. Heavy Tails"), vars = "stabilityCatch", 

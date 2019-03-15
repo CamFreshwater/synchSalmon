@@ -5,18 +5,20 @@
 
 *Authors: C. Freshwater*
 
-*Date: **ONGOING*
+*Date: March 14, 2019
 
 *Contact: cameron.freshwater@dfo-mpo.gc.ca*
 
 -----
 
 ### Summary
-The `synchSalmon` repository contains the data and models necessary to complete the analysis within *MANUSCRIPT TITLE*. The goal of this study was two-fold. First, we conducted a retrospective analysis using time series of stock recruitment data from the Fraser River sockeye salmon stock aggregate to quantify changes in component variability (mean temporal coefficient of variation within a stock) and synchrony (covariance among stocks). Second, we used a closed-loop simulation model to evaluate how different levels of component variability and synchrony influence the probability of achieving a suite of management objectives. The closed-loop simulation model was developed to address generic questions related to rebuilding and is contained within a separate package `samSim`. 
+The `synchSalmon` repository contains the data and models necessary to complete the analysis within *Weakened portfolio effects constrain management effectiveness for population aggregates (submitted)*. The goal of this study was two-fold. First, we conducted a retrospective analysis using time series of stock recruitment data from the Fraser River sockeye salmon stock aggregate to quantify changes in component variability (mean temporal coefficient of variation within a stock) and synchrony (covariance among stocks). Second, we used a closed-loop simulation model to evaluate how different levels of component variability and synchrony influence the probability of achieving a suite of management objectives. The closed-loop simulation model was developed to address generic questions related to rebuilding and is contained within a separate package `samSim`. 
 
 A summary of relevant files is provided below. Most functions are provided in `samSim` and contain relatively detailed documentation (and sometimes functioning examples). Details on how to run a simulation are provided in exampleSimRun.Rmd in the `samSim` package's repository under Rmd directory. Details on the operating model (biological dynamics and fishery interactions) and the management procedures (harvest control rule and assessment process) will be provided in the `samSim` vignette at a future date.
 
-*Note:* development of `samSim` is ongoing and current package versions may no longer be directly compatible with the code provided here. Use the version number (Git release?) associated with the published paper to guarantee compatibility. 
+*Note:* development of `samSim` is ongoing and current package versions may no longer be directly compatible with the code provided here. Use the Git release associated with the published paper to guarantee compatibility. 
+
+Zenodo: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2594082.svg)](https://doi.org/10.5281/zenodo.2594082)
 
 -----
 
@@ -38,9 +40,8 @@ Includes subdirectories:
 
 #### scripts
 Contains R scripts necessary to conduct retrospective and forward simulation analyses. Focal scripts are listed below, remainder are helper functions necessary to run Stan or TMB models.
-- *runModelRobustOM_synch.R* - Runs forward simulation and generates majority of figures contained in manuscript.
+- *runModelRobustOM_synch_noSkew.R* - Runs forward simulation and generates majority of figures contained in manuscript.
 - *runModelRobustOM_synchSensitivity.R* - Runs forward simulation sensitivity analyses and generates relevant figures.
-- *skewedModels.R* - Fits skewed and heavy-tailed versions of Ricker/Larkin stock recruit models to Fraser sockeye data.
 - *supplementalFigures.R* - Generates supplemental figures showing relevant probability distributions and an example of total allowable mortality harvest control rule.
 - *synchRetroAnalysis.R* - Cleans stock-recruit data to pass to synchronyRetro-window-tmb.R and generates retrospective figures.
 - *synchRetroAnalysis_suppShortTS.R* - Cleans stock-recruit data to pass to synchronyRetro-window-tmb.R and generates retrospective figures for retrospective sensitivity analysis.

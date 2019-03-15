@@ -1,12 +1,12 @@
-#*************************************************************************************
+#*******************************************************************************
 # runModelRobustOM_synchSensitivity.R
 # Date revised: ONGOING
 # Inputs: recoverySim.R
 # Outputs: pdf plots
-# Explainer: Equivalent to runModelRobustOM_synch.R, but focused on sensitivity analyses
-# so smaller range of OMs examined (i.e. only median levels sigma and correlations); 
-# plots are stripped down as a result
-#*************************************************************************************
+# Explainer: Equivalent to runModelRobustOM_synch.R, but focused on sensitivity 
+# analyses so smaller range of OMs examined (i.e. only median levels sigma and 
+# correlations); plots are stripped down as a result
+#*******************************************************************************
 
 
 # Check if required packages are installed and run
@@ -29,8 +29,10 @@ cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), stringsAsFactors = F)
 srDat <- read.csv(here("data/sox/fraserRecDatTrim.csv"), stringsAsFactors = F)
 catchDat <- read.csv(here("data/sox/fraserCatchDatTrim.csv"), 
                      stringsAsFactors = F)
-ricPars <- read.csv(here("data/sox/pooledRickerMCMCPars.csv"), stringsAsFactors = F)
-larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"), stringsAsFactors = F)
+ricPars <- read.csv(here("data/sox/pooledRickerMCMCPars.csv"), 
+                    stringsAsFactors = F)
+larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"), 
+                     stringsAsFactors = F)
 tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 
 ## Check SD among CU-specific uncertainty parameters to ensure that proposed
@@ -54,15 +56,7 @@ hist(cuPar$tauCycAge - sdTau) #lines up well
 nTrials <- 1500
 
 ## General robustness runs
-simParTrim <- subset(simPar
-                     # ,
-                     # scenario == "refSensitivity" | scenario == "ageTau" |
-                     #   scenario == "rho" 
-                     # |  
-                     # scenario == "ouSig"
-                     #|
-                     #   scenario == "enRouteSig"
-)
+simParTrim <- simPar
 scenNames <- unique(simParTrim$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species), 
                                                 sep = "_"))

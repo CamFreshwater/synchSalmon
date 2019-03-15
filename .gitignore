@@ -18,6 +18,7 @@ knitr-cache
 .RHistory
 
 myNotes.*
+markdownReports/
 outputs/diagnostics
 outputs/simData
 outputs/generatedData/synchTS

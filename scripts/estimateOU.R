@@ -192,3 +192,19 @@ for(i in seq_along(muNames)) {
 
 
 ## Doesn't really produce anything inteligible
+
+
+### Look at variation in realized exploitation rates
+muNames <- read.csv(here("data/sox/fraserCUpars.csv"), stringsAsFactors = F) %>% 
+  select(stk, manUnit)
+catchDat <- read.csv(here("data/sox/fraserCatchDatTrim.csv"), 
+                     stringsAsFactors = F) %>% 
+  filter(yr > 2008) %>% 
+  left_join(., muNames, by = "stk")
+
+
+ggplot(catchDat, aes(x = as.factor(manUnit), y = totalER)) +
+  geom_boxplot() +
+  theme_sleekX() +
+  facet_wrap(~yr)
+  

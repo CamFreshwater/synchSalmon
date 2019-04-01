@@ -1,7 +1,7 @@
 #*******************************************************************************
 # presTimeSeries.R
 # Date revised: April 1, 2019
-# Explainer: Gnerates time series of recruitment deviations and of catch
+# Explainer: Generates time series of recruitment deviations and of catch
 # thresholds being met. 
 #*******************************************************************************
 

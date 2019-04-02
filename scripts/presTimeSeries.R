@@ -114,14 +114,13 @@ plotDat <- outAggDat %>%
            pm > 1 ~ "green"
          )))
 
-colPal <- c("red", "green")
-names(colPal) <- levels(plotDat$col)
 ggplot(plotDat, aes(x = yr, y = pm, colour = pm)) +
   geom_line() +
-  # scale_color_manual(values = colPal, guide = FALSE) +
-  scale_colour_gradientn(colours = c("red", "yellow", "green"), 
-                         values = scales::rescale(c(0.01, 1, 2)),
+  scale_colour_gradientn(colours = c("red", "yellow", "green"),
+                         values = scales::rescale(c(0.01, 1, max(plotDat$pm))),
                          limits = c(0.01, max(plotDat$pm))) +
+  # scale_colour_gradientn(colours = c("red", "yellow", "green"),
+  #                        breaks = c(min(plotDat$pm))) +
   geom_hline(yintercept = 1) +
   theme_sleekX() +
   facet_wrap(~scen)

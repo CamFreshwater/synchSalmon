@@ -71,3 +71,69 @@ ggplot(rawDat, aes(x = yr, y = rollProd, col = stk)) +
   theme_sleekX(axisSize = 13) +
   theme(axis.text.y = element_text(hjust = 0.5))
 dev.off()
+
+#------------
+
+### Simulated population dynamics plots
+
+calcRollMean <- function(datMat, w = 4) {
+  zoo::rollapplyr(datMat, width = w, FUN = mean, by = 1, fill = NA)
+}
+
+dd <- sapply(tt, function(x) calcRollMean(x, w = 4))
+
+### Load in data from synchrony analyses to visualize impacts of lower 
+# productivity
+cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), stringsAsFactors = F)
+
+synchDirNames <- c("medSig_sockeye", "medSigLowA_sockeye")
+stkNames <- genOutputList(synchDirNames[1], 
+                          agg = FALSE)[["medSynch_TAM"]][["stkName"]]
+nCUs <- length(stkNames)
+#matrix of array names to be passed
+arrayNames <- sapply(synchDirNames[1], function(x) { 
+  list.files(paste(here("outputs/simData"), x, sep="/"), 
+             pattern = "\\Arrays.RData$")
+})
+prodNames <- c("ref", "low")
+
+# Function to pull and clean array data
+trialID <- sample.int(unique(outDat$trial), size = 1)
+
+outList2 <- lapply(seq_along(synchDirNames), function(i) {
+  datList <- readRDS(paste(here("outputs/simData"), synchDirNames[i], 
+                           arrayNames[3], 
+                           sep = "/"))
+  datList[["recBY"]][ , , trialID] %>% 
+    # calcRollMean() %>% 
+    reshape2::melt() %>% 
+    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "rec" = "value") %>% 
+    mutate(prod = prodNames[i]) 
+})
+outDat <- do.call(rbind, outList2) 
+
+subCU <- cuPar %>% 
+  select(stk, stkName, medianRec) %>% 
+  filter(medianRec < 0.05)
+
+  sample.int(subCU$stk, size = 5)
+plotDat <- outDat %>% 
+  mutate(stkName = as.factor(plyr::mapvalues(outDat$cu, 
+                                             from = unique(outDat$cu),
+                                             to = stkNames))) %>%
+  filter(yr > 60,
+         cu %in% subCU) %>% 
+  mutate(stkName = factor(stkName))
+colPal <- viridis(length(subCU), begin = 0, end = 1)
+names(colPal) <- unique(plotDat$stkName)
+
+
+# png(file = paste(here(),"/figs/april2019Meeting/recDev_lines.png", sep = ""),
+#     height = 4, width = 6, units = "in", res = 300)
+ggplot(plotDat, aes(x = yr, y = smoothRec, col = stkName)) +
+  geom_line() +
+  scale_color_manual(values = colPal) +
+  labs(x = "Year", y = "Recruitment") +
+  theme_sleekX() + 
+  facet_wrap(~prod)
+# dev.off()

@@ -9,7 +9,11 @@
 require(here); require(synchrony); require(zoo); require(ggplot2); 
 require(tidyverse); require(viridis); require(ggpubr); require(samSim)
 
-## Data clean
+
+#------------
+
+## Productivity trends (observed)
+
 # SR data
 recDat <- read.csv(here("/data/sox/fraserRecDat.csv"), 
                    stringsAsFactors = FALSE) 
@@ -70,7 +74,9 @@ ggplot(rawDat, aes(x = yr, y = rollProd, col = stk)) +
   theme(axis.text.y = element_text(hjust = 0.5))
 dev.off()
 
+
 #------------
+
 
 ### Simulated population dynamics plots
 
@@ -109,7 +115,7 @@ subCU <- cuPar %>%
          !stkName == "Harrison") %>% 
   select(stkName) %>%
   mutate(abbStkName = abbreviate(stkName, minlength = 4)) %>% 
-  dplyr::sample(., size = 5)
+  dplyr::sample_n(., size = 5)
 
 plotDat <- outDat %>% 
   mutate(stkName = as.factor(plyr::mapvalues(outDat$cu, 
@@ -168,26 +174,31 @@ outList2 <- lapply(seq_along(synchDirNames), function(i) {
 outDat <- do.call(rbind, outList2) 
 outDat$synch <- forcats::fct_relevel(outDat$synch, "high", after = Inf)
 
-# outDat <- outDat %>% 
-#   mutate(scen = paste(sigma, "Sig", synch, "Synch", sep = ""),
-#          stkName = as.factor(plyr::mapvalues(outDat$cu, 
-#                                              from = unique(outDat$cu),
-#                                              to = stkNames)))
-
-# standardize abundance within a CU and trim
-subCU <- sample.int(nCUs, size = 5)
-trialID <- sample.int(unique(outDat$trial), size = 1)
-standDat <- outDat %>% 
+## Plot variance treatments first
+varDat <- outDat %>% 
+  mutate(stkName = as.factor(plyr::mapvalues(outDat$cu, 
+                                             from = unique(outDat$cu),
+                                             to = stkNames))) %>%
   filter(yr > 60,
-         cu %in% subCU,
-         trial == trialID,
-         !scen %in% c("lowSigmedSynch", "highSigmedSynch")) %>% 
-  mutate(stkName = factor(stkName), 
-         scen = recode(factor(scen), "lowSiglowSynch" = "Low Var. - Low Synch.",
-                       "highSiglowSynch" = "High Var. - Low Synch.",
-                       "highSighighSynch" = "High Var. - High Synch.",
-                       "lowSighighSynch" = "Low Var. - High Synch.")) %>% 
-  mutate(scen = factor(scen, levels(scen)[c(4, 2, 3, 1)]))
+         stkName %in% subCU$abbStkName, 
+         synch == "med") %>% 
+  mutate(stkName = factor(stkName),
+         sigma = recode(factor(sigma), "low" = "Low Var.",
+                        "high" = "High Var."),
+         stkName = as.factor(plyr::mapvalues(stkName,
+                                             from = unique(stkName),
+                                             to = subCU$stkName)))
+
+png(file = paste(here(),"/figs/presentationFigs/spwn_lines.png", sep = ""),
+    height = 3, width = 6, units = "in", res = 300)
+ggplot(varDat, aes(x = yr, y = recDev, col = stkName)) +
+  geom_line() +
+  scale_color_manual(values = colPal, name = "Stock") +
+  labs(x = "Year", y = "Recruitment Deviation") +
+  theme_sleekX() + 
+  facet_wrap(~sigma)
+dev.off()
+
 
 colPal <- viridis(length(subCU), begin = 0, end = 1)
 names(colPal) <- unique(standDat$stkName)

@@ -9,8 +9,6 @@
 require(here); require(synchrony); require(zoo); require(ggplot2); 
 require(tidyverse); require(viridis); require(ggpubr); require(samSim)
 
-select <- dplyr::select
-
 ## Data clean
 # SR data
 recDat <- read.csv(here("/data/sox/fraserRecDat.csv"), 
@@ -76,12 +74,6 @@ dev.off()
 
 ### Simulated population dynamics plots
 
-calcRollMean <- function(datMat, w = 4) {
-  zoo::rollapplyr(datMat, width = w, FUN = mean, by = 1, fill = NA)
-}
-
-dd <- sapply(tt, function(x) calcRollMean(x, w = 4))
-
 ### Load in data from synchrony analyses to visualize impacts of lower 
 # productivity
 cuPar <- read.csv(here("data/sox/fraserCUpars.csv"), stringsAsFactors = F)
@@ -98,42 +90,136 @@ arrayNames <- sapply(synchDirNames[1], function(x) {
 prodNames <- c("ref", "low")
 
 # Function to pull and clean array data
-trialID <- sample.int(unique(outDat$trial), size = 1)
-
 outList2 <- lapply(seq_along(synchDirNames), function(i) {
   datList <- readRDS(paste(here("outputs/simData"), synchDirNames[i], 
                            arrayNames[3], 
                            sep = "/"))
-  datList[["recBY"]][ , , trialID] %>% 
-    # calcRollMean() %>% 
+  set.seed(222)
+  trialID <- sample.int(dim(datList[["S"]])[3], size = 1)
+  datList[["S"]][ , , trialID] %>% 
     reshape2::melt() %>% 
-    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "rec" = "value") %>% 
-    mutate(prod = prodNames[i]) 
+    dplyr::rename("yr" = "Var1", "cu" =  "Var2", "S" = "value") %>% 
+    mutate(prod = as.factor(prodNames[i])) 
 })
 outDat <- do.call(rbind, outList2) 
 
+#For plotting purposes constrain to smallest populations 
 subCU <- cuPar %>% 
-  select(stk, stkName, medianRec) %>% 
-  filter(medianRec < 0.05)
+  filter(medianRec < 0.05, 
+         !stkName == "Harrison") %>% 
+  select(stkName) %>%
+  mutate(abbStkName = abbreviate(stkName, minlength = 4)) %>% 
+  dplyr::sample(., size = 5)
 
-  sample.int(subCU$stk, size = 5)
 plotDat <- outDat %>% 
   mutate(stkName = as.factor(plyr::mapvalues(outDat$cu, 
                                              from = unique(outDat$cu),
                                              to = stkNames))) %>%
   filter(yr > 60,
-         cu %in% subCU) %>% 
-  mutate(stkName = factor(stkName))
-colPal <- viridis(length(subCU), begin = 0, end = 1)
+         stkName %in% subCU$abbStkName) %>% 
+  mutate(stkName = factor(stkName),
+         prod = recode(factor(prod), "low" = "Low Prod.",
+                       "ref" = "Reference Prod."),
+         stkName = as.factor(plyr::mapvalues(stkName, 
+                                             from = unique(stkName),
+                                             to = subCU$stkName)))
+  
+colPal <- viridis(nrow(subCU), begin = 0, end = 1)
 names(colPal) <- unique(plotDat$stkName)
+
+png(file = paste(here(),"/figs/presentationFigs/spwn_lines.png", sep = ""),
+    height = 3, width = 6, units = "in", res = 300)
+ggplot(plotDat, aes(x = yr, y = S, col = stkName)) +
+  geom_line() +
+  scale_color_manual(values = colPal, name = "Stock") +
+  labs(x = "Year", y = "Spawner Abundance") +
+  theme_sleekX() + 
+  facet_wrap(~prod)
+dev.off()
+
+
+## Load in data from synchrony analyses to visualize impacts of greater 
+#variance/covariance
+synchDirNames <- c("lowSig_sockeye", "highSig_sockeye")
+stkNames <- genOutputList(synchDirNames[1], 
+                          agg = FALSE)[["medSynch_TAM"]][["stkName"]]
+#matrix of array names to be passed
+arrayNames <- sapply(synchDirNames[1], function(x) { 
+  list.files(paste(here("outputs/simData"), x, sep="/"), 
+             pattern = "\\Arrays.RData$")
+})
+synchNames <- c("high", "low", "med")
+sigNames <- c("low", "high", "low", "high")
+
+# Function to pull and clean array data
+outList2 <- lapply(seq_along(synchDirNames), function(i) {
+  outList1 <-  lapply(seq_along(arrayNames), function(h) {
+    datList <- readRDS(paste(here("outputs/simData"), synchDirNames[i], 
+                             arrayNames[h], 
+                             sep = "/"))
+    datList[["recDev"]][ , , trialID] %>% 
+      reshape2::melt() %>% 
+      dplyr::rename("yr" = "Var1", "cu" =  "Var2", "recDev" = "value") %>% 
+      mutate(sigma = as.factor(sigNames[i]), 
+             synch = as.factor(synchNames[h]))
+  })
+  do.call(rbind, outList1)
+})
+outDat <- do.call(rbind, outList2) 
+outDat$synch <- forcats::fct_relevel(outDat$synch, "high", after = Inf)
+
+# outDat <- outDat %>% 
+#   mutate(scen = paste(sigma, "Sig", synch, "Synch", sep = ""),
+#          stkName = as.factor(plyr::mapvalues(outDat$cu, 
+#                                              from = unique(outDat$cu),
+#                                              to = stkNames)))
+
+# standardize abundance within a CU and trim
+subCU <- sample.int(nCUs, size = 5)
+trialID <- sample.int(unique(outDat$trial), size = 1)
+standDat <- outDat %>% 
+  filter(yr > 60,
+         cu %in% subCU,
+         trial == trialID,
+         !scen %in% c("lowSigmedSynch", "highSigmedSynch")) %>% 
+  mutate(stkName = factor(stkName), 
+         scen = recode(factor(scen), "lowSiglowSynch" = "Low Var. - Low Synch.",
+                       "highSiglowSynch" = "High Var. - Low Synch.",
+                       "highSighighSynch" = "High Var. - High Synch.",
+                       "lowSighighSynch" = "Low Var. - High Synch.")) %>% 
+  mutate(scen = factor(scen, levels(scen)[c(4, 2, 3, 1)]))
+
+colPal <- viridis(length(subCU), begin = 0, end = 1)
+names(colPal) <- unique(standDat$stkName)
+
+
+
+#For plotting purposes constrain to smallest populations 
+plotDat <- outDat %>% 
+  mutate(stkName = as.factor(plyr::mapvalues(outDat$cu, 
+                                             from = unique(outDat$cu),
+                                             to = stkNames))) %>%
+  filter(yr > 60,
+         stkName %in% subCU$abbStkName) %>% 
+  mutate(stkName = factor(stkName),
+         sigma = recode(factor(sigma), "low" = "Low Var.",
+                       "high" = "High Var."),
+         synch = recode(factor(synch), "high" = "High Synch.", 
+                        "low" = "Low Synch.", "med" = "Med. Synch."),
+         stkName = as.factor(plyr::mapvalues(stkName, 
+                                             from = unique(stkName),
+                                             to = subCU$stkName)))
+
+
+
 
 
 # png(file = paste(here(),"/figs/april2019Meeting/recDev_lines.png", sep = ""),
 #     height = 4, width = 6, units = "in", res = 300)
-ggplot(plotDat, aes(x = yr, y = smoothRec, col = stkName)) +
+ggplot(standDat, aes(x = yr, y = recDev, col = stkName)) +
   geom_line() +
   scale_color_manual(values = colPal) +
-  labs(x = "Year", y = "Recruitment") +
+  labs(x = "Year", y = "Recruitment Deviations") +
   theme_sleekX() + 
-  facet_wrap(~prod)
+  facet_wrap(~scen)
 # dev.off()

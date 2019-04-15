@@ -130,7 +130,8 @@ plotDat <- outDat %>%
                                              from = unique(stkName),
                                              to = subCU$stkName)))
   
-colPal <- viridis(nrow(subCU), begin = 0, end = 1)
+# colPal <- viridis(nrow(subCU), begin = 0, end = 1)
+colPal <- c("#1b9e77","#d95f02","#7570b3","#e7298a","#66a61e")
 names(colPal) <- unique(plotDat$stkName)
 
 png(file = paste(here(),"/figs/presentationFigs/spwn_lines.png", sep = ""),
@@ -138,7 +139,7 @@ png(file = paste(here(),"/figs/presentationFigs/spwn_lines.png", sep = ""),
 ggplot(plotDat, aes(x = yr, y = S, col = stkName)) +
   geom_line() +
   scale_color_manual(values = colPal, name = "Stock") +
-  labs(x = "Year", y = "Spawner Abundance") +
+  labs(x = "Year", y = "Spawner Abundance (millions)") +
   theme_sleekX() + 
   facet_wrap(~prod)
 dev.off()
@@ -171,14 +172,14 @@ outList2 <- lapply(seq_along(synchDirNames), function(i) {
   })
   do.call(rbind, outList1)
 })
-outDat <- do.call(rbind, outList2) 
-outDat$synch <- forcats::fct_relevel(outDat$synch, "high", after = Inf)
+outDat <- do.call(rbind, outList2) %>% 
+  mutate(stkName = as.factor(plyr::mapvalues(outDat$cu, 
+                                             from = unique(outDat$cu),
+                                             to = stkNames)))
+outDat$synch <- forcats::fct_relevel(outDat$synch, "high", after = Inf) 
 
 ## Plot variance treatments first
 varDat <- outDat %>% 
-  mutate(stkName = as.factor(plyr::mapvalues(outDat$cu, 
-                                             from = unique(outDat$cu),
-                                             to = stkNames))) %>%
   filter(yr > 60,
          stkName %in% subCU$abbStkName, 
          synch == "med") %>% 
@@ -189,7 +190,7 @@ varDat <- outDat %>%
                                              from = unique(stkName),
                                              to = subCU$stkName)))
 
-png(file = paste(here(),"/figs/presentationFigs/spwn_lines.png", sep = ""),
+png(file = paste(here(),"/figs/presentationFigs/prod_var.png", sep = ""),
     height = 3, width = 6, units = "in", res = 300)
 ggplot(varDat, aes(x = yr, y = recDev, col = stkName)) +
   geom_line() +
@@ -199,38 +200,25 @@ ggplot(varDat, aes(x = yr, y = recDev, col = stkName)) +
   facet_wrap(~sigma)
 dev.off()
 
-
-colPal <- viridis(length(subCU), begin = 0, end = 1)
-names(colPal) <- unique(standDat$stkName)
-
-
-
-#For plotting purposes constrain to smallest populations 
-plotDat <- outDat %>% 
-  mutate(stkName = as.factor(plyr::mapvalues(outDat$cu, 
-                                             from = unique(outDat$cu),
-                                             to = stkNames))) %>%
+## Plot synchrony treatments second
+synchDat <- outDat %>% 
   filter(yr > 60,
-         stkName %in% subCU$abbStkName) %>% 
+         stkName %in% subCU$abbStkName, 
+         sigma == "low",
+         !synch == "med") %>% 
   mutate(stkName = factor(stkName),
-         sigma = recode(factor(sigma), "low" = "Low Var.",
-                       "high" = "High Var."),
-         synch = recode(factor(synch), "high" = "High Synch.", 
-                        "low" = "Low Synch.", "med" = "Med. Synch."),
-         stkName = as.factor(plyr::mapvalues(stkName, 
+         synch = recode(factor(synch), "low" = "Low Synch.",
+                        "high" = "High Synch."),
+         stkName = as.factor(plyr::mapvalues(stkName,
                                              from = unique(stkName),
                                              to = subCU$stkName)))
 
-
-
-
-
-# png(file = paste(here(),"/figs/april2019Meeting/recDev_lines.png", sep = ""),
-#     height = 4, width = 6, units = "in", res = 300)
-ggplot(standDat, aes(x = yr, y = recDev, col = stkName)) +
+png(file = paste(here(),"/figs/presentationFigs/prod_synch.png", sep = ""),
+    height = 3, width = 6, units = "in", res = 300)
+ggplot(synchDat, aes(x = yr, y = recDev, col = stkName)) +
   geom_line() +
-  scale_color_manual(values = colPal) +
-  labs(x = "Year", y = "Recruitment Deviations") +
+  scale_color_manual(values = colPal, name = "Stock") +
+  labs(x = "Year", y = "Recruitment Deviation") +
   theme_sleekX() + 
-  facet_wrap(~scen)
-# dev.off()
+  facet_wrap(~synch)
+dev.off()

@@ -54,7 +54,6 @@ recDatTrim1 <- subset(recDat, !is.na(prod) & !is.na(ets3) & !yr == "2012")
 
 rawDat <- recDatTrim1 %>%
   select(stk, yr, rollProd, prodZ, logProd) %>% 
-  # filter(stk %in% longStks$stk) %>% 
   mutate(stk = as.factor(stk))
 
 ## Trends in productivity
@@ -74,6 +73,66 @@ ggplot(rawDat, aes(x = yr, y = rollProd, col = stk)) +
   theme(axis.text.y = element_text(hjust = 0.5))
 dev.off()
 
+
+### Make three panel plot with productivity, comp cv and synch
+
+# Trim SR data
+longStks <- recDatTrim1 %>% 
+  group_by(stk) %>% 
+  summarize(startDate = min(yr)) %>% 
+  filter(!(startDate > 1951 | stk == "11")) %>% 
+  select(stk) %>% 
+  as.vector()
+recDatTrim <- recDatTrim1 %>% 
+  dplyr::filter(stk %in% longStks$stk)
+yrs <- unique(recDatTrim$yr)
+
+rawDat <- recDatTrim1 %>%
+  select(stk, yr, rollProd) %>% 
+  filter(stk %in% longStks$stk) %>% 
+  mutate(stk = as.factor(stk))
+
+# Import TMB model outputs
+modOut <- readRDS(here("outputs", "generatedData", "tmbSynchEst.rds"))
+modOut$broodYr <- rep(yrs[12:61], times = 3)
+retroCVc <- modOut %>% 
+  filter(term == "log_cv_s")  
+retroPhi <- modOut %>% 
+  filter(term == "logit_phi")
+
+# Make fig
+stkN <- length(unique(recDatTrim1$stk))
+
+rawProdPlot <- ggplot(rawDat, aes(x = yr, y = rollProd, col = stk)) + 
+  labs(x = "", y = "log(Recruits/Spawner)") + 
+  ylim(min(rawDat$rollProd),  max(rawDat$rollProd)) +
+  geom_line(size = 0.45) +
+  xlim(plotYrs) +
+  scale_color_manual(values = rep("grey", length.out = stkN), guide = FALSE) +
+  stat_summary(fun.y = mean, colour = "black", geom = "line", size = 1.25)  +
+  theme_sleekX(axisSize = 10, position = "bottom") +
+  theme(axis.text.y = element_text(hjust = 0.5))
+compCVPlot <- ggplot(retroCVc, aes(x = broodYr, y = est)) + 
+  geom_line(size = 1.15) +
+  xlim(plotYrs) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), alpha=0.2) +
+  theme_sleekX(axisSize = 10, position = "bottom") +
+  theme(axis.text.y = element_text(hjust = 0.5)) +
+  labs(x = "", y = "Component Variability") 
+synchPlot <- ggplot(retroPhi, aes(x = broodYr, y = est)) + 
+  geom_line(size = 1.25) +
+  xlim(plotYrs) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), alpha=0.2) +
+  theme_sleekX(axisSize = 10) +
+  theme(axis.text.y = element_text(hjust = 0.5)) +
+  labs(x = "", y = "Synchrony")
+
+png(here("figs/presentationFigs/threePanelRetro.png"), height = 2.25, width = 7,
+    units = "in", res = 450)
+# png(here("figs/presentationFigs/threePanelRetro.png"), width = 2.25, height = 7,
+#     units = "in", res = 450)
+ggarrange(rawProdPlot, compCVPlot, synchPlot, ncol = 3)
+dev.off()
 
 #------------
 
@@ -105,7 +164,7 @@ outList2 <- lapply(seq_along(synchDirNames), function(i) {
   datList[["S"]][ , , trialID] %>% 
     reshape2::melt() %>% 
     dplyr::rename("yr" = "Var1", "cu" =  "Var2", "S" = "value") %>% 
-    mutate(prod = as.factor(prodNames[i])) 
+    mutate(prod = as.factor(prodNames[i]))
 })
 outDat <- do.call(rbind, outList2) 
 
@@ -144,7 +203,6 @@ ggplot(plotDat, aes(x = yr, y = S, col = stkName)) +
   facet_wrap(~prod)
 dev.off()
 
-
 ## Load in data from synchrony analyses to visualize impacts of greater 
 #variance/covariance
 synchDirNames <- c("lowSig_sockeye", "highSig_sockeye")
@@ -164,19 +222,62 @@ outList2 <- lapply(seq_along(synchDirNames), function(i) {
     datList <- readRDS(paste(here("outputs/simData"), synchDirNames[i], 
                              arrayNames[h], 
                              sep = "/"))
-    datList[["recDev"]][ , , trialID] %>% 
+    recDev <- datList[["recDev"]][ , , trialID] %>% 
       reshape2::melt() %>% 
       dplyr::rename("yr" = "Var1", "cu" =  "Var2", "recDev" = "value") %>% 
       mutate(sigma = as.factor(sigNames[i]), 
              synch = as.factor(synchNames[h]))
+    spwn <- datList[["S"]][ , , trialID] %>% 
+      reshape2::melt() %>% 
+      dplyr::rename("yr" = "Var1", "cu" =  "Var2", "S" = "value") %>% 
+      mutate(prod = as.factor(prodNames[i]))
+    rec <- datList[["recBY"]][ , , trialID] %>% 
+      reshape2::melt() %>% 
+      dplyr::rename("yr" = "Var1", "cu" =  "Var2", "R" = "value") %>% 
+      mutate(prod = as.factor(prodNames[i]))
+    recDev %>% 
+      mutate(S = spwn$S, 
+             R = rec$R)
   })
   do.call(rbind, outList1)
 })
-outDat <- do.call(rbind, outList2) %>% 
+outDat <- do.call(rbind, outList2) 
+outDat <- outDat %>% 
   mutate(stkName = as.factor(plyr::mapvalues(outDat$cu, 
                                              from = unique(outDat$cu),
                                              to = stkNames)))
 outDat$synch <- forcats::fct_relevel(outDat$synch, "high", after = Inf) 
+
+## Plot example SR curve
+srDat <- outDat %>% 
+  filter(yr > 60,
+         stkName == "UppP", 
+         synch == "med") %>% 
+  mutate(sigma = recode(factor(sigma), "low" = "Low Var.",
+                        "high" = "High Var."))
+pars <- cuPar %>% 
+  filter(stkName == "Upper Pitt") %>% 
+  select(alpha, beta0)
+
+
+png(file = paste(here(),"/figs/presentationFigs/srCurveEmpty.png", sep = ""),
+    height = 3, width = 4, units = "in", res = 300)
+ggplot(srDat, aes(x = S, y = R)) +
+  geom_point(colour = "white") +
+  labs(x = "Spawners", y = "Recruits") +
+  theme_sleekX() +
+  stat_function(fun = function(x) x * exp(pars$alpha - pars$beta0 * x)) 
+dev.off()
+
+png(file = paste(here(),"/figs/presentationFigs/srCurve.png", sep = ""),
+    height = 3, width = 6, units = "in", res = 300)
+ggplot(srDat, aes(x = S, y = R)) +
+  geom_point() +
+  labs(x = "Spawners", y = "Recruits") +
+  theme_sleekX() +
+  stat_function(fun = function(x) x * exp(pars$alpha - pars$beta0 * x)) +
+  facet_wrap(~sigma)
+dev.off()
 
 ## Plot variance treatments first
 varDat <- outDat %>% 

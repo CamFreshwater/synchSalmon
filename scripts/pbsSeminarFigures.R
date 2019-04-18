@@ -413,13 +413,13 @@ escDat <- plotDat %>%
 png(file = paste(here(),"/figs/presentationFigs/escPMRef.png", sep = ""),
     height = 2.5, width = 5, units = "in", res = 300)
 pmPlot(escDat %>% filter(om == "Reference Prod."),
-       catchYLab = "Ppn. of Years\nEsc. Goal Met",
+       catchYLab = "Ppn. of Esc.\nGoals Met",
        dotSize = 4.5)
 dev.off()
 
 png(file = paste(here(),"/figs/presentationFigs/escPM.png", sep = ""),
     height = 2.5, width = 6, units = "in", res = 300)
-escPlot <- pmPlot(escDat, catchYLab = "Ppn. of Years\nEsc. Goal Met",
+escPlot <- pmPlot(escDat, catchYLab = "Ppn. of Esc.\nGoals Met",
                   dotSize = 4.5, facetSize = 1.1)
 print(escPlot)
 dev.off()

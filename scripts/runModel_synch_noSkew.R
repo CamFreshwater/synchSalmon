@@ -105,7 +105,7 @@ for (i in seq_along(dirNames)) {
 ## Ugly custom code to generate proportional dot plots split across three 
 # different productivity scenarios
 vars <- c("medRecRY", "ppnCUUpper", "ppnMixedOpen",
-          "medCatch", "ppnYrsHighCatch", "stabilityCatch")
+          "medCatch", "ppnYrsHighCatch", "stabilityCatch", "ppnYrsAllMixOpen")
 omNames <- rep(c("ref", "lowA", "lowStudT"), each = 3)
 sigNames <- rep(c("low", "med", "high"), length.out = length(omNames))
 
@@ -170,9 +170,9 @@ fullDat <- do.call(rbind, listByOM)
 #First calculate within CU medians for low synch/low sigma/reference dataset
 lowAggV <- fullDat %>% 
   filter(scenID == "ref_low_lowSynch") %>% 
-  group_by(cu, trial, sigma, synch, om, scenID) %>% 
-  summarize(medR = median(recRY)) %>%
-  group_by(cu, sigma, synch, om, scenID) %>% 
+  dplyr::group_by(cu, trial, sigma, synch, om, scenID) %>% 
+  dplyr::summarize(medR = median(recRY)) %>%
+  dplyr::group_by(cu, sigma, synch, om, scenID) %>% 
   mutate(lowScenMedR = median(medR)) %>% 
   as.data.frame
 #Trimmed version that can be merged and used to calculate relative differences
@@ -191,7 +191,7 @@ stdInnerList <- lapply(seq_along(scens), function (i) {
       filter(scenID == scens[i]) %>% 
       group_by(cu, trial, sigma, synch, om) %>% 
       #calculate median CU-specific recruitment within a trial
-      summarize(medR = median(recRY)) %>% 
+      dplyr::summarize(medR = median(recRY)) %>% 
       #join so rel. diff can be calc
       inner_join(., trimLowV, by = c("cu", "trial")) %>%
       group_by(cu) %>% 
@@ -207,7 +207,7 @@ stdInnerList <- lapply(seq_along(scens), function (i) {
 #merge and calculate means across CUs per trial
 temp <- do.call(rbind, stdInnerList) %>% 
   group_by(trial, sigma, synch, om) %>% 
-  summarize(meanStdRecRY = mean(stdMedR))
+  dplyr::summarize(meanStdRecRY = mean(stdMedR))
 
 #finally calculate medians and quantiles to generate dataset equivalent to 
 #plotdat

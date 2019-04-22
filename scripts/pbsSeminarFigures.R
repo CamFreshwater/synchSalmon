@@ -352,7 +352,7 @@ plotDat <- read.csv(here("outputs/generatedData", "summaryTable_noSkew.csv"),
   select(-X) %>% 
   filter(!om == "Low Prod. Heavy Tails",
          var %in% c("medRecRY", "ppnMixedOpen", "ppnYrsHighCatch", 
-                    "stabilityCatch")) %>% 
+                    "stabilityCatch", "ppnYrsAllMixOpen")) %>% 
   mutate(synch = as.factor(synch),
          om = as.factor(om),
          sigma = as.factor(sigma)) %>% 
@@ -392,6 +392,11 @@ pmPlot <- function(temp, catchYLab, facetCol = 3, pos = NULL, dotSize = 3.25,
   }
   return(q)
 }
+
+allOpenDat <- plotDat %>% 
+  filter(var == "ppnYrsAllMixOpen")
+pmPlot(allOpenDat %>% filter(om == "Reference Prod."),
+       catchYLab = "Ppn. Yrs. All\nMUs Open", dotSize = 4.5)
 
 retDat <- plotDat %>% 
   filter(var == "medRecRY")
@@ -442,7 +447,7 @@ dev.off()
 
 retPlot <- pmPlot(retDat, catchYLab = "Agg. Return\nAbundance", dotSize = 4.5,
                   facetSize = 1.2, axSize = 13, pos = "top")
-escPlot <- pmPlot(escDat, catchYLab = "Ppn. of Years\nEsc. Goal Met",
+escPlot <- pmPlot(escDat, catchYLab = "Ppn. of \nEsc. Goals Met",
                   dotSize = 4.5, facetSize = 1.2, axSize = 13, pos = "mid")
 stbPlot <- pmPlot(stbDat, catchYLab = "Catch Stability", dotSize = 4.5, 
                   facetSize = 1.2, axSize = 13, pos = "bottom")

@@ -502,7 +502,7 @@ dev.off()
 # Generate CU-specific spawner abundance violin plots for Bowron and Chilko
 selectedCUs <- c("Bwrn" , "Chlk")
 nCUs <- length(selectedCUs)
-colPal <- c("#7fc97f", "#beaed4", "#fdc086")
+colPal <- c("#e41a1c", "#4daf4a")
 #make DF to contain CU-specific benchmark estimates from sim run
 bmDat <- data.frame(cu = selectedCUs, 
                     highBM = NA,
@@ -532,22 +532,8 @@ plotList <- lapply(seq_along(dirNames), function(i) {
                        .default = levels(om)))
 })
 
-plotDat <- do.call(rbind, plotList)
-
-q <- ggplot(plotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
-  geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
-  geom_hline(plotDat, mapping = aes(yintercept = highBM), linetype = 2) +
-  scale_alpha_manual(values = c(1, 0.575, 0.15),
-                     guide = FALSE) +
-  scale_fill_manual(values = colPal, guide = FALSE) +
-  theme_sleekX(axisSize = axSize - 1) +
-  theme(strip.background = element_blank(),
-        strip.text.x = element_blank(),
-        plot.title = element_text(hjust = 0.5),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank()) +
-  ggtitle("Component Variability") +
-  facet_wrap(~cu, scales = "free_y", nrow = 2)
+sigPlotDat <- do.call(rbind, plotList) 
+row.names(sigPlotDat) <- NULL
 
 ### Synch data
 fullPlotList <- list()
@@ -574,16 +560,48 @@ for (i in c(2,5,8)) { #make dataframe
   fullPlotList[[paste0(omNames[i])]] <- plotDat2
 }
 
-plotDat3 <- do.call(rbind, fullPlotList) %>%
+synchPlotDat <- do.call(rbind, fullPlotList) %>%
   mutate(cu = recode(cu, "Bwrn" = "Bowron", "Chlk" = "Chilko", 
                      .default = levels(cu)), 
          om = recode(om, "ref" = "Reference", "lowA" = "Low",
                      "lowStudT" = "Low +\nHeavy Tails", .default = levels(om)),
          synch = factor(factor(synch),
                         levels = c("lowSynch", "medSynch", "highSynch")))
-row.names(plotDat3) <- NULL
+row.names(synchPlotDat) <- NULL
 
-p <- ggplot(plotDat3, aes(x = om, y = spawners, fill = cu, alpha = synch)) +
+# Identify y axis limits using so facets have same bounds (synch
+# instead of sigma because it has a larger range)
+trimSigDat <- sigPlotDat %>% 
+  select(cu, spawners)
+trimSynchDat <- synchPlotDat %>% 
+  select(cu, spawners)
+yLimDat <- rbind(trimSigDat, trimSynchDat) %>% 
+  group_by(cu) %>% 
+  summarize(minY = min(spawners),
+            maxY = max(spawners))
+sigPlotDat <- sigPlotDat %>% 
+  left_join(yLimDat)
+synchPlotDat <- synchPlotDat %>% 
+  left_join(yLimDat)
+
+q <- ggplot(sigPlotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
+  geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
+  geom_hline(plotDat, mapping = aes(yintercept = highBM), linetype = 2) +
+  scale_alpha_manual(values = c(1, 0.575, 0.15),
+                     guide = FALSE) +
+  scale_fill_manual(values = colPal, guide = FALSE) +
+  theme_sleekX(axisSize = axSize - 1) +
+  theme(strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank()) +
+  ggtitle("Component Variability") +
+  facet_wrap(~cu, scales = "free_y", nrow = 2) +
+  geom_blank(aes(y = minY)) +
+  geom_blank(aes(y = maxY))
+
+p <- ggplot(synchPlotDat, aes(x = om, y = spawners, fill = cu, alpha = synch)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
   geom_hline(plotDat3, mapping = aes(yintercept = highBM), linetype = 2) +
   scale_alpha_manual(name = "Operating Model", values = c(1, 0.575, 0.15),
@@ -600,7 +618,9 @@ p <- ggplot(plotDat3, aes(x = om, y = spawners, fill = cu, alpha = synch)) +
         axis.title.y = element_blank(),
         axis.title.x = element_blank()) +
   ggtitle("Synchrony") +
-  facet_wrap(~cu, scales = "free_y", nrow = 2)
+  facet_wrap(~cu, scales = "free_y", nrow = 2) +
+  geom_blank(aes(y = minY)) +
+  geom_blank(aes(y = maxY))
 
 png(file = paste(here(),"/figs/Fig5_spawnerViolin.png", sep = ""),
     height = 4.5, width = 6, units = "in", res = 600)

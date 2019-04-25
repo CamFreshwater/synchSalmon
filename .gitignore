@@ -16,6 +16,7 @@
 knitr-cache
 .RData
 .RHistory
+*.jpg
 
 myNotes.*
 markdownReports/

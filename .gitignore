@@ -19,11 +19,11 @@ knitr-cache
 *.jpg
 
 myNotes.*
-markdownReports/
+#markdownReports/
 outputs/diagnostics
 outputs/simData
 outputs/generatedData/synchTS
-outputs/srAnalysis
+#outputs/srAnalysis
 data/mainSimRun
 data/sensitivitySimRun
 .Rproj.user

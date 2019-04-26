@@ -11,8 +11,7 @@ This document addresses two reviewer comments on the synchrony simulation model.
 
 
 ```{r importAndFit, eval=FALSE, include=FALSE}
-require(here); require(R2jags); require(ggplot2); require(tidyverse)
-require(samSim)
+require(here); require(R2jags); require(ggplot2); require(tidyverse); require(samSim)
 
 source(here("scripts/func/fitRicker.R"))
 
@@ -29,12 +28,12 @@ betaMuScalars <- rep(c(1, 2), times = 2)
 betaSD <- rep(c(1, 5), each = 2)
 fileNames <- paste("mu", betaMuScalars, "_sd", betaSD, sep = "")
 
-for (i in seq_along(betaMuScalars)) {
-  RBayesSingle(dat = srDatTrim, Niter = 250000, Nthin = 50, burnin = 50000,
-               fname = fileNames[i], smaxMuScalar = betaMuScalars[i], 
-               smaxPriorSD = betaSD[i],
-               cap = 3, tauPrior = 0.001) 
-}
+# for (i in seq_along(betaMuScalars)) {
+#   RBayesSingle(dat = srDatTrim, Niter = 250000, Nthin = 50, burnin = 50000,
+#                fname = fileNames[i], smaxMuScalar = betaMuScalars[i], 
+#                smaxPriorSD = betaSD[i],
+#                cap = 3, tauPrior = 0.001) 
+# }
 
 ```
 
@@ -59,25 +58,18 @@ wideParDat <- do.call(rbind, lapply(parList, function(x) x$pars))
 parDat <- wideParDat %>% 
   gather(key = parameter, value = value, -CU, -stk, -muPriorScalar, -sdPrior,
          -file)
-write.csv(parDat, here("outputs", "srAnalysis",
-                       "ricker_betaPriors_mcmcOut.csv"))
+# write.csv(parDat, here("outputs", "srAnalysis",
+#                        "ricker_betaPriors_mcmcOut.csv"))
+
+parDat <- read.csv(here("outputs", "srAnalysis", "ricker_betaPriors_mcmcOut.csv"))
 
 betaDat <- parDat %>% 
   filter(parameter == "beta0")
 
-## Compare medians for different treatments
-betaDat %>% 
-  # filter(tauPriors == "0.001",
-  #        !cap == "1.5") %>% 
-  group_by(stk, cap) %>% 
-  summarize(medBeta = median(value)) %>% 
-  group_by(stk) %>% 
-  summarize(relDiff =  (max(medBeta) - min(medBeta)) / max(medBeta))
-# differences range from 1.5 to 28% decrease with tighter constraint
-
 # png(here("outputs/srAnalysis/betaPosterior_capsTauPriors.png"), units = "in", 
 #     height = 4.5, width = 6.5, res = 250)
-ggplot(betaDat, aes(x = muPriorScalar, y = value, fill = sdPrior)) +
+ggplot(betaDat, aes(x = as.factor(muPriorScalar), y = value, 
+                    fill = as.factor(sdPrior))) +
   labs(x = "Scalar on Mu of sMax Prior", y = "Beta Estimate", 
        fill = "SD of sMax Prior") +
   geom_boxplot(position = position_dodge(width = 0.65)) +
@@ -87,6 +79,7 @@ ggplot(betaDat, aes(x = muPriorScalar, y = value, fill = sdPrior)) +
 
 ```
 
+Impacts of priors ranges from negligible to strong. Typically sigma has a much stronger impact than a scalar on mu, but not always. 
 
 2. Comment two asked why we used log-normal distributions to generate stochasticity in en route mortality rather than binomial. To address try to parameterize each distribution using available en route mortality data, then sample 1500 times from each and calculate realized. See whether or not they converge. 
 

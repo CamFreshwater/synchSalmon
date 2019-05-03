@@ -1,0 +1,23 @@
+
+$$
+\mathrm{CV}_A = \sqrt{\phi} \mathrm{CV}_C
+$$
+
+
+$$
+x_{\mathrm{agg}(t)} \sim \mathrm{normal}(\mu_\mathrm{agg}, \sigma_\mathrm{agg}^2),
+  \: \text{for } t = 1, \dots, T\\
+$$
+
+$$
+x_{{i}(t)} \sim \mathrm{normal}(\mu_i, \sigma_i^2),
+  \: \text{for } t = 1, \dots, T \: \text{and } i = 1, \dots, n\\
+$$
+
+$$
+\phi = \frac{\sigma_\mathrm{agg}^2}{\left(\sum_{i}{} \sigma_i\right)^2}
+$$
+
+$$
+\mathrm{CV}_C = \sum_{i}{} \frac{\mu_i}{\mu_{\mathrm{agg}}} \cdot \frac{\sigma_i}{\mu_i}
+$$

@@ -30,8 +30,8 @@ data/sensitivitySimRun
 scripts/lm-t-skew.rds
 scripts/lm-t.rds
 scripts/lm.rds
-scripts/func
-scripts/jagsModels
+#scripts/func
+#scripts/jagsModels
 scripts/hiddenScripts
 *.html
 scripts/*cache*

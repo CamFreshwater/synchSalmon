@@ -1,0 +1,34 @@
+---
+output:
+  word_document: default
+---
+
+To calculate $\mathrm{CV}_\mathrm{A}$ and $\phi$ with uncertainty, we wrote a model with Template Model Builder (TMB) and derived parameter estimates by minimizing the negative log likelihood. As a reminder, we can calculate the CV of the aggregate ($\mathrm{CV}_\mathrm{A}$) as
+
+$$
+\mathrm{CV}_\mathrm{A} = \sqrt{\phi} \widetilde{\mathrm{CV}_\mathrm{C}},
+$$
+
+where $\phi$ represents synchrony and $\widetilde{\mathrm{CV}_\mathrm{C}}$ represents the average component-level coefficient of variation weighted by component abundance (Thibaut and Connolly 2012).
+
+If we use $x_{\mathrm{A}(t)}$ to represent aggregate abundance in year $t$, then we can estimate $\mu_\mathrm{A}$ and $\sigma_\mathrm{A}^2$---the aggregate mean and variance:
+
+$$
+x_{\mathrm{A}(t)} \sim \mathrm{normal}(\mu_\mathrm{A}, \sigma_\mathrm{A}^2),
+  \: \text{for } t = 1, \dots, T.
+$$
+Similarly, using $x_{i(t)}$ to represent abundance of component $i$ in year $t$, we can estimate the mean and variance for each component as
+
+$$
+x_{{i}(t)} \sim \mathrm{normal}(\mu_i, \sigma_i^2),
+  \: \text{for } t = 1, \dots, T \: \text{and } i = 1, \dots, n.
+$$
+
+Using those estimated parameters, we can then calculate $\phi$ and $\widetilde{\mathrm{CV}_\mathrm{C}}$ as derived parameters:
+
+$$
+\begin{aligned}
+\phi &= \frac{\sigma_\mathrm{A}^2}{\left(\sum_{i}{} \sigma_i\right)^2},\\
+\widetilde{\mathrm{CV}_C} &= \sum_{i}{} \frac{\mu_i}{\mu_{\mathrm{A}}} \cdot \frac{\sigma_i}{\mu_i}.
+\end{aligned}
+$$

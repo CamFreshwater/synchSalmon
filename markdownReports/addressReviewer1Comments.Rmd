@@ -24,16 +24,16 @@ srDatTrim <- read.csv(here("data/sox/fraserRecDat.csv"),
   filter(!(stkName == "Cultus" & Year > 1999)) %>% # trim Cultus
   mutate(lnRS = log(Recruit/Escape))
 
-betaMuScalars <- rep(c(1, 2), times = 2)
-betaSD <- rep(c(1, 5), each = 2)
+betaMuScalars <- rep(c(1, 0.5, 2), times = 2)
+betaSD <- rep(c(1, 5), each = 3)
 fileNames <- paste("mu", betaMuScalars, "_sd", betaSD, sep = "")
 
-# for (i in seq_along(betaMuScalars)) {
-#   RBayesSingle(dat = srDatTrim, Niter = 250000, Nthin = 50, burnin = 50000,
-#                fname = fileNames[i], smaxMuScalar = betaMuScalars[i], 
-#                smaxPriorSD = betaSD[i],
-#                cap = 3, tauPrior = 0.001) 
-# }
+for (i in seq_along(betaMuScalars)) {
+  RBayesSingle(dat = srDatTrim, Niter = 250000, Nthin = 50, burnin = 50000,
+               fname = fileNames[i], smaxMuScalar = betaMuScalars[i],
+               smaxPriorSD = betaSD[i],
+               cap = 3, tauPrior = 0.001)
+}
 
 ```
 

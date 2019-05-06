@@ -3,8 +3,9 @@
 # Date revised: May 6, 2019
 # Inputs: recoverySim.R
 # Outputs: pdf plots
-# Explainer: Runs closed loop sim for synch manuscript with reference productivity
+# Explainer: Runs closed loop sim for synch manuscript with reference prod
 # and alternative multistock HCR that is less conservative
+# CONCLUSION: Impacts are relatively modest (similar to decline in productivity)
 #*******************************************************************************
 
 # Check if required packages are installed and run
@@ -17,13 +18,19 @@ lapply(listOfPackages, require, character.only = TRUE)
 
 simPar <- read.csv(here("data/sox/fraserOMInputs_varyCorrMultiHCR.csv"), 
                    stringsAsFactors = F)
-cuPar <- read.csv(here("data/sox/fraserCUParsFRP.csv"), stringsAsFactors = F)
+cuPar <- read.csv(here("data/sox/fraserCUParsFRP.csv"), stringsAsFactors = F) 
+# %>% 
+#   filter(!stkName == "E. Shuswap") #remove for now because recursive est not avail
 srDat <- read.csv(here("data/sox/fraserRecDatTrim.csv"), stringsAsFactors = F)
 catchDat <- read.csv(here("data/sox/fraserCatchDatTrim.csv"), 
                      stringsAsFactors = F)
-ricPars <- read.csv(here("data/sox/pooledRickerMCMCPars.csv"), 
+# ricPars <- read.csv(here("data/sox/hiddenData/trimRecursiveRickerMCMCPars.csv"), 
+#                     stringsAsFactors = F)
+# larkPars <- read.csv(here("data/sox/hiddenData/trimRecursiveLarkinMCMCPars.csv"), 
+#                      stringsAsFactors = F)
+ricPars <- read.csv(here("data/sox/pooledRickerMCMCPars.csv"),
                     stringsAsFactors = F)
-larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"), 
+larkPars <- read.csv(here("data/sox/pooledLarkinMCMCPars.csv"),
                      stringsAsFactors = F)
 tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 
@@ -34,11 +41,11 @@ tamFRP <- read.csv(here("data/sox/tamRefPts.csv"), stringsAsFactors = F)
 nTrials <- 400
 
 simParTrim <- simPar %>% 
-  mutate(scenario = paste(scenario, nameMP, sep = "_"))
+  filter(prodRegime == "low") %>% 
+  mutate(scenario = paste("lowProd", scenario, nameMP, sep = "_"))
 
 scenNames <- unique(simParTrim$scenario)
-dirNames <- sapply(scenNames, function(x) paste(x, unique(simParTrim$species),
-                                                sep = "_"))
+dirNames <- sapply(scenNames, function(x) paste(x, sep = "_"))
 
 # recoverySim(simParTrim[12, ], cuPar, catchDat = catchDat, srDat = srDat,
 #             variableCU = FALSE, ricPars, larkPars = larkPars, tamFRP = tamFRP,
@@ -313,13 +320,13 @@ catchPlots <- lapply(seq_along(catchVars), function(i) {
   return(q)
 })
 
-png(file = paste(here(),"/figs/Fig3_consGroupedPlots.png", sep = ""),
+png(file = paste(here(),"/figs/multiHCR/lowProd_consGroupedPlots.png", sep = ""),
     height = 5.5, width = 5.25, units = "in", res = 600)
 ggarrange(consPlots[[1]], consPlots[[2]], consPlots[[3]], consPlots[[4]],
           ncol = 1, nrow = 4, common.legend = TRUE, legend = "right",
           align = "v", heights = c(1.1,0.9,0.9,1.15))
 dev.off()
-png(file = paste(here(),"/figs/Fig4_catchGroupedPlots.png", sep = ""),
+png(file = paste(here(),"/figs/multiHCR/lowProd_catchGroupedPlots.png", sep = ""),
     height = 4.5, width = 5.25, units = "in", res = 600)
 ggarrange(catchPlots[[1]], catchPlots[[2]], catchPlots[[3]],
           ncol = 1, nrow = 3, common.legend = TRUE, legend = "right",

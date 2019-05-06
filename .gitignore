@@ -23,7 +23,8 @@ myNotes.*
 outputs/diagnostics
 outputs/simData
 outputs/generatedData/synchTS
-#outputs/srAnalysis
+figs/multiHCR
+data/sox/hiddenData
 data/mainSimRun
 data/sensitivitySimRun
 .Rproj.user

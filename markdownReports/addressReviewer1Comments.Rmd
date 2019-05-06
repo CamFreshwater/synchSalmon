@@ -13,7 +13,7 @@ This document addresses two reviewer comments on the synchrony simulation model.
 ```{r importAndFit, eval=FALSE, include=FALSE}
 require(here); require(R2jags); require(ggplot2); require(tidyverse); require(samSim)
 
-source(here("scripts/func/fitRicker.R"))
+source(here("scripts/hiddenScripts/priorSensitivity_fitRicker.R"))
 
 # Clean data to match format for stockRecFunctions.R
 # Use total spawners

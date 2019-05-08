@@ -596,13 +596,15 @@ yLimDat <- rbind(trimSigDat, trimSynchDat) %>%
   summarize(minY = min(spawners),
             maxY = max(spawners))
 sigPlotDat <- sigPlotDat %>% 
-  left_join(yLimDat)
+  left_join(yLimDat) %>% 
+  filter(!om == "Low +\nHeavy Tails")
 synchPlotDat <- synchPlotDat %>% 
-  left_join(yLimDat)
+  left_join(yLimDat) %>% 
+  filter(!om == "Low +\nHeavy Tails")
 
 q <- ggplot(sigPlotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
-  geom_hline(plotDat, mapping = aes(yintercept = highBM), linetype = 2) +
+  geom_hline(sigPlotDat, mapping = aes(yintercept = highBM), linetype = 2) +
   scale_alpha_manual(values = c(1, 0.575, 0.15),
                      guide = FALSE) +
   scale_fill_manual(values = colPal, guide = FALSE) +
@@ -619,15 +621,15 @@ q <- ggplot(sigPlotDat, aes(x = om, y = spawners, fill = cu, alpha = sigma)) +
 
 p <- ggplot(synchPlotDat, aes(x = om, y = spawners, fill = cu, alpha = synch)) +
   geom_violin(draw_quantiles = c(0.5), position = position_dodge(width = 0.75)) +
-  geom_hline(plotDat3, mapping = aes(yintercept = highBM), linetype = 2) +
-  scale_alpha_manual(name = "Operating Model", values = c(1, 0.575, 0.15),
+  geom_hline(synchPlotDat, mapping = aes(yintercept = highBM), linetype = 2) +
+  scale_alpha_manual(name = "Operating\nModel", values = c(1, 0.575, 0.15),
                      labels = c("lowSynch" = "Low",
                                 "medSynch" = "Ref/Mod.",
                                 "highSynch" = "High")) +
-  scale_fill_manual(name = "Conservation Unit", values = colPal) +
+  scale_fill_manual(name = "Conservation\nUnit", values = colPal) +
   guides(alpha = guide_legend(override.aes = list(fill = "grey30"))) +
   theme_sleekX(axisSize = axSize - 1, 
-               legendSize = legSize * 1.1)+
+               legendSize = 0.9 * legSize)+
   theme(strip.background = element_blank(),
         strip.text.x = element_blank(),
         plot.title = element_text(hjust = 0.5), 
@@ -639,8 +641,8 @@ p <- ggplot(synchPlotDat, aes(x = om, y = spawners, fill = cu, alpha = synch)) +
   geom_blank(aes(y = maxY))
 
 png(file = paste(here(),"/figs/Fig5_spawnerViolin.png", sep = ""),
-    height = 4.5, width = 6, units = "in", res = 600)
-fig <- ggarrange(q, p, nrow = 1, ncol = 2, widths = c(1, 1.55))
+    height = 4, width = 5.5, units = "in", res = 600)
+fig <- ggarrange(q, p, nrow = 1, ncol = 2, widths = c(1, 1.5))
 annotate_figure(fig, 
                 bottom = text_grob("Productivity Scenario", size = axSize, 
                                    color = "grey30"),

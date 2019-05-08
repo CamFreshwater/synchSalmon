@@ -2,7 +2,7 @@
 # frStockRecModels_synchDir.r
 # Date last revised: 4 May, 2019
 # Copy of script (frStockRecModel.R) moved from salmon-sim directory. Trimmed to
-# removed preliminary analyses. 
+# remove preliminary analyses. 
 #*******************************************************************************
 
 require(here); require(R2jags); require(ggplot2); require(rstan); require(dplyr)
@@ -15,13 +15,9 @@ srDat <- read.csv(here("data/sox/fraserRecDat.csv"),
                   stringsAsFactors=F) %>% 
   select(stk, stkName, yr, totalSpwn, rec) %>% 
   rename(CU = stk, Year = yr, Escape = totalSpwn, Recruit = rec)
-rickerPars <- read.csv(here("data/fraserDat/rickerMCMCPars.csv"), 
-                       stringsAsFactors=F) 
-larkinPars <- read.csv(here("data/fraserDat/larkinMCMCPars.csv"), 
-                       stringsAsFactors=F) 
 
-### Fit all CUs with full dataset (i.e. don't exclude 2010 even though it 
-## wasn't included in AMH's analysis); exception is Cultus
+### Fit all CUs with full dataset; exception is Cultus which has strong hatchery
+## impacts since 2000
 srDatTrim <- srDat %>% 
   filter(!(stkName == "Cultus" & Year > 1999)) %>% 
   mutate(lnRS = log(Recruit/Escape))

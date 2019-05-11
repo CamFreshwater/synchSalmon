@@ -518,7 +518,7 @@ dev.off()
 # Generate CU-specific spawner abundance violin plots for Bowron and Chilko
 selectedCUs <- c("Bwrn" , "Chlk")
 nCUs <- length(selectedCUs)
-colPal <- c("#e41a1c", "#4daf4a")
+colPal <- c("#ff7f00", "#1f78b4")
 #make DF to contain CU-specific benchmark estimates from sim run
 bmDat <- data.frame(cu = selectedCUs, 
                     highBM = NA,

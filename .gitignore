@@ -25,7 +25,8 @@ outputs/simData
 outputs/generatedData/synchTS
 outputs/srAnalysis
 figs/multiHCR
-data/sox/hiddenData
+figs/presentationFigs
+data/sox/oldRuns
 data/mainSimRun
 data/sensitivitySimRun
 .Rproj.user

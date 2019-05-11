@@ -19,7 +19,7 @@ knitr-cache
 *.jpg
 
 myNotes.*
-#markdownReports/
+markdownReports/
 outputs/diagnostics
 outputs/simData
 outputs/generatedData/synchTS

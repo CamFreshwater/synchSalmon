@@ -29,6 +29,7 @@ figs/presentationFigs
 data/sox/oldRuns
 data/mainSimRun
 data/sensitivitySimRun
+data/sox/hiddenData
 .Rproj.user
 scripts/lm-t-skew.rds
 scripts/lm-t.rds

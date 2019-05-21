@@ -15,7 +15,7 @@ library(ggplot2)
 library(rstan)
 library(here)
 rstan_options(auto_write = TRUE)
-
+Sys.setenv(LOCAL_CPPFLAGS = '-march=native')
 # Specify models
 sm_lm <- stan_model(here("scripts/lm.stan"))
 sm_lmt <- stan_model(here("scripts/lm-t.stan"))
